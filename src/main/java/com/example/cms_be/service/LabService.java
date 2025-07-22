@@ -52,4 +52,16 @@ public class LabService {
         return labs;
     }
 
+    public Lab createLab(Lab lab) {
+        Lab createLab = new Lab();
+        try{
+            createLab = labRepository.save(lab);
+        }
+        catch (Exception e) {
+            log.error("Error creating lab: {}", e.getMessage());
+            throw new RuntimeException("Failed to create lab", e);
+        }
+        return createLab;
+    }
+
 }
