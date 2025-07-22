@@ -7,41 +7,29 @@ import io.kubernetes.client.openapi.apis.CoreV1Api;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 
-import io.kubernetes.client.Exec;
-import io.kubernetes.client.openapi.ApiClient;
+
 import io.kubernetes.client.openapi.Configuration;
-import io.kubernetes.client.openapi.apis.CoreV1Api;
-import io.kubernetes.client.openapi.models.*;
 import io.kubernetes.client.util.Config;
 import io.kubernetes.client.util.KubeConfig;
 import io.kubernetes.client.util.ClientBuilder;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-
-
 import java.io.File;
 import java.io.FileReader;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import org.springframework.util.StringUtils;
 
-import java.io.File;
 
-import org.springframework.beans.factory.annotation.Value;
+
+
+
 @Service
 @Slf4j
 public class KubernetesService {
 
 
-    private CoreV1Api api;
-    private ApiClient client;
+    private CoreV1Api api;   // api client for k8s cluster 
+    private ApiClient client;  // doi tuong chua cac thong tin ket noi toi Kubernetes cluster
 
+    
     @Value("${kubernetes.namespace:default}")
     private String namespace;
 
@@ -61,6 +49,7 @@ public class KubernetesService {
                 
                 log.info("Using default Kubernetes config");
                 client = Config.defaultClient();
+                
             }
             
             Configuration.setDefaultApiClient(client);

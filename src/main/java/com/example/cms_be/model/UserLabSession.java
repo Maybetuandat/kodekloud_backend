@@ -3,6 +3,8 @@ package com.example.cms_be.model;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -43,6 +45,7 @@ public class UserLabSession {
     @JoinColumn(name = "lab_id", nullable = false)
     private Lab lab;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "labSession", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<SetupExecutionLog> setupExecutionLogs;
 
