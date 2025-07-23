@@ -1,0 +1,685 @@
+openapi: 3.0.3
+info:
+  title: CMS Backend API
+  description: |
+    API for CMS Backend Lab Management System
+    
+    This API provides endpoints for managing lab templates and setup steps.
+  version: 1.0.0
+  contact:
+    name: CMS Backend Team
+    email: your-email@example.com
+  license:
+    name: MIT
+    url: https://choosealicense.com/licenses/mit/
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: https://your-production-domain.com
+    description: Production server
+
+tags:
+  - name: Lab Management
+    description: APIs for managing lab templates
+  - name: Setup Step Management
+    description: APIs for managing lab setup steps
+
+paths:
+  /api/lab:
+    get:
+      tags:
+        - Lab Management
+      summary: Get all labs or filter by active status
+      description: Retrieve all labs or filter by active status. If isActivate parameter is provided, only labs with that status will be returned.
+      parameters:
+        - name: isActivate
+          in: query
+          description: Filter labs by active status
+          required: false
+          schema:
+            type: boolean
+            example: true
+      responses:
+        '200':
+          description: Successfully retrieved labs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Lab'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    post:
+      tags:
+        - Lab Management
+      summary: Create a new lab
+      description: Create a new lab template with the provided information
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLabRequest'
+            examples:
+              docker_lab:
+                summary: Docker Lab Example
+                value:
+                  name: "Docker Basics Lab"
+                  description: "Learn basic Docker commands and concepts"
+                  baseImage: "ubuntu:20.04"
+                  estimatedTime: 60
+      responses:
+        '201':
+          description: Lab created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lab'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/lab/{id}:
+    get:
+      tags:
+        - Lab Management
+      summary: Get lab by ID
+      description: Retrieve detailed information of a specific lab by its ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the lab to retrieve
+          schema:
+            type: string
+            example: "lab-001"
+      responses:
+        '200':
+          description: Successfully retrieved lab
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lab'
+        '404':
+          description: Lab not found
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags:
+        - Lab Management
+      summary: Update lab information
+      description: Update an existing lab with new information
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the lab to update
+          schema:
+            type: string
+            example: "lab-001"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLabRequest'
+      responses:
+        '200':
+          description: Lab updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lab'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '404':
+          description: Lab not found
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    delete:
+      tags:
+        - Lab Management
+      summary: Delete a lab
+      description: Delete an existing lab by its ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the lab to delete
+          schema:
+            type: string
+            example: "lab-001"
+      responses:
+        '200':
+          description: Lab deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Lab not found
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/lab/{id}/toggle-status:
+    put:
+      tags:
+        - Lab Management
+      summary: Toggle lab active status
+      description: Toggle the active/inactive status of a lab
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the lab to toggle status
+          schema:
+            type: string
+            example: "lab-001"
+      responses:
+        '200':
+          description: Lab status toggled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Trạng thái lab đã được cập nhật"
+                  lab:
+                    $ref: '#/components/schemas/Lab'
+        '404':
+          description: Lab not found
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/lab/{id}/setup-steps:
+    get:
+      tags:
+        - Lab Management
+      summary: Get lab setup steps
+      description: Retrieve all setup steps for a specific lab
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID of the lab to get setup steps
+          schema:
+            type: string
+            example: "lab-001"
+      responses:
+        '200':
+          description: Successfully retrieved setup steps
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SetupStep'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/setup-step/{labId}:
+    post:
+      tags:
+        - Setup Step Management
+      summary: Create a new setup step
+      description: Create a new setup step for a specific lab
+      parameters:
+        - name: labId
+          in: path
+          required: true
+          description: ID of the lab to create setup step for
+          schema:
+            type: string
+            example: "lab-001"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSetupStepRequest'
+            examples:
+              install_docker:
+                summary: Install Docker Step
+                value:
+                  title: "Install Docker"
+                  description: "Install Docker engine on the system"
+                  setupCommand: "apt-get update && apt-get install -y docker.io"
+                  expectedExitCode: 0
+                  retryCount: 3
+                  timeoutSeconds: 300
+                  continueOnFailure: false
+      responses:
+        '201':
+          description: Setup step created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetupStep'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/setup-step/batch/{labId}:
+    post:
+      tags:
+        - Setup Step Management
+      summary: Create multiple setup steps
+      description: Create multiple setup steps at once for a specific lab
+      parameters:
+        - name: labId
+          in: path
+          required: true
+          description: ID of the lab to create setup steps for
+          schema:
+            type: string
+            example: "lab-001"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/CreateSetupStepRequest'
+            examples:
+              docker_setup:
+                summary: Docker Setup Steps
+                value:
+                  - title: "Update packages"
+                    setupCommand: "apt-get update"
+                    stepOrder: 1
+                  - title: "Install Docker"
+                    setupCommand: "apt-get install -y docker.io"
+                    stepOrder: 2
+                  - title: "Start Docker service"
+                    setupCommand: "systemctl start docker"
+                    stepOrder: 3
+      responses:
+        '201':
+          description: Setup steps created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchOperationResponse'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/setup-step:
+    put:
+      tags:
+        - Setup Step Management
+      summary: Update a setup step
+      description: Update an existing setup step with new information
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetupStep'
+      responses:
+        '200':
+          description: Setup step updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetupStep'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '404':
+          description: Setup step not found
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/setup-step/{setupStepId}:
+    delete:
+      tags:
+        - Setup Step Management
+      summary: Delete a setup step
+      description: Delete a specific setup step by its ID
+      parameters:
+        - name: setupStepId
+          in: path
+          required: true
+          description: ID of the setup step to delete
+          schema:
+            type: string
+            example: "step-001"
+      responses:
+        '200':
+          description: Setup step deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Setup step not found
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/setup-step/batch:
+    delete:
+      tags:
+        - Setup Step Management
+      summary: Delete multiple setup steps
+      description: Delete multiple setup steps at once by their IDs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+              example: ["step-001", "step-002", "step-003"]
+      responses:
+        '200':
+          description: Setup steps deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchOperationResponse'
+        '400':
+          description: Invalid input data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    Lab:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the lab
+          example: "lab-001"
+        name:
+          type: string
+          description: Name of the lab
+          example: "Docker Basics Lab"
+        description:
+          type: string
+          description: Detailed description of the lab
+          example: "This lab covers basic Docker concepts and commands"
+        baseImage:
+          type: string
+          description: Base Docker image for the lab environment
+          example: "ubuntu:20.04"
+        estimatedTime:
+          type: integer
+          description: Estimated time to complete the lab in minutes
+          minimum: 1
+          maximum: 600
+          example: 60
+        isActive:
+          type: boolean
+          description: Whether the lab is active and available for use
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the lab was created
+          example: "2024-01-15T10:30:00"
+        setupSteps:
+          type: array
+          items:
+            $ref: '#/components/schemas/SetupStep'
+          description: List of setup steps for this lab
+
+    SetupStep:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the setup step
+          example: "step-001"
+        stepOrder:
+          type: integer
+          description: Order of execution for this step
+          example: 1
+        title:
+          type: string
+          description: Title of the setup step
+          example: "Install Docker"
+        description:
+          type: string
+          description: Detailed description of what this step does
+          example: "This step installs Docker engine on the system"
+        setupCommand:
+          type: string
+          description: Command to execute for this step
+          example: "apt-get update && apt-get install -y docker.io"
+        expectedExitCode:
+          type: integer
+          description: Expected exit code for successful execution
+          default: 0
+          example: 0
+        retryCount:
+          type: integer
+          description: Number of times to retry if command fails
+          default: 1
+          example: 3
+        timeoutSeconds:
+          type: integer
+          description: Timeout for command execution in seconds
+          minimum: 1
+          maximum: 3600
+          default: 300
+          example: 300
+        continueOnFailure:
+          type: boolean
+          description: Whether to continue with next steps if this step fails
+          default: false
+          example: false
+
+    CreateLabRequest:
+      type: object
+      required:
+        - name
+        - baseImage
+        - estimatedTime
+      properties:
+        name:
+          type: string
+          description: Name of the lab
+          example: "Docker Basics Lab"
+        description:
+          type: string
+          description: Detailed description of the lab
+          example: "This lab covers basic Docker concepts and commands"
+        baseImage:
+          type: string
+          description: Base Docker image for the lab environment
+          example: "ubuntu:20.04"
+        estimatedTime:
+          type: integer
+          description: Estimated time to complete the lab in minutes
+          minimum: 1
+          maximum: 600
+          example: 60
+
+    CreateSetupStepRequest:
+      type: object
+      required:
+        - title
+        - setupCommand
+      properties:
+        stepOrder:
+          type: integer
+          description: Order of execution for this step
+          example: 1
+        title:
+          type: string
+          description: Title of the setup step
+          example: "Install Docker"
+        description:
+          type: string
+          description: Detailed description of what this step does
+          example: "This step installs Docker engine on the system"
+        setupCommand:
+          type: string
+          description: Command to execute for this step
+          example: "apt-get update && apt-get install -y docker.io"
+        expectedExitCode:
+          type: integer
+          description: Expected exit code for successful execution
+          default: 0
+          example: 0
+        retryCount:
+          type: integer
+          description: Number of times to retry if command fails
+          default: 1
+          example: 3
+        timeoutSeconds:
+          type: integer
+          description: Timeout for command execution in seconds
+          minimum: 1
+          maximum: 3600
+          default: 300
+          example: 300
+        continueOnFailure:
+          type: boolean
+          description: Whether to continue with next steps if this step fails
+          default: false
+          example: false
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Không thể tìm thấy lab với ID đã cho"
+        code:
+          type: string
+          description: Error code
+          example: "LAB_NOT_FOUND"
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp of the error
+          example: "2024-01-15T10:30:00"
+
+    SuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Success message
+          example: "Lab đã được tạo thành công"
+        data:
+          type: object
+          description: Additional data
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        errors:
+          type: object
+          additionalProperties:
+            type: string
+          description: Field validation errors
+          example:
+            name: "Tên lab không được để trống"
+            baseImage: "Base image không được để trống"
+
+    BatchOperationResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Operation message
+          example: "Đã tạo thành công 3 setup steps"
+        successCount:
+          type: integer
+          description: Number of items processed successfully
+          example: 3
+        totalCount:
+          type: integer
+          description: Number of items requested to process
+          example: 3
+        data:
+          type: object
+          description: Additional result data

@@ -20,6 +20,8 @@ import lombok.NoArgsConstructor;
 public class UserLabSession {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", nullable = false, unique = true)
     private String id;
 
     //private CourseUser courseUser;

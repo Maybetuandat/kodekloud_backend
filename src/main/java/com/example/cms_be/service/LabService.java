@@ -56,6 +56,7 @@ public class LabService {
 
     public Lab createLab(Lab lab) {
         Lab createLab = new Lab();
+      
         try{
             createLab = labRepository.save(lab);
         }

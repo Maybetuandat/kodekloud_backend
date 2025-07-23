@@ -79,11 +79,11 @@ public class SetupStepService {
 
             Lab lab = labOpt.get();
          
-
+            Integer nextOrder = getNextStepOrder(labId);
             for(int i=0; i < setupSteps.size(); i++)
             {
                 setupSteps.get(i).setLab(lab);
-                setupSteps.get(i).setStepOrder(i + 1); 
+                setupSteps.get(i).setStepOrder(nextOrder + i); 
             }
             List<SetupStep> savedSteps = setupStepRepository.saveAll(setupSteps);
             log.info("Created {} setup steps successfully for lab {}", savedSteps.size(), labId);

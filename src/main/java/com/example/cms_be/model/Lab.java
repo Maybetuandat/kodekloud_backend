@@ -12,13 +12,15 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Data
-@Table(name = "lab_templates")
+@Table(name = "lab")
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Lab {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", nullable = false, unique = true)
     private String id; 
 
     @NotBlank(message = "Tên lab không được để trống")

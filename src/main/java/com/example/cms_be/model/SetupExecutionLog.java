@@ -18,6 +18,8 @@ import lombok.NoArgsConstructor;
 public class SetupExecutionLog {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", nullable = false, unique = true)
     private String id;
     
     @Column(name = "step_order", nullable = false)
