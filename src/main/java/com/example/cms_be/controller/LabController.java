@@ -16,6 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.data.domain.*;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -38,24 +40,41 @@ import org.springframework.web.bind.annotation.PathVariable;
 public class LabController {
      private final LabService labService; 
 
-    /**
-     * Lấy danh sách tất cả labs hoặc filter theo trạng thái active
-     * GET /api/lab?isActivate=true
-     */
     @GetMapping
-    public ResponseEntity<List<Lab>> getAllLabs(@RequestParam (required = false) Boolean isActivate) {
-         List<Lab> labs =  new ArrayList<>();
-
-         if(isActivate != null)
-         {
-                labs = labService.getLabsByActivateStatus(isActivate);
-         }
-         else
-         {
-                labs = labService.getAllLabs();
-         }
-        
-         return ResponseEntity.ok(labs);
+    public ResponseEntity<?> getAllLabs(
+        @RequestParam(required = false) Boolean isActivate,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size,
+        @RequestParam(defaultValue = "createdAt") String sortBy,
+        @RequestParam(defaultValue = "desc") String sortDir
+    ) {
+        try {
+            Pageable pageable = PageRequest.of(page, size, 
+                sortDir.equalsIgnoreCase("desc") ? 
+                    Sort.by(sortBy).descending() : 
+                    Sort.by(sortBy).ascending()
+            );
+            
+            Page<Lab> labPage;
+            if (isActivate != null) {
+                labPage = labService.getLabsByActivateStatus(isActivate, pageable);
+            } else {
+                labPage = labService.getAllLabs(pageable);
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("data", labPage.getContent());
+            response.put("currentPage", labPage.getNumber());
+            response.put("totalItems", labPage.getTotalElements());
+            response.put("totalPages", labPage.getTotalPages());
+            response.put("hasNext", labPage.hasNext());
+            response.put("hasPrevious", labPage.hasPrevious());
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error getting labs: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     /**

@@ -28,10 +28,7 @@ tags:
 paths:
   /api/lab:
     get:
-      tags:
-        - Lab Management
-      summary: Get all labs or filter by active status
-      description: Retrieve all labs or filter by active status. If isActivate parameter is provided, only labs with that status will be returned.
+      summary: Get all labs with pagination
       parameters:
         - name: isActivate
           in: query
@@ -39,61 +36,61 @@ paths:
           required: false
           schema:
             type: boolean
-            example: true
+        - name: page
+          in: query
+          description: Page number (0-based)
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: size
+          in: query
+          description: Page size
+          required: false
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+        - name: sortBy
+          in: query
+          description: Sort field
+          required: false
+          schema:
+            type: string
+            default: "createdAt"
+            enum: ["createdAt", "name", "estimatedTime"]
+        - name: sortDir
+          in: query
+          description: Sort direction
+          required: false
+          schema:
+            type: string
+            default: "desc"
+            enum: ["asc", "desc"]
       responses:
         '200':
-          description: Successfully retrieved labs
+          description: Successfully retrieved labs with pagination
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Lab'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    
-    post:
-      tags:
-        - Lab Management
-      summary: Create a new lab
-      description: Create a new lab template with the provided information
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateLabRequest'
-            examples:
-              docker_lab:
-                summary: Docker Lab Example
-                value:
-                  name: "Docker Basics Lab"
-                  description: "Learn basic Docker commands and concepts"
-                  baseImage: "ubuntu:20.04"
-                  estimatedTime: 60
-      responses:
-        '201':
-          description: Lab created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Lab'
-        '400':
-          description: Invalid input data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Lab'
+                  currentPage:
+                    type: integer
+                  totalItems:
+                    type: integer
+                  totalPages:
+                    type: integer
+                  hasNext:
+                    type: boolean
+                  hasPrevious:
+                    type: boolean
 
   /api/lab/{id}:
     get:

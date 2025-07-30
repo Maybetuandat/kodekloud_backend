@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
 import com.example.cms_be.model.Lab;
@@ -28,31 +29,15 @@ public class LabService {
 
 
 
-    public List<Lab> getAllLabs()
-    {
-        List<Lab> labs = new ArrayList<>();
-        try {
-             labs = labRepository.findAll();
-        } catch (Exception e) {
-            log.error("Error fetching labs: {}", e.getMessage());
-            throw new RuntimeException("Failed to fetch labs", e);
-        }
-        return labs;
+   public Page<Lab> getAllLabs(Pageable pageable) {
+        return labRepository.findAll(pageable);
+    }
+    
+    public Page<Lab> getLabsByActivateStatus(Boolean isActivate, Pageable pageable) {
+        return labRepository.findByIsActive(isActivate, pageable);
     }
 
-    public List<Lab> getLabsByActivateStatus(Boolean isActivate)
-    {
-        List<Lab> labs = new ArrayList<>();
-        try {
-
-            labs = labRepository.findLabsByActiveStatusOrderByCreatedAt(isActivate);
-        }
-        catch (Exception e) {
-            log.error("Error fetching labs by activation status: {}", e.getMessage());
-            throw new RuntimeException("Failed to fetch labs by activation status", e);
-        }
-        return labs;
-    }
+    
 
     public Lab createLab(Lab lab) {
         Lab createLab = new Lab();
