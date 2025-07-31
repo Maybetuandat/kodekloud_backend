@@ -17,7 +17,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.data.domain.*;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -44,11 +43,20 @@ public class LabController {
     public ResponseEntity<?> getAllLabs(
         @RequestParam(required = false) Boolean isActivate,
         @RequestParam(defaultValue = "0") int page,
+        @RequestParam(required = false) String search,
         @RequestParam(defaultValue = "10") int size,
         @RequestParam(defaultValue = "createdAt") String sortBy,
         @RequestParam(defaultValue = "desc") String sortDir
     ) {
         try {
+
+            log.info("Fetching labs with isActivate: {}, page: {}, size: {}, sortBy: {}, sortDir: {}, search: {}", 
+                isActivate, page, size, sortBy, sortDir, search);
+
+
+
+
+
             Pageable pageable = PageRequest.of(page, size, 
                 sortDir.equalsIgnoreCase("desc") ? 
                     Sort.by(sortBy).descending() : 
@@ -56,11 +64,23 @@ public class LabController {
             );
             
             Page<Lab> labPage;
+            if (search != null && !search.trim().isEmpty()) {
+            
+                    if (isActivate != null) {
+                        // Search + filter by status
+                        labPage = labService.searchLabsByActivateStatus(search.trim(), isActivate, pageable);
+                    } else {
+                        // Chỉ search
+                        labPage = labService.searchLabs(search.trim(), pageable);
+                    }
+        } else {
+            // Không có search, chỉ filter
             if (isActivate != null) {
                 labPage = labService.getLabsByActivateStatus(isActivate, pageable);
             } else {
                 labPage = labService.getAllLabs(pageable);
             }
+        }
             
             Map<String, Object> response = new HashMap<>();
             response.put("data", labPage.getContent());

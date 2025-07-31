@@ -36,6 +36,13 @@ public class LabService {
     public Page<Lab> getLabsByActivateStatus(Boolean isActivate, Pageable pageable) {
         return labRepository.findByIsActive(isActivate, pageable);
     }
+    public Page<Lab> searchLabs(String search, Pageable pageable) {
+        return labRepository.searchLabs(search, pageable);
+    }
+    
+    public Page<Lab> searchLabsByActivateStatus(String search, Boolean isActive, Pageable pageable) {
+        return labRepository.searchLabsByActivateStatus(search, isActive, pageable);
+    }
 
     
 
