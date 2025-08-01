@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/lab")
+@RequestMapping("/api/labs")
 @RequiredArgsConstructor
 public class LabController {
      private final LabService labService; 
@@ -214,20 +214,5 @@ public class LabController {
     }
 
 
-    /**
-     * Lấy danh sách setup steps của lab
-     * GET /api/lab/{id}/setup-steps
-     */
-    @GetMapping("/{id}/setup-steps")
-    public ResponseEntity<?> getLabSetupSteps(@PathVariable String id) {
-        try {
-            var setupSteps = labService.getLabSetupSteps(id);
-            return ResponseEntity.ok(setupSteps);
-        } catch (Exception e) {
-            log.error("Error getting setup steps for lab {}: {}", id, e.getMessage());
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Không thể lấy danh sách setup steps: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-        }
-    }
+    
 }

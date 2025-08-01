@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.cms_be.model.SetupStep;
+import com.example.cms_be.service.LabService;
 import com.example.cms_be.service.SetupStepService;
 
 import jakarta.validation.Valid;
@@ -25,10 +27,34 @@ import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @Slf4j
-@RequestMapping("/api/setup-step")
+@RequestMapping("/api/labs/setup-steps")
 @RequiredArgsConstructor
 public class SetupStepController {
     private final SetupStepService setupStepService;
+    private final LabService labService;
+
+
+    /**
+     * Lấy danh sách setup steps của lab
+     * GET /api/lab/{id}/setup-steps
+     */
+    @GetMapping("/{labId}")
+    public ResponseEntity<?> getLabSetupSteps(@PathVariable String labId) {
+        try {
+            var setupSteps = labService.getLabSetupSteps(labId);
+            return ResponseEntity.ok(setupSteps);
+        } catch (Exception e) {
+            log.error("Error getting setup steps for lab {}: {}", labId, e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Không thể lấy danh sách setup steps: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+
+
+
+
 
      /**
      * Tạo mới setup step
