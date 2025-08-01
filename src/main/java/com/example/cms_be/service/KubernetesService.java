@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
+import io.kubernetes.client.openapi.models.V1Pod;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 
@@ -79,6 +80,15 @@ public class KubernetesService {
     }
 
 
+    // public String creLabPod(String labId) throws Exception
+    // {
+    //     V1Pod pod = buildLabPod(labId);
+    // }
+    // private V1Pod buildLabPod(String labId) {
+    //     // TODO Auto-generated method stub
+      
+        
+    // }
 
     //  public void performHealthCheck() {
     //     try {
