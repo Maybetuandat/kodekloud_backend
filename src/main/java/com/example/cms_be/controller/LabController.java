@@ -4,6 +4,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.cms_be.model.Lab;
+import com.example.cms_be.service.KubernetesService;
 import com.example.cms_be.service.LabService;
 
 import jakarta.validation.Valid;
@@ -37,8 +38,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 @RequestMapping("/api/labs")
 @RequiredArgsConstructor
 public class LabController {
-     private final LabService labService; 
+    private final LabService labService; 
 
+    private final KubernetesService kubernetesService;
     @GetMapping
     public ResponseEntity<?> getAllLabs(
         @RequestParam(required = false) Boolean isActivate,
@@ -215,4 +217,44 @@ public class LabController {
 
 
     
+
+
+    //test setup step for lab 
+    @PostMapping("/test/{labId}")
+    public ResponseEntity<?> testSetupStepForLab(@PathVariable String labId)
+    {
+         try
+         {
+
+            Optional<Lab> labOpt = labService.getLabById(labId);
+
+            if (labOpt.isEmpty()) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Lab không tồn tại với ID: " + labId);
+                return ResponseEntity.notFound().build();
+            }
+            Lab lab = labOpt.get();
+            String podName = kubernetesService.createLabPod(lab);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Lab test đã được khởi tạo thành công");
+            response.put("labId", labId);
+            response.put("labName", lab.getName());
+            response.put("podName", podName);
+            response.put("namespace", "default");
+            response.put("createdAt", java.time.LocalDateTime.now().toString());
+            
+            log.info("Successfully created test pod {} for lab {}", podName, labId);
+            return ResponseEntity.ok(response);
+         }
+         catch (Exception e)
+         {
+            log.error("Error testing lab {}: {}", labId, e.getMessage());
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("error", "Không thể tạo test pod: " + e.getMessage());
+            error.put("labId", labId);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+         }
+    }
 }
