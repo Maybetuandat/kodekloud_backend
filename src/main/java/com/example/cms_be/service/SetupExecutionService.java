@@ -1,25 +1,16 @@
 package com.example.cms_be.service;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.example.cms_be.model.SetupStep;
 import com.example.cms_be.repository.SetupStepRepository;
 import com.example.cms_be.ultil.PodLogWebSocketHandler;
 
-import io.kubernetes.client.Exec;
-import io.kubernetes.client.openapi.ApiClient;
-import io.kubernetes.client.openapi.Configuration;
-import io.kubernetes.client.openapi.apis.CoreV1Api;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -30,10 +21,8 @@ public class SetupExecutionService {
 
     private final SetupStepRepository setupStepRepository;
     private final PodLogWebSocketHandler webSocketHandler;
+    private final KubernetesService kubernetesService; // Sử dụng KubernetesService thay vì tạo mới API client
     private final ExecutorService executorService = Executors.newCachedThreadPool();
-
-    @Value("${kubernetes.namespace:default}")
-    private String namespace;
 
     /**
      * Thực thi setup steps cho Admin test (realtime WebSocket, không lưu DB)
@@ -59,14 +48,14 @@ public class SetupExecutionService {
         
         // Gửi thông báo bắt đầu
         webSocketHandler.broadcastLogToPod(podName, "start", 
-            "🚀 Starting setup execution for lab " + labId, null);
+            "Starting setup execution for lab " + labId, null);
 
         // Lấy danh sách setup steps theo thứ tự
         List<SetupStep> setupSteps = setupStepRepository.findByLabIdOrderByStepOrder(labId);
         
         if (setupSteps.isEmpty()) {
             webSocketHandler.broadcastLogToPod(podName, "warning", 
-                "⚠️ No setup steps found for lab " + labId, null);
+                "❌ No setup steps found for lab " + labId, null);
             log.warn("No setup steps found for lab {}", labId);
             return true; // Không có steps cũng coi như thành công
         }
@@ -74,9 +63,12 @@ public class SetupExecutionService {
         webSocketHandler.broadcastLogToPod(podName, "info", 
             String.format("📋 Found %d setup steps to execute", setupSteps.size()), null);
 
-        // Đợi pod sẵn sàng với improved logging
+        // Đợi pod sẵn sàng - sử dụng KubernetesService
         try {
-            waitForPodReady(podName);
+            webSocketHandler.broadcastLogToPod(podName, "info", "⏳ Waiting for pod to be ready...", null);
+            kubernetesService.waitForPodReady(podName);
+            webSocketHandler.broadcastLogToPod(podName, "info", "✅ Pod is ready!", null);
+            webSocketHandler.broadcastLogToPod(podName, "info", "🔄 Allowing containers to initialize...", null);
         } catch (Exception e) {
             log.error("Pod {} is not ready: {}", podName, e.getMessage());
             webSocketHandler.broadcastLogToPod(podName, "error", 
@@ -93,7 +85,7 @@ public class SetupExecutionService {
                 log.info("Executing step {}/{}: {}", step.getStepOrder(), setupSteps.size(), step.getTitle());
                 
                 webSocketHandler.broadcastLogToPod(podName, "step", 
-                    String.format("🔨 Executing Step %d/%d: %s", 
+                    String.format("🔄 Executing Step %d/%d: %s", 
                         step.getStepOrder(), setupSteps.size(), step.getTitle()), 
                     createStepData(step));
 
@@ -181,11 +173,28 @@ public class SetupExecutionService {
                     Thread.sleep(2000); // Wait 2 seconds before retry
                 }
 
-                // Stream command execution với realtime logs
-                Integer exitCode = executeCommandWithLiveStream(podName, step.getSetupCommand(), timeoutSeconds);
+                // Sử dụng KubernetesService để thực thi command với realtime logs
+                webSocketHandler.broadcastLogToPod(podName, "log", 
+                    String.format("💻 Executing command: %s", step.getSetupCommand()), null);
+
+                // Tạo CommandOutputHandler để stream logs
+                KubernetesService.CommandOutputHandler outputHandler = new KubernetesService.CommandOutputHandler() {
+                    @Override
+                    public void onStdout(String line) {
+                        webSocketHandler.broadcastLogToPod(podName, "stdout", line, null);
+                    }
+
+                    @Override
+                    public void onStderr(String line) {
+                        webSocketHandler.broadcastLogToPod(podName, "stderr", line, null);
+                    }
+                };
+
+                Integer exitCode = kubernetesService.executeCommandInPod(podName, step.getSetupCommand(), 
+                    timeoutSeconds, outputHandler);
                 
                 webSocketHandler.broadcastLogToPod(podName, "log", 
-                    String.format("Exit code: %d (expected: %d)", exitCode, expectedExitCode), null);
+                    String.format("📤 Exit code: %d (expected: %d)", exitCode, expectedExitCode), null);
                 log.info("Step {} attempt {} completed with exit code: {} (expected: {})", 
                     step.getStepOrder(), attempt, exitCode, expectedExitCode);
                 
@@ -199,7 +208,7 @@ public class SetupExecutionService {
                 
                 if (attempt < retryCount) {
                     webSocketHandler.broadcastLogToPod(podName, "warning", 
-                        String.format("❌ Attempt %d failed with exit code %d, retrying...", attempt, exitCode), null);
+                        String.format("⚠️ Attempt %d failed with exit code %d, retrying...", attempt, exitCode), null);
                     log.warn("Step {} attempt {} failed with exit code: {}, retrying...", 
                         step.getStepOrder(), attempt, exitCode);
                 } else {
@@ -223,132 +232,8 @@ public class SetupExecutionService {
         return false; // All attempts failed
     }
 
-    /**
-     * Thực thi command với live streaming của output và improved error handling
-     */
-    private Integer executeCommandWithLiveStream(String podName, String command, int timeoutSeconds) throws Exception {
-        ApiClient client = Configuration.getDefaultApiClient();
-        Exec exec = new Exec();
-        
-        webSocketHandler.broadcastLogToPod(podName, "log", 
-            String.format("📝 Executing command: %s", command), null);
-        log.debug("Executing command in pod {}: {}", podName, command);
+    // ============ UTILITY METHODS ============
 
-        try {
-            String[] commandArray = {"/bin/bash", "-c", command};
-            
-            Process process = exec.exec(namespace, podName, commandArray, false, true);
-            
-            // Stream stdout in realtime
-            CompletableFuture<Void> stdoutFuture = CompletableFuture.runAsync(() -> {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        final String logLine = line;
-                        webSocketHandler.broadcastLogToPod(podName, "stdout", logLine, null);
-                        log.debug("STDOUT: {}", logLine);
-                    }
-                } catch (IOException e) {
-                    log.error("Error reading stdout from pod {}: {}", podName, e.getMessage());
-                }
-            }, executorService);
-
-            // Stream stderr in realtime  
-            CompletableFuture<Void> stderrFuture = CompletableFuture.runAsync(() -> {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        final String logLine = line;
-                        webSocketHandler.broadcastLogToPod(podName, "stderr", logLine, null);
-                        log.warn("STDERR: {}", logLine);
-                    }
-                } catch (IOException e) {
-                    log.error("Error reading stderr from pod {}: {}", podName, e.getMessage());
-                }
-            }, executorService);
-
-            // Wait for process completion with timeout
-            boolean completed = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
-            
-            if (!completed) {
-                process.destroyForcibly();
-                webSocketHandler.broadcastLogToPod(podName, "error", 
-                    String.format("⏰ Command timed out after %d seconds", timeoutSeconds), null);
-                log.error("Command timed out after {} seconds in pod {}: {}", timeoutSeconds, podName, command);
-                throw new Exception("Command execution timed out after " + timeoutSeconds + " seconds");
-            }
-
-            // Wait for stream readers to complete
-            try {
-                CompletableFuture.allOf(stdoutFuture, stderrFuture).get(5, TimeUnit.SECONDS);
-            } catch (Exception e) {
-                log.warn("Stream readers did not complete within 5 seconds: {}", e.getMessage());
-            }
-            
-            int exitCode = process.exitValue();
-            log.debug("Command completed with exit code: {} in pod: {}", exitCode, podName);
-            return exitCode;
-            
-        } catch (Exception e) {
-            webSocketHandler.broadcastLogToPod(podName, "error", 
-                "Error executing command: " + e.getMessage(), null);
-            log.error("Error executing command in pod {}: {}", podName, e.getMessage());
-            throw e;
-        }
-    }
-
-    /**
-     * Đợi pod sẵn sàng để thực thi commands với improved logging
-     */
-    private void waitForPodReady(String podName) throws Exception {
-        webSocketHandler.broadcastLogToPod(podName, "info", "⏳ Waiting for pod to be ready...", null);
-        log.info("Waiting for pod {} to be ready...", podName);
-        
-        CoreV1Api api = new CoreV1Api();
-        
-        for (int i = 0; i < 60; i++) { // Max 60 attempts (60 seconds)
-            try {
-                var pod = api.readNamespacedPod(podName, namespace, null);
-                String phase = pod.getStatus().getPhase();
-                
-                log.debug("Pod {} status check {}/60: phase = {}", podName, i + 1, phase);
-                
-                if ("Running".equals(phase)) {
-                    webSocketHandler.broadcastLogToPod(podName, "info", "✅ Pod is ready!", null);
-                    log.info("Pod {} is ready and running", podName);
-                    
-                    // Additional check for container readiness
-                    Thread.sleep(5000); // Wait 5 more seconds for containers to be fully ready
-                    webSocketHandler.broadcastLogToPod(podName, "info", "🔄 Allowing containers to initialize...", null);
-                    return;
-                }
-                
-                if ("Failed".equals(phase) || "Succeeded".equals(phase)) {
-                    String errorMsg = "Pod is in " + phase + " state";
-                    log.error("Pod {} failed to start: {}", podName, errorMsg);
-                    throw new Exception(errorMsg);
-                }
-                
-                if (i % 10 == 0) { // Log every 10 seconds
-                    webSocketHandler.broadcastLogToPod(podName, "info", 
-                        String.format("⏳ Still waiting... Pod status: %s (%d/60)", phase, i + 1), null);
-                }
-                
-                Thread.sleep(1000); // Wait 1 second
-                
-            } catch (Exception e) {
-                if (i >= 59) { // Last attempt
-                    log.error("Pod {} did not become ready in time: {}", podName, e.getMessage());
-                    throw new Exception("Pod did not become ready in time: " + e.getMessage());
-                }
-                log.debug("Pod readiness check failed (attempt {}): {}", i + 1, e.getMessage());
-            }
-        }
-        
-        throw new Exception("Pod did not become ready within 60 seconds");
-    }
-
-    // Rest of the methods remain the same...
     private StepData createStepData(SetupStep step) {
         return new StepData(step);
     }
