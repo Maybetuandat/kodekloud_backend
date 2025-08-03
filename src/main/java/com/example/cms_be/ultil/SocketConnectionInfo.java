@@ -12,10 +12,10 @@ public class  SocketConnectionInfo {
 
     private static final String  WEBSOCKET_ENDPOINT = "/ws/pod-logs";
     @Value("${server.port:8080}")
-    private static String serverPort;
+    private  String serverPort;
     
 
-    public static  Map<String, Object> createWebSocketConnectionInfo(String podName) {
+    public   Map<String, Object> createWebSocketConnectionInfo(String podName) {
         Map<String, Object> websocketInfo = new HashMap<>();
         
         // URL kết nối WebSocket với podName parameter

@@ -150,11 +150,11 @@ public class KubernetesService {
         Map<String, io.kubernetes.client.custom.Quantity> requests = new HashMap<>();
         Map<String, io.kubernetes.client.custom.Quantity> limits = new HashMap<>();
         
-        requests.put("cpu", new io.kubernetes.client.custom.Quantity("100m"));
-        requests.put("memory", new io.kubernetes.client.custom.Quantity("128Mi"));
-        
-        limits.put("cpu", new io.kubernetes.client.custom.Quantity("500m"));
-        limits.put("memory", new io.kubernetes.client.custom.Quantity("512Mi"));
+         requests.put("cpu", new io.kubernetes.client.custom.Quantity("500m"));      // Tăng từ 100m lên 500m
+    requests.put("memory", new io.kubernetes.client.custom.Quantity("1Gi"));    // Tăng từ 128Mi lên 1Gi
+    
+    limits.put("cpu", new io.kubernetes.client.custom.Quantity("2"));           // Tăng từ 500m lên 2 cores
+    limits.put("memory", new io.kubernetes.client.custom.Quantity("4Gi")); 
 
         return new V1ResourceRequirements()
                 .requests(requests)

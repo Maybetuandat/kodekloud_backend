@@ -46,6 +46,7 @@ public class LabController {
 
     private final SetupExecutionService setupExecutionService;
     private final KubernetesService kubernetesService;
+    private final SocketConnectionInfo socketConnectionInfo;
 
     
 
@@ -255,7 +256,13 @@ public class LabController {
             CompletableFuture<Boolean> executionFuture = setupExecutionService.executeSetupStepsForAdminTest(labId, podName);
             
             // Tạo WebSocket connection info
-            Map<String, Object> websocketInfo = SocketConnectionInfo.createWebSocketConnectionInfo(podName);
+            Map<String, Object> websocketInfo = null;
+            try {
+                websocketInfo = socketConnectionInfo.createWebSocketConnectionInfo(podName);
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
             
             // Tạo response với đầy đủ thông tin
             Map<String, Object> response = new HashMap<>();
@@ -346,7 +353,7 @@ public class LabController {
     @GetMapping("/test/websocket-info")
     public ResponseEntity<?> getWebSocketInfo(@RequestParam String podName) {
         try {
-            Map<String, Object> websocketInfo = SocketConnectionInfo.createWebSocketConnectionInfo(podName);
+            Map<String, Object> websocketInfo = socketConnectionInfo.createWebSocketConnectionInfo(podName);
             return ResponseEntity.ok(websocketInfo);
             
         } catch (Exception e) {
