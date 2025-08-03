@@ -6,6 +6,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.cms_be.model.Lab;
 import com.example.cms_be.service.KubernetesService;
 import com.example.cms_be.service.LabService;
+import com.example.cms_be.service.SetupExecutionService;
+import com.example.cms_be.ultil.SocketConnectionInfo;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +18,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,7 +44,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 public class LabController {
     private final LabService labService; 
 
+    private final SetupExecutionService setupExecutionService;
     private final KubernetesService kubernetesService;
+
+    
+
+    private static final String WEBSOCKET_ENDPOINT = "/ws/pod-logs";
+
+
     @GetMapping
     public ResponseEntity<?> getAllLabs(
         @RequestParam(required = false) Boolean isActivate,
@@ -217,24 +228,36 @@ public class LabController {
 
 
     
-
-
-    //test setup step for lab 
+     /**
+     * Tạo và test lab với setup steps execution
+     * Trả về thông tin kết nối WebSocket để theo dõi realtime logs
+     */
     @PostMapping("/test/{labId}")
-    public ResponseEntity<?> testSetupStepForLab(@PathVariable String labId)
-    {
-         try
-         {
+    public ResponseEntity<?> testSetupStepForLab(@PathVariable String labId) {
+        try {
+            log.info("Starting test execution for lab: {}", labId);
 
+            
             Optional<Lab> labOpt = labService.getLabById(labId);
-
             if (labOpt.isEmpty()) {
                 Map<String, String> error = new HashMap<>();
                 error.put("error", "Lab không tồn tại với ID: " + labId);
                 return ResponseEntity.notFound().build();
             }
+
             Lab lab = labOpt.get();
+            
+            
             String podName = kubernetesService.createLabPod(lab);
+            log.info("Successfully created test pod {} for lab {}", podName, labId);
+
+            // Bắt đầu thực thi setup steps bất đồng bộ
+            CompletableFuture<Boolean> executionFuture = setupExecutionService.executeSetupStepsForAdminTest(labId, podName);
+            
+            // Tạo WebSocket connection info
+            Map<String, Object> websocketInfo = SocketConnectionInfo.createWebSocketConnectionInfo(podName);
+            
+            // Tạo response với đầy đủ thông tin
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Lab test đã được khởi tạo thành công");
@@ -242,19 +265,100 @@ public class LabController {
             response.put("labName", lab.getName());
             response.put("podName", podName);
             response.put("namespace", "default");
+            response.put("websocket", websocketInfo);
+            response.put("executionStarted", true);
             response.put("createdAt", java.time.LocalDateTime.now().toString());
             
-            log.info("Successfully created test pod {} for lab {}", podName, labId);
+            // Log execution future để track (không đợi kết quả)
+            executionFuture.whenComplete((success, throwable) -> {
+                if (throwable != null) {
+                    log.error("Setup execution failed for lab {} on pod {}: {}", labId, podName, throwable.getMessage());
+                } else {
+                    log.info("Setup execution completed for lab {} on pod {} with result: {}", labId, podName, success);
+                }
+            });
+            
             return ResponseEntity.ok(response);
-         }
-         catch (Exception e)
-         {
+
+        } catch (Exception e) {
             log.error("Error testing lab {}: {}", labId, e.getMessage());
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
             error.put("error", "Không thể tạo test pod: " + e.getMessage());
             error.put("labId", labId);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-         }
+        }
     }
+
+    /**
+     * Lấy trạng thái của pod test
+     */
+    @GetMapping("/test/{labId}/status")
+    public ResponseEntity<?> getTestStatus(@PathVariable String labId, @RequestParam String podName) {
+        try {
+            String podStatus = kubernetesService.getPodStatus(podName);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("labId", labId);
+            response.put("podName", podName);
+            response.put("status", podStatus);
+            response.put("timestamp", java.time.LocalDateTime.now().toString());
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error getting test status for lab {} pod {}: {}", labId, podName, e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Không thể lấy trạng thái test: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * Dừng và xóa pod test
+     */
+    @DeleteMapping("/test/{labId}")
+    public ResponseEntity<?> stopTestExecution(@PathVariable String labId, @RequestParam String podName) {
+        try {
+            kubernetesService.deleteLabPod(podName);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Test pod đã được dừng và xóa thành công");
+            response.put("labId", labId);
+            response.put("podName", podName);
+            response.put("stoppedAt", java.time.LocalDateTime.now().toString());
+            
+            log.info("Successfully stopped and deleted test pod {} for lab {}", podName, labId);
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("Error stopping test for lab {} pod {}: {}", labId, podName, e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Không thể dừng test pod: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * Lấy thông tin kết nối WebSocket cho pod cụ thể
+     */
+    @GetMapping("/test/websocket-info")
+    public ResponseEntity<?> getWebSocketInfo(@RequestParam String podName) {
+        try {
+            Map<String, Object> websocketInfo = SocketConnectionInfo.createWebSocketConnectionInfo(podName);
+            return ResponseEntity.ok(websocketInfo);
+            
+        } catch (Exception e) {
+            log.error("Error getting websocket info for pod {}: {}", podName, e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Không thể lấy thông tin WebSocket: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+  
+
+    
+    
 }

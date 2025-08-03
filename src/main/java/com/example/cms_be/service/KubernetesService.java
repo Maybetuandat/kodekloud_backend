@@ -91,33 +91,7 @@ public class KubernetesService {
     }
 
 
-//    public String createLabPod(Lab lab) throws Exception {
-//     try {
-//         log.info("Create labpod for lab id {}", lab.getId());
-//         V1Pod pod = buildLabPod(lab);
-        
-//         // Log trước khi gọi API
-//         log.info("About to call createNamespacedPod API");
-        
-//         V1Pod createdPod = api.createNamespacedPod(namespace, pod, null, null, null, null);
-//         String podName = createdPod.getMetadata().getName();
-//         log.info("Successfully created pod: {} for lab: {}", podName, lab.getId());
-        
-//         return podName;
-//     } catch (Exception e) {
-//         // In tất cả thông tin có thể
-//         System.err.println("Exception caught: " + e.getClass().getName());
-//         System.err.println("Exception message: " + e.getMessage());
-//         System.err.println("Exception toString: " + e.toString());
-//         e.printStackTrace(); // In stack trace ra console
-        
-//         log.error("Exception class: {}", e.getClass().getName());
-//         log.error("Exception message: {}", e.getMessage());
-//         log.error("Full exception: ", e);
-        
-//         throw new Exception("Failed to create lab pod: " + e.toString(), e);
-//     }
-// }
+
   public String createLabPod(Lab lab) throws Exception {
         try {
             log.info("Create labpod for lab id {}", lab.getId());
@@ -157,8 +131,8 @@ public class KubernetesService {
         }
     }
     private V1Pod buildLabPod(Lab lab) {
-        System.out.println("It is in buidlabpod");
-       String  nameLab = "lab-" + lab.getId() + "-" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 8);
+       //name for pods in k8s cluster 
+        String  nameLab = "lab-" + lab.getId() + "-" + System.currentTimeMillis() + UUID.randomUUID().toString().substring(0, 8);
         log.info("Creating pod with name: {}", nameLab);
         
         // Tạo metadata cho pod
@@ -168,6 +142,7 @@ public class KubernetesService {
                 .labels(createLabels(lab));
 
 
+        // mo ta ve container trong pod
         V1Container container = new V1Container()
         .name(nameLab)
         .image(lab.getBaseImage())
@@ -176,9 +151,15 @@ public class KubernetesService {
 
 
 
+
+        // spec cua pod trong k8s 
         V1PodSpec podSpec = new V1PodSpec()
                         .containers(java.util.Arrays.asList(container))
                         .restartPolicy("Never");
+
+
+
+        // tao object pods 
         V1Pod pod = new V1Pod()
                 .apiVersion("v1")
                 .kind("Pod")
@@ -206,7 +187,6 @@ public class KubernetesService {
     }
     private Map<String, String> createLabels(Lab lab) {
         Map<String, String> labels = new HashMap<>();
-        
         labels.put("lab-id", lab.getId());
         labels.put("created-by", "admin");
         return labels;
