@@ -11,6 +11,7 @@ import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodSpec;
 import io.kubernetes.client.openapi.models.V1ResourceRequirements;
+import io.kubernetes.client.openapi.models.V1SecurityContext;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 
@@ -128,9 +129,10 @@ public class KubernetesService {
 
         V1Container container = new V1Container()
                 .name(nameLab)
-                .image(lab.getBaseImage())
-                .command(java.util.Arrays.asList("/bin/bash", "-c", "sleep 3600"))
-                .resources(createResourceRequirements());
+                .image("docker:dind")
+                
+                .resources(createResourceRequirements())
+                .securityContext(new V1SecurityContext().privileged(true)); // Cần privileged;
 
         V1PodSpec podSpec = new V1PodSpec()
                 .containers(java.util.Arrays.asList(container))
@@ -241,7 +243,7 @@ public class KubernetesService {
         log.debug("Executing command in pod {}: {}", podName, command);
 
         try {
-            String[] commandArray = {"/bin/bash", "-c", command};
+            String[] commandArray = {"/bin/sh", "-c", command};
             
             Process process = exec.exec(namespace, podName, commandArray, false, true);
             
