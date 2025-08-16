@@ -1,14 +1,13 @@
 package com.example.cms_be.service;
 
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
 import com.example.cms_be.model.SetupStep;
 import com.example.cms_be.repository.SetupStepRepository;
+import com.example.cms_be.service.KubernetesService.CommandOutputHandler;
 import com.example.cms_be.ultil.PodLogWebSocketHandler;
 
 import lombok.RequiredArgsConstructor;
@@ -21,56 +20,68 @@ public class SetupExecutionService {
 
     private final SetupStepRepository setupStepRepository;
     private final PodLogWebSocketHandler webSocketHandler;
-    private final KubernetesService kubernetesService; // Sử dụng KubernetesService thay vì tạo mới API client
-    private final ExecutorService executorService = Executors.newCachedThreadPool();
+    private final KubernetesService kubernetesService;
 
     /**
-     * Thực thi setup steps cho Admin test (realtime WebSocket, không lưu DB)
+     * Thực thi setup steps cho Admin test - HOÀN TOÀN TUẦN TỰ với FULL BACKEND LOGGING
      */
-    public CompletableFuture<Boolean> executeSetupStepsForAdminTest(String labId, String podName) {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                return executeSetupSteps(labId, podName);
-            } catch (Exception e) {
-                log.error("Error executing setup steps for lab {}: {}", labId, e.getMessage(), e);
-                webSocketHandler.broadcastLogToPod(podName, "error", 
-                    "Failed to execute setup steps: " + e.getMessage(), null);
-                return false;
-            }
-        }, executorService);
+    public boolean executeSetupStepsForAdminTest(String labId, String podName) {
+        try {
+            return executeSetupStepsSequentially(labId, podName);
+        } catch (Exception e) {
+            log.error("Error executing setup steps for lab {}: {}", labId, e.getMessage(), e);
+            webSocketHandler.broadcastLogToPod(podName, "error", 
+                "Failed to execute setup steps: " + e.getMessage(), null);
+            return false;
+        }
     }
 
     /**
-     * Thực thi setup steps đồng bộ với improved logging
+     * Thực thi setup steps HOÀN TOÀN TUẦN TỰ với ENHANCED BACKEND LOGGING
      */
-    private boolean executeSetupSteps(String labId, String podName) throws Exception {
-        log.info("Starting setup execution for lab {} on pod {}", labId, podName);
+    private boolean executeSetupStepsSequentially(String labId, String podName) throws Exception {
+        log.info("========================================");
+        log.info("🔥 STARTING SEQUENTIAL SETUP EXECUTION");
+        log.info("🏷️ LAB ID: {}", labId);
+        log.info("🚀 POD NAME: {}", podName);
+        log.info("========================================");
         
-        // Gửi thông báo bắt đầu
         webSocketHandler.broadcastLogToPod(podName, "start", 
-            "Starting setup execution for lab " + labId, null);
+            "🔄 Starting SEQUENTIAL setup execution for lab " + labId, null);
 
-        // Lấy danh sách setup steps theo thứ tự
+        // Lấy setup steps theo thứ tự
         List<SetupStep> setupSteps = setupStepRepository.findByLabIdOrderByStepOrder(labId);
         
         if (setupSteps.isEmpty()) {
+            log.warn("❌ NO SETUP STEPS FOUND for lab {}", labId);
             webSocketHandler.broadcastLogToPod(podName, "warning", 
                 "❌ No setup steps found for lab " + labId, null);
-            log.warn("No setup steps found for lab {}", labId);
-            return true; // Không có steps cũng coi như thành công
+            return true;
         }
 
+        log.info("📋 FOUND {} SETUP STEPS to execute sequentially", setupSteps.size());
         webSocketHandler.broadcastLogToPod(podName, "info", 
-            String.format("📋 Found %d setup steps to execute", setupSteps.size()), null);
+            String.format("📋 Found %d setup steps to execute SEQUENTIALLY", setupSteps.size()), null);
 
-        // Đợi pod sẵn sàng - sử dụng KubernetesService
+        // Hiển thị danh sách steps trước khi thực thi
+        log.info("📝 SETUP STEPS OVERVIEW:");
+        for (int i = 0; i < setupSteps.size(); i++) {
+            SetupStep step = setupSteps.get(i);
+            log.info("   Step {}: {} - Command: {}", 
+                step.getStepOrder(), step.getTitle(), step.getSetupCommand());
+        }
+        log.info("========================================");
+
+        // Đợi pod sẵn sàng
         try {
+            log.info("⏳ WAITING FOR POD TO BE READY...");
             webSocketHandler.broadcastLogToPod(podName, "info", "⏳ Waiting for pod to be ready...", null);
             kubernetesService.waitForPodReady(podName);
+            log.info("✅ POD IS READY!");
             webSocketHandler.broadcastLogToPod(podName, "info", "✅ Pod is ready!", null);
             webSocketHandler.broadcastLogToPod(podName, "info", "🔄 Allowing containers to initialize...", null);
         } catch (Exception e) {
-            log.error("Pod {} is not ready: {}", podName, e.getMessage());
+            log.error("❌ POD NOT READY: {}", e.getMessage());
             webSocketHandler.broadcastLogToPod(podName, "error", 
                 "❌ Pod not ready: " + e.getMessage(), null);
             return false;
@@ -79,47 +90,70 @@ public class SetupExecutionService {
         boolean allStepsSuccessful = true;
         int completedSteps = 0;
 
-        // Thực thi từng step theo thứ tự
-        for (SetupStep step : setupSteps) {
+        // ===== THỰC THI TUẦN TỰ TUYỆT ĐỐI =====
+        for (int i = 0; i < setupSteps.size(); i++) {
+            SetupStep step = setupSteps.get(i);
+            
             try {
-                log.info("Executing step {}/{}: {}", step.getStepOrder(), setupSteps.size(), step.getTitle());
+                log.info("========================================");
+                log.info("🎯 EXECUTING STEP {}/{}", step.getStepOrder(), setupSteps.size());
+                log.info("📝 TITLE: {}", step.getTitle());
+                log.info("💻 COMMAND: {}", step.getSetupCommand());
+                log.info("========================================");
                 
                 webSocketHandler.broadcastLogToPod(podName, "step", 
                     String.format("🔄 Executing Step %d/%d: %s", 
                         step.getStepOrder(), setupSteps.size(), step.getTitle()), 
                     createStepData(step));
 
-                boolean stepSuccess = executeStep(step, podName);
+                // THỰC THI STEP VÀ CHỜ HOÀN THÀNH HOÀN TOÀN
+                boolean stepSuccess = executeStepSynchronously(step, podName);
                 
                 if (stepSuccess) {
                     completedSteps++;
+                    log.info("✅ STEP {} COMPLETED SUCCESSFULLY: {}", step.getStepOrder(), step.getTitle());
                     webSocketHandler.broadcastLogToPod(podName, "step_success", 
                         String.format("✅ Step %d completed successfully: %s", 
                             step.getStepOrder(), step.getTitle()), 
                         createStepData(step));
-                    log.info("Step {} completed successfully", step.getStepOrder());
+                    
+                    // DELAY BẮT BUỘC giữa các steps
+                    if (i < setupSteps.size() - 1) {
+                        log.info("⏱️ WAITING 3 seconds before next step for system stability...");
+                        webSocketHandler.broadcastLogToPod(podName, "info", 
+                            "⏱️ Waiting 3 seconds before next step to ensure system stability...", null);
+                        Thread.sleep(3000);
+                    }
+                    
                 } else {
+                    log.error("❌ STEP {} FAILED: {}", step.getStepOrder(), step.getTitle());
                     webSocketHandler.broadcastLogToPod(podName, "step_error", 
                         String.format("❌ Step %d failed: %s", step.getStepOrder(), step.getTitle()), 
                         createStepData(step));
                         
                     allStepsSuccessful = false;
-                    log.error("Step {} failed: {}", step.getStepOrder(), step.getTitle());
                     
                     if (!Boolean.TRUE.equals(step.getContinueOnFailure())) {
+                        log.info("🛑 STOPPING EXECUTION due to step failure (continueOnFailure = false)");
                         webSocketHandler.broadcastLogToPod(podName, "error", 
                             "🛑 Stopping execution due to step failure (continueOnFailure = false)", null);
-                        log.info("Stopping execution at step {} due to failure", step.getStepOrder());
                         break;
                     } else {
+                        log.info("⚠️ CONTINUING EXECUTION despite step failure (continueOnFailure = true)");
                         webSocketHandler.broadcastLogToPod(podName, "warning", 
                             "⚠️ Step failed but continuing execution (continueOnFailure = true)", null);
-                        log.info("Continuing execution despite step {} failure", step.getStepOrder());
+                        
+                        if (i < setupSteps.size() - 1) {
+                            log.info("⏱️ WAITING 3 seconds before next step (after failure)...");
+                            webSocketHandler.broadcastLogToPod(podName, "info", 
+                                "⏱️ Waiting 3 seconds before next step (after failure)...", null);
+                            Thread.sleep(3000);
+                        }
                     }
                 }
 
             } catch (Exception e) {
-                log.error("Exception executing step {}: {}", step.getId(), e.getMessage(), e);
+                log.error("💥 EXCEPTION EXECUTING STEP {}: {}", step.getId(), e.getMessage(), e);
                 allStepsSuccessful = false;
                 
                 webSocketHandler.broadcastLogToPod(podName, "error", 
@@ -127,38 +161,60 @@ public class SetupExecutionService {
                     createStepData(step));
                 
                 if (!Boolean.TRUE.equals(step.getContinueOnFailure())) {
+                    log.info("🛑 STOPPING EXECUTION due to exception");
                     webSocketHandler.broadcastLogToPod(podName, "error", 
                         "🛑 Stopping execution due to exception", null);
-                    log.info("Stopping execution due to exception at step {}", step.getStepOrder());
                     break;
+                } else {
+                    log.info("⚠️ CONTINUING EXECUTION despite exception (continueOnFailure = true)");
+                    webSocketHandler.broadcastLogToPod(podName, "warning", 
+                        "⚠️ Exception occurred but continuing execution (continueOnFailure = true)", null);
+                    
+                    if (i < setupSteps.size() - 1) {
+                        log.info("⏱️ WAITING 3 seconds before next step (after exception)...");
+                        webSocketHandler.broadcastLogToPod(podName, "info", 
+                            "⏱️ Waiting 3 seconds before next step (after exception)...", null);
+                        Thread.sleep(3000);
+                    }
                 }
             }
         }
 
-        // Gửi thông báo kết thúc với detailed summary
+        // LOG KẾT QUẢ CUỐI CÙNG
+        log.info("========================================");
+        log.info("🏁 SEQUENTIAL SETUP EXECUTION COMPLETED");
+        log.info("🏷️ LAB ID: {}", labId);
+        log.info("🚀 POD NAME: {}", podName);
+        log.info("✅ SUCCESS: {}", allStepsSuccessful);
+        log.info("📊 COMPLETED STEPS: {}/{}", completedSteps, setupSteps.size());
+        log.info("📈 SUCCESS RATE: {}%", setupSteps.size() > 0 ? (completedSteps * 100 / setupSteps.size()) : 100);
+        log.info("========================================");
+
+        // Gửi thông báo kết thúc
         String finalMessage = allStepsSuccessful ? 
-            String.format("🎉 All %d setup steps completed successfully!", setupSteps.size()) : 
-            String.format("⚠️ Setup execution completed with errors (%d/%d steps successful)", 
+            String.format("🎉 All %d setup steps completed successfully in SEQUENTIAL order!", setupSteps.size()) : 
+            String.format("⚠️ Sequential setup execution completed with errors (%d/%d steps successful)", 
                 completedSteps, setupSteps.size());
             
         webSocketHandler.broadcastLogToPod(podName, allStepsSuccessful ? "success" : "warning", 
             finalMessage, createExecutionSummary(setupSteps.size(), completedSteps, allStepsSuccessful));
-
-        log.info("Setup execution completed for lab {} on pod {}. Success: {}, Completed: {}/{}", 
-            labId, podName, allStepsSuccessful, completedSteps, setupSteps.size());
             
         return allStepsSuccessful;
     }
 
     /**
-     * Thực thi một setup step cụ thể với improved error handling
+     * Thực thi một setup step cụ thể HOÀN TOÀN ĐỒNG BỘ với FULL BACKEND LOGGING
      */
-    private boolean executeStep(SetupStep step, String podName) throws Exception {
-        log.info("Executing step {}: {} with command: {}", step.getStepOrder(), step.getTitle(), step.getSetupCommand());
-        
+    private boolean executeStepSynchronously(SetupStep step, String podName) throws Exception {
         int retryCount = step.getRetryCount() != null ? step.getRetryCount() : 1;
         int timeoutSeconds = step.getTimeoutSeconds() != null ? step.getTimeoutSeconds() : 300;
         Integer expectedExitCode = step.getExpectedExitCode() != null ? step.getExpectedExitCode() : 0;
+
+        log.info("⚙️ STEP CONFIGURATION:");
+        log.info("   Expected Exit Code: {}", expectedExitCode);
+        log.info("   Timeout: {} seconds", timeoutSeconds);
+        log.info("   Retry Count: {}", retryCount);
+        log.info("   Continue on Failure: {}", step.getContinueOnFailure());
 
         webSocketHandler.broadcastLogToPod(podName, "info", 
             String.format("⚙️ Step config - Expected exit: %d, Timeout: %ds, Retries: %d", 
@@ -167,130 +223,135 @@ public class SetupExecutionService {
         for (int attempt = 1; attempt <= retryCount; attempt++) {
             try {
                 if (attempt > 1) {
+                    log.info("🔄 RETRY ATTEMPT {}/{} for step {}", attempt, retryCount, step.getStepOrder());
                     webSocketHandler.broadcastLogToPod(podName, "retry", 
                         String.format("🔄 Retry attempt %d/%d for step %d", attempt, retryCount, step.getStepOrder()), null);
-                    log.info("Retry attempt {}/{} for step {}", attempt, retryCount, step.getStepOrder());
-                    Thread.sleep(2000); // Wait 2 seconds before retry
+                    
+                    log.info("⏱️ WAITING 5 seconds before retry...");
+                    webSocketHandler.broadcastLogToPod(podName, "info", 
+                        "⏱️ Waiting 5 seconds before retry to ensure system cleanup...", null);
+                    Thread.sleep(5000);
                 }
 
-                // Sử dụng KubernetesService để thực thi command với realtime logs
+                log.info("💻 EXECUTING COMMAND: {}", step.getSetupCommand());
                 webSocketHandler.broadcastLogToPod(podName, "log", 
                     String.format("💻 Executing command: %s", step.getSetupCommand()), null);
 
-                // Tạo CommandOutputHandler để stream logs
-                KubernetesService.CommandOutputHandler outputHandler = new KubernetesService.CommandOutputHandler() {
+                // Enhanced CommandOutputHandler với FULL BACKEND LOGGING
+                CommandOutputHandler outputHandler = new CommandOutputHandler() {
+                    private int stdoutLineNumber = 1;
+                    private int stderrLineNumber = 1;
+                    
                     @Override
                     public void onStdout(String line) {
+                        // Backend logging đã được handle trong KubernetesService
+                        // Chỉ gửi đến WebSocket cho frontend
                         webSocketHandler.broadcastLogToPod(podName, "stdout", line, null);
                     }
 
                     @Override
                     public void onStderr(String line) {
+                        // Backend logging đã được handle trong KubernetesService
+                        // Chỉ gửi đến WebSocket cho frontend
                         webSocketHandler.broadcastLogToPod(podName, "stderr", line, null);
                     }
                 };
 
-                Integer exitCode = kubernetesService.executeCommandInPod(podName, step.getSetupCommand(), 
-                    timeoutSeconds, outputHandler);
+                log.info("🚀 [STEP-{}] STARTING COMMAND EXECUTION", step.getStepOrder());
                 
-                webSocketHandler.broadcastLogToPod(podName, "log", 
-                    String.format("📤 Exit code: %d (expected: %d)", exitCode, expectedExitCode), null);
-                log.info("Step {} attempt {} completed with exit code: {} (expected: {})", 
-                    step.getStepOrder(), attempt, exitCode, expectedExitCode);
+                // SỬ DỤNG METHOD MỚI ĐỂ LẤY ĐẦY ĐỦ OUTPUT VÀ LOG BACKEND
+                KubernetesService.CommandResult result = kubernetesService.executeCommandInPodWithOutput(
+                    podName, step.getSetupCommand(), timeoutSeconds, outputHandler);
                 
-                if (exitCode.equals(expectedExitCode)) {
-                    if (attempt > 1) {
-                        webSocketHandler.broadcastLogToPod(podName, "info", 
-                            String.format("✅ Step succeeded on attempt %d", attempt), null);
-                    }
-                    return true; // Success
-                }
+                // LOG KẾT QUẢ CHI TIẾT
+                log.info("✅ [STEP-{}] COMMAND COMPLETED", step.getStepOrder());
+                log.info("   Exit Code: {} (Expected: {})", result.getExitCode(), expectedExitCode);
+                log.info("   STDOUT Length: {} characters", result.getStdout().length());
+                log.info("   STDERR Length: {} characters", result.getStderr().length());
+                log.info("   Total Output Length: {} characters", result.getCombinedOutput().length());
                 
-                if (attempt < retryCount) {
-                    webSocketHandler.broadcastLogToPod(podName, "warning", 
-                        String.format("⚠️ Attempt %d failed with exit code %d, retrying...", attempt, exitCode), null);
-                    log.warn("Step {} attempt {} failed with exit code: {}, retrying...", 
-                        step.getStepOrder(), attempt, exitCode);
-                } else {
-                    webSocketHandler.broadcastLogToPod(podName, "error", 
-                        String.format("❌ All %d attempts failed. Final exit code: %d", retryCount, exitCode), null);
-                    log.error("Step {} failed after {} attempts. Final exit code: {}", 
-                        step.getStepOrder(), retryCount, exitCode);
-                }
+                // SEND SUMMARY TO WEBSOCKET
+                webSocketHandler.broadcastLogToPod(podName, "output_summary", 
+                    String.format("📋 Command completed - Exit: %d, Output: %d chars", 
+                        result.getExitCode(), result.getCombinedOutput().length()), 
+                    Map.of(
+                        "exitCode", result.getExitCode(),
+                        "expectedExitCode", expectedExitCode,
+                        "stdoutLength", result.getStdout().length(),
+                        "stderrLength", result.getStderr().length(),
+                        "totalLength", result.getCombinedOutput().length(),
+                        "attempt", attempt,
+                        "maxAttempts", retryCount
+                    ));
 
-            } catch (Exception e) {
-                log.error("Exception in step {} execution attempt {}: {}", step.getStepOrder(), attempt, e.getMessage());
-                webSocketHandler.broadcastLogToPod(podName, "error", 
-                    String.format("💥 Attempt %d failed with exception: %s", attempt, e.getMessage()), null);
+                webSocketHandler.broadcastLogToPod(podName, "log", 
+                    String.format("📤 Exit code: %d (expected: %d)", result.getExitCode(), expectedExitCode), null);
+
+                // Check exit code
+                if (result.getExitCode() == expectedExitCode) {
+                    log.info("✅ [STEP-{}] SUCCESS - Exit code matches expected value", step.getStepOrder());
+                    webSocketHandler.broadcastLogToPod(podName, "info", 
+                        "⏱️ Command completed successfully, waiting 1 second for cleanup...", null);
+                    Thread.sleep(1000);
+                    return true;
+                } else {
+                    log.warn("❌ [STEP-{}] FAILED - Exit code mismatch: got {}, expected {}", 
+                        step.getStepOrder(), result.getExitCode(), expectedExitCode);
                     
-                if (attempt >= retryCount) {
+                    webSocketHandler.broadcastLogToPod(podName, "warning", 
+                        String.format("⚠️ Exit code mismatch: got %d, expected %d", result.getExitCode(), expectedExitCode), null);
+                    
+                    if (attempt == retryCount) {
+                        log.error("❌ [STEP-{}] FINAL FAILURE after {} attempts", step.getStepOrder(), retryCount);
+                        return false;
+                    }
+                    log.info("🔄 [STEP-{}] Will retry - attempt {}/{}", step.getStepOrder(), attempt, retryCount);
+                }
+                
+            } catch (Exception e) {
+                log.error("💥 [STEP-{}] EXCEPTION on attempt {}/{}: {}", 
+                    step.getStepOrder(), attempt, retryCount, e.getMessage());
+                webSocketHandler.broadcastLogToPod(podName, "error", 
+                    String.format("⚠️ Attempt %d/%d failed: %s", attempt, retryCount, e.getMessage()), null);
+                
+                if (attempt == retryCount) {
+                    log.error("❌ [STEP-{}] FINAL EXCEPTION after {} attempts", step.getStepOrder(), retryCount);
                     throw e;
                 }
+                log.info("🔄 [STEP-{}] Will retry after exception - attempt {}/{}", step.getStepOrder(), attempt, retryCount);
             }
         }
-
-        return false; // All attempts failed
+        
+        return false;
     }
 
-    // ============ UTILITY METHODS ============
-
-    private StepData createStepData(SetupStep step) {
-        return new StepData(step);
+    /**
+     * Tạo step data cho WebSocket
+     */
+    private Object createStepData(SetupStep step) {
+        return Map.of(
+            "stepId", step.getId(),
+            "stepOrder", step.getStepOrder(),
+            "title", step.getTitle(),
+            "command", step.getSetupCommand(),
+            "timeout", step.getTimeoutSeconds() != null ? step.getTimeoutSeconds() : 300,
+            "retryCount", step.getRetryCount() != null ? step.getRetryCount() : 1,
+            "continueOnFailure", step.getContinueOnFailure() != null ? step.getContinueOnFailure() : false,
+            "expectedExitCode", step.getExpectedExitCode() != null ? step.getExpectedExitCode() : 0
+        );
     }
 
-    public static class StepData {
-        public final int stepOrder;
-        public final String title;
-        public final String command;
-        public final String description;
-        public final Integer expectedExitCode;
-        public final Integer retryCount;
-        public final Integer timeoutSeconds;
-        public final Boolean continueOnFailure;
-
-        public StepData(SetupStep step) {
-            this.stepOrder = step.getStepOrder();
-            this.title = step.getTitle();
-            this.command = step.getSetupCommand();
-            this.description = step.getDescription();
-            this.expectedExitCode = step.getExpectedExitCode();
-            this.retryCount = step.getRetryCount();
-            this.timeoutSeconds = step.getTimeoutSeconds();
-            this.continueOnFailure = step.getContinueOnFailure();
-        }
-
-        // Getters for JSON serialization
-        public int getStepOrder() { return stepOrder; }
-        public String getTitle() { return title; }
-        public String getCommand() { return command; }
-        public String getDescription() { return description; }
-        public Integer getExpectedExitCode() { return expectedExitCode; }
-        public Integer getRetryCount() { return retryCount; }
-        public Integer getTimeoutSeconds() { return timeoutSeconds; }
-        public Boolean getContinueOnFailure() { return continueOnFailure; }
-    }
-
-    private ExecutionSummary createExecutionSummary(int totalSteps, int completedSteps, boolean success) {
-        return new ExecutionSummary(totalSteps, completedSteps, success);
-    }
-
-    public static class ExecutionSummary {
-        public final int totalSteps;
-        public final int completedSteps;
-        public final boolean success;
-        public final String status;
-
-        public ExecutionSummary(int totalSteps, int completedSteps, boolean success) {
-            this.totalSteps = totalSteps;
-            this.completedSteps = completedSteps;
-            this.success = success;
-            this.status = success ? "COMPLETED" : "FAILED";
-        }
-
-        // Getters for JSON serialization
-        public int getTotalSteps() { return totalSteps; }
-        public int getCompletedSteps() { return completedSteps; }
-        public boolean isSuccess() { return success; }
-        public String getStatus() { return status; }
+    /**
+     * Tạo execution summary
+     */
+    private Object createExecutionSummary(int totalSteps, int completedSteps, boolean allSuccessful) {
+        return Map.of(
+            "totalSteps", totalSteps,
+            "completedSteps", completedSteps,
+            "successRate", totalSteps > 0 ? (double) completedSteps / totalSteps * 100 : 0,
+            "allSuccessful", allSuccessful,
+            "executionMode", "SEQUENTIAL",
+            "timestamp", java.time.LocalDateTime.now().toString()
+        );
     }
 }

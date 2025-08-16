@@ -229,73 +229,66 @@ public class LabController {
 
 
     
-     /**
+    // Trong file LabController.java - chỉ sửa method testSetupStepForLab
+
+    /**
      * Tạo và test lab với setup steps execution
      * Trả về thông tin kết nối WebSocket để theo dõi realtime logs
      */
-    @PostMapping("/test/{labId}")
-    public ResponseEntity<?> testSetupStepForLab(@PathVariable String labId) {
-        try {
-            log.info("Starting test execution for lab: {}", labId);
-
-            
-            Optional<Lab> labOpt = labService.getLabById(labId);
-            if (labOpt.isEmpty()) {
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "Lab không tồn tại với ID: " + labId);
-                return ResponseEntity.notFound().build();
-            }
-
-            Lab lab = labOpt.get();
-            
-            
-            String podName = kubernetesService.createLabPod(lab);
-            log.info("Successfully created test pod {} for lab {}", podName, labId);
-
-            // Bắt đầu thực thi setup steps bất đồng bộ
-            CompletableFuture<Boolean> executionFuture = setupExecutionService.executeSetupStepsForAdminTest(labId, podName);
-            
-            // Tạo WebSocket connection info
-            Map<String, Object> websocketInfo = null;
+        @PostMapping("/test/{labId}")
+        public ResponseEntity<?> testSetupStepForLab(@PathVariable String labId) {
             try {
-                websocketInfo = socketConnectionInfo.createWebSocketConnectionInfo(podName);
-            } catch (Exception e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-            
-            // Tạo response với đầy đủ thông tin
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "Lab test đã được khởi tạo thành công");
-            response.put("labId", labId);
-            response.put("labName", lab.getName());
-            response.put("podName", podName);
-            response.put("namespace", "default");
-            response.put("websocket", websocketInfo);
-            response.put("executionStarted", true);
-            response.put("createdAt", java.time.LocalDateTime.now().toString());
-            
-            // Log execution future để track (không đợi kết quả)
-            executionFuture.whenComplete((success, throwable) -> {
-                if (throwable != null) {
-                    log.error("Setup execution failed for lab {} on pod {}: {}", labId, podName, throwable.getMessage());
-                } else {
-                    log.info("Setup execution completed for lab {} on pod {} with result: {}", labId, podName, success);
-                }
-            });
-            
-            return ResponseEntity.ok(response);
+                log.info("Starting test execution for lab: {}", labId);
 
-        } catch (Exception e) {
-            log.error("Error testing lab {}: {}", labId, e.getMessage());
-            Map<String, Object> error = new HashMap<>();
-            error.put("success", false);
-            error.put("error", "Không thể tạo test pod: " + e.getMessage());
-            error.put("labId", labId);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+                Optional<Lab> labOpt = labService.getLabById(labId);
+                if (labOpt.isEmpty()) {
+                    Map<String, String> error = new HashMap<>();
+                    error.put("error", "Lab không tồn tại với ID: " + labId);
+                    return ResponseEntity.notFound().build();
+                }
+
+                Lab lab = labOpt.get();
+                
+                String podName = kubernetesService.createLabPod(lab);
+                log.info("Successfully created test pod {} for lab {}", podName, labId);
+
+                // THAY ĐỔI: Thực thi ĐỒNG BỘ thay vì bất đồng bộ
+                // CompletableFuture<Boolean> executionFuture = setupExecutionService.executeSetupStepsForAdminTest(labId, podName);
+                
+                // Tạo WebSocket connection info trước khi thực thi
+                Map<String, Object> websocketInfo = socketConnectionInfo.createWebSocketConnectionInfo(podName);
+                
+                // Tạo response trước
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", true);
+                response.put("message", "Lab test pod created successfully and setup execution started");
+                response.put("labId", labId);
+                response.put("podName", podName);
+                response.put("websocket", websocketInfo);
+                response.put("createdAt", java.time.LocalDateTime.now().toString());
+                
+                // THỰC THI SETUP STEPS TRONG BACKGROUND THREAD (không block response)
+                // Nhưng vẫn đảm bảo các steps chạy tuần tự
+                new Thread(() -> {
+                    try {
+                        log.info("Starting sequential execution in background for lab {} pod {}", labId, podName);
+                        boolean success = setupExecutionService.executeSetupStepsForAdminTest(labId, podName);
+                        log.info("Sequential execution completed for lab {} pod {} with result: {}", labId, podName, success);
+                    } catch (Exception e) {
+                        log.error("Error in background sequential execution for lab {} pod {}: {}", labId, podName, e.getMessage(), e);
+                    }
+                }).start();
+                
+                log.info("Test setup initiated successfully for lab {}, pod: {}", labId, podName);
+                return ResponseEntity.status(HttpStatus.CREATED).body(response);
+                
+            } catch (Exception e) {
+                log.error("Error starting test execution for lab {}: {}", labId, e.getMessage(), e);
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "Không thể khởi tạo test lab: " + e.getMessage());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+            }
         }
-    }
 
     /**
      * Lấy trạng thái của pod test

@@ -11,6 +11,7 @@ import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1Pod;
 import io.kubernetes.client.openapi.models.V1PodSpec;
 import io.kubernetes.client.openapi.models.V1ResourceRequirements;
+import io.kubernetes.client.openapi.models.V1SecurityContext;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,19 +32,15 @@ import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 @Service
 @Slf4j
 public class KubernetesService {
 
-    private CoreV1Api api;   // api client for k8s cluster 
-    private ApiClient client;  // doi tuong chua cac thong tin ket noi toi Kubernetes cluster
-    private Exec exec; // Exec object để thực thi commands trong pod
-    private final ExecutorService executorService = Executors.newCachedThreadPool();
+    private CoreV1Api api;
+    private ApiClient client;
+    private Exec exec;
     
     @Value("${kubernetes.namespace:default}")
     private String namespace;
@@ -51,7 +48,6 @@ public class KubernetesService {
     @Value("${kubernetes.config.file.path:}")
     private String kubeConfigPath;
 
-   
     @PostConstruct
     public void init() {
         try {
@@ -65,7 +61,7 @@ public class KubernetesService {
             
             Configuration.setDefaultApiClient(client);
             api = new CoreV1Api();
-            exec = new Exec(); // Khởi tạo Exec object
+            exec = new Exec();
             log.info("Kubernetes client initialized successfully");
         } catch (Exception e) {
             log.error("Error initializing Kubernetes client: {}", e.getMessage());
@@ -126,15 +122,24 @@ public class KubernetesService {
                 .namespace(namespace)
                 .labels(createLabels(lab));
 
+        // V1Container container = new V1Container()
+        //         .name(nameLab)
+        //         .image(lab.getBaseImage())
+        //         .command(java.util.Arrays.asList("/bin/bash", "-c", "sleep 3600"))
+        //         .resources(createResourceRequirements());
+
         V1Container container = new V1Container()
-                .name(nameLab)
-                .image(lab.getBaseImage())
-                .command(java.util.Arrays.asList("/bin/bash", "-c", "sleep 3600"))
-                .resources(createResourceRequirements());
+            .name(nameLab)
+            .image("docker:dind") // Thay đổi image
+            .command(java.util.Arrays.asList("dockerd-entrypoint.sh"))
+            .securityContext(new V1SecurityContext()
+                .privileged(true)) // BẮT BUỘC cho DinD
+            .resources(createResourceRequirements());
 
         V1PodSpec podSpec = new V1PodSpec()
-                .containers(java.util.Arrays.asList(container))
-                .restartPolicy("Never");
+            .containers(java.util.Arrays.asList(container))
+            .restartPolicy("Never")
+            .runtimeClassName("kata-containers");
 
         V1Pod pod = new V1Pod()
                 .apiVersion("v1")
@@ -150,11 +155,11 @@ public class KubernetesService {
         Map<String, io.kubernetes.client.custom.Quantity> requests = new HashMap<>();
         Map<String, io.kubernetes.client.custom.Quantity> limits = new HashMap<>();
         
-         requests.put("cpu", new io.kubernetes.client.custom.Quantity("500m"));      // Tăng từ 100m lên 500m
-    requests.put("memory", new io.kubernetes.client.custom.Quantity("1Gi"));    // Tăng từ 128Mi lên 1Gi
-    
-    limits.put("cpu", new io.kubernetes.client.custom.Quantity("2"));           // Tăng từ 500m lên 2 cores
-    limits.put("memory", new io.kubernetes.client.custom.Quantity("4Gi")); 
+        requests.put("cpu", new io.kubernetes.client.custom.Quantity("500m"));
+        requests.put("memory", new io.kubernetes.client.custom.Quantity("1Gi"));
+        
+        limits.put("cpu", new io.kubernetes.client.custom.Quantity("2"));
+        limits.put("memory", new io.kubernetes.client.custom.Quantity("4Gi"));
 
         return new V1ResourceRequirements()
                 .requests(requests)
@@ -191,13 +196,10 @@ public class KubernetesService {
 
     // ============ POD READINESS OPERATIONS ============
 
-    /**
-     * Đợi pod sẵn sàng để thực thi commands với improved logging
-     */
     public void waitForPodReady(String podName) throws Exception {
         log.info("Waiting for pod {} to be ready...", podName);
         
-        for (int i = 0; i < 60; i++) { // Max 60 attempts (60 seconds)
+        for (int i = 0; i < 60; i++) {
             try {
                 var pod = api.readNamespacedPod(podName, namespace, null);
                 String phase = pod.getStatus().getPhase();
@@ -206,8 +208,7 @@ public class KubernetesService {
                 
                 if ("Running".equals(phase)) {
                     log.info("Pod {} is ready and running", podName);
-                    // Additional check for container readiness
-                    Thread.sleep(5000); // Wait 5 more seconds for containers to be fully ready
+                    Thread.sleep(5000);
                     return;
                 }
                 
@@ -217,10 +218,10 @@ public class KubernetesService {
                     throw new Exception(errorMsg);
                 }
                 
-                Thread.sleep(1000); // Wait 1 second
+                Thread.sleep(1000);
                 
             } catch (Exception e) {
-                if (i >= 59) { // Last attempt
+                if (i >= 59) {
                     log.error("Pod {} did not become ready in time: {}", podName, e.getMessage());
                     throw new Exception("Pod did not become ready in time: " + e.getMessage());
                 }
@@ -234,74 +235,26 @@ public class KubernetesService {
     // ============ COMMAND EXECUTION OPERATIONS ============
 
     /**
-     * Thực thi command với live streaming của output
+     * Command execution result với đầy đủ output
      */
-    public Integer executeCommandInPod(String podName, String command, int timeoutSeconds, 
-                                     CommandOutputHandler outputHandler) throws Exception {
-        log.debug("Executing command in pod {}: {}", podName, command);
-
-        try {
-            String[] commandArray = {"/bin/bash", "-c", command};
-            
-            Process process = exec.exec(namespace, podName, commandArray, false, true);
-            
-            // Stream stdout in realtime
-            CompletableFuture<Void> stdoutFuture = CompletableFuture.runAsync(() -> {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        if (outputHandler != null) {
-                            outputHandler.onStdout(line);
-                        }
-                        log.debug("STDOUT: {}", line);
-                    }
-                } catch (IOException e) {
-                    log.error("Error reading stdout from pod {}: {}", podName, e.getMessage());
-                }
-            }, executorService);
-
-            // Stream stderr in realtime  
-            CompletableFuture<Void> stderrFuture = CompletableFuture.runAsync(() -> {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        if (outputHandler != null) {
-                            outputHandler.onStderr(line);
-                        }
-                        log.warn("STDERR: {}", line);
-                    }
-                } catch (IOException e) {
-                    log.error("Error reading stderr from pod {}: {}", podName, e.getMessage());
-                }
-            }, executorService);
-
-            // Wait for process completion with timeout
-            boolean completed = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
-            
-            if (!completed) {
-                process.destroyForcibly();
-                log.error("Command timed out after {} seconds in pod {}: {}", timeoutSeconds, podName, command);
-                throw new Exception("Command execution timed out after " + timeoutSeconds + " seconds");
-            }
-
-            // Wait for stream readers to complete
-            try {
-                CompletableFuture.allOf(stdoutFuture, stderrFuture).get(5, TimeUnit.SECONDS);
-            } catch (Exception e) {
-                log.warn("Stream readers did not complete within 5 seconds: {}", e.getMessage());
-            }
-            
-            int exitCode = process.exitValue();
-            log.debug("Command completed with exit code: {} in pod: {}", exitCode, podName);
-            return exitCode;
-            
-        } catch (Exception e) {
-            log.error("Error executing command in pod {}: {}", podName, e.getMessage());
-            throw e;
+    public static class CommandResult {
+        private final int exitCode;
+        private final String stdout;
+        private final String stderr;
+        private final String combinedOutput;
+        
+        public CommandResult(int exitCode, String stdout, String stderr) {
+            this.exitCode = exitCode;
+            this.stdout = stdout;
+            this.stderr = stderr;
+            this.combinedOutput = stdout + (stderr.isEmpty() ? "" : "\n" + stderr);
         }
+        
+        public int getExitCode() { return exitCode; }
+        public String getStdout() { return stdout; }
+        public String getStderr() { return stderr; }
+        public String getCombinedOutput() { return combinedOutput; }
     }
-
-    // ============ UTILITY METHODS ============
 
     /**
      * Interface để handle command output
@@ -309,6 +262,221 @@ public class KubernetesService {
     public interface CommandOutputHandler {
         void onStdout(String line);
         void onStderr(String line);
+    }
+
+    /**
+     * Thực thi command và TRẢ VỀ ĐẦY ĐỦ OUTPUT với REAL-TIME LOGGING
+     */
+    // Fix trong method executeCommandInPodWithOutput:
+
+public CommandResult executeCommandInPodWithOutput(String podName, String command, int timeoutSeconds, 
+                                                 CommandOutputHandler outputHandler) throws Exception {
+    
+    log.info("==========================================");
+    log.info("🚀 EXECUTING COMMAND IN POD: {}", podName);
+    log.info("📝 COMMAND: {}", command);
+    log.info("⏱️ TIMEOUT: {} seconds", timeoutSeconds);
+    log.info("🔧 NAMESPACE: {}", namespace);
+    log.info("==========================================");
+
+    try {
+        String[] commandArray = {"/bin/sh", "-c", command};
+        
+        log.debug("🔍 DEBUG: Exec object initialized: {}", exec != null);
+        log.debug("🔍 DEBUG: API client initialized: {}", client != null);
+        log.debug("🔍 DEBUG: Command array: {}", java.util.Arrays.toString(commandArray));
+        
+        // ===== FIX: THAY ĐỔI TTY CONFIGURATION =====
+        // Thay vì: Process process = exec.exec(namespace, podName, commandArray, false, true);
+        // Sử dụng: stdin=true, tty=false để capture output properly
+        Process process = exec.exec(namespace, podName, commandArray, true, false);
+        log.debug("🔍 DEBUG: Process created with stdin=true, tty=false");
+        
+        // Kiểm tra process streams
+        log.debug("🔍 DEBUG: Process created successfully: {}", process != null);
+        log.debug("🔍 DEBUG: InputStream available: {}", process.getInputStream() != null);
+        log.debug("🔍 DEBUG: ErrorStream available: {}", process.getErrorStream() != null);
+        
+        // Thu thập output với improved handling
+        StringBuilder stdoutOutput = new StringBuilder();
+        StringBuilder stderrOutput = new StringBuilder();
+        
+        // ===== ENHANCED STDOUT READER =====
+        Thread stdoutReader = new Thread(() -> {
+            log.debug("🔍 DEBUG: STDOUT Reader thread started");
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                int lineNumber = 1;
+                log.debug("🔍 DEBUG: Starting to read STDOUT lines...");
+                
+                while ((line = reader.readLine()) != null) {
+                    synchronized (stdoutOutput) {
+                        stdoutOutput.append(line).append("\n");
+                    }
+                    
+                    // IMMEDIATE LOGGING cho mỗi line
+                    log.info("📤 STDOUT[{}]: {}", lineNumber++, line);
+                    
+                    if (outputHandler != null) {
+                        try {
+                            outputHandler.onStdout(line);
+                        } catch (Exception e) {
+                            log.warn("Handler error: {}", e.getMessage());
+                        }
+                    }
+                }
+                log.debug("🔍 DEBUG: STDOUT Reader finished - total lines: {}", lineNumber - 1);
+            } catch (IOException e) {
+                log.error("❌ Error reading stdout: {}", e.getMessage(), e);
+            }
+        }, "stdout-reader-" + podName);
+        
+        // ===== ENHANCED STDERR READER =====
+        Thread stderrReader = new Thread(() -> {
+            log.debug("🔍 DEBUG: STDERR Reader thread started");
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                String line;
+                int lineNumber = 1;
+                log.debug("🔍 DEBUG: Starting to read STDERR lines...");
+                
+                while ((line = reader.readLine()) != null) {
+                    synchronized (stderrOutput) {
+                        stderrOutput.append(line).append("\n");
+                    }
+                    
+                    // IMMEDIATE LOGGING cho mỗi line
+                    log.warn("🔴 STDERR[{}]: {}", lineNumber++, line);
+                    
+                    if (outputHandler != null) {
+                        try {
+                            outputHandler.onStderr(line);
+                        } catch (Exception e) {
+                            log.warn("Handler error: {}", e.getMessage());
+                        }
+                    }
+                }
+                log.debug("🔍 DEBUG: STDERR Reader finished - total lines: {}", lineNumber - 1);
+            } catch (IOException e) {
+                log.error("❌ Error reading stderr: {}", e.getMessage(), e);
+            }
+        }, "stderr-reader-" + podName);
+        
+        // Start threads
+        log.debug("🔍 DEBUG: Starting reader threads");
+        stdoutReader.start();
+        stderrReader.start();
+        
+        // ===== ENHANCED PROCESS WAITING =====
+        log.debug("🔍 DEBUG: Waiting for process completion...");
+        boolean processCompleted = process.waitFor(timeoutSeconds, TimeUnit.SECONDS);
+        log.debug("🔍 DEBUG: Process completed: {}", processCompleted);
+        
+        if (!processCompleted) {
+            log.error("⏰ PROCESS TIMED OUT - killing process and threads");
+            process.destroyForcibly();
+            stdoutReader.interrupt();
+            stderrReader.interrupt();
+            throw new Exception("Command execution timed out after " + timeoutSeconds + " seconds");
+        }
+        
+        // ===== ENHANCED THREAD JOINING =====
+        log.debug("🔍 DEBUG: Waiting for reader threads to complete...");
+        try {
+            stdoutReader.join(5000); // Wait up to 5 seconds
+            stderrReader.join(5000);
+            log.debug("🔍 DEBUG: Reader threads joined successfully");
+        } catch (InterruptedException e) {
+            log.warn("⚠️ Reader threads interrupted during join");
+            Thread.currentThread().interrupt();
+        }
+        
+        // Force thread termination if still alive
+        if (stdoutReader.isAlive()) {
+            stdoutReader.interrupt();
+            log.warn("⚠️ Forced to interrupt stdout reader thread");
+        }
+        if (stderrReader.isAlive()) {
+            stderrReader.interrupt();
+            log.warn("⚠️ Forced to interrupt stderr reader thread");
+        }
+        
+        // ===== COLLECT RESULTS =====
+        int exitCode = process.exitValue();
+        String stdout, stderr;
+        
+        synchronized (stdoutOutput) {
+            stdout = stdoutOutput.toString().trim();
+        }
+        synchronized (stderrOutput) {
+            stderr = stderrOutput.toString().trim();
+        }
+        
+        // ===== ENHANCED RESULT LOGGING =====
+        log.info("==========================================");
+        log.info("✅ COMMAND EXECUTION COMPLETED");
+        log.info("📝 COMMAND: {}", command);
+        log.info("🔢 EXIT CODE: {}", exitCode);
+        log.info("📊 STDOUT LINES: {}", stdout.isEmpty() ? 0 : stdout.split("\n").length);
+        log.info("📊 STDERR LINES: {}", stderr.isEmpty() ? 0 : stderr.split("\n").length);
+        log.info("📊 TOTAL OUTPUT LENGTH: {} characters", stdout.length() + stderr.length());
+        
+        // Debug raw lengths
+        log.debug("🔍 DEBUG: Raw STDOUT length: {} chars", stdout.length());
+        log.debug("🔍 DEBUG: Raw STDERR length: {} chars", stderr.length());
+        
+        log.info("==========================================");
+        
+        // ===== LOG COMPLETE OUTPUT =====
+        if (!stdout.isEmpty()) {
+            log.info("📄 ===== COMPLETE STDOUT OUTPUT START =====");
+            String[] stdoutLines = stdout.split("\n");
+            for (int i = 0; i < stdoutLines.length; i++) {
+                log.info("STDOUT[{}]: {}", i + 1, stdoutLines[i]);
+            }
+            log.info("📄 ===== COMPLETE STDOUT OUTPUT END =====");
+        } else {
+            log.warn("📄 ⚠️ No STDOUT output captured!");
+            log.warn("📄 ⚠️ This might indicate:");
+            log.warn("   - Command produces no output");
+            log.warn("   - TTY/stdin configuration issue");
+            log.warn("   - Kubernetes exec stream problem");
+            log.warn("   - Process buffering issue");
+        }
+        
+        if (!stderr.isEmpty()) {
+            log.warn("📄 ===== COMPLETE STDERR OUTPUT START =====");
+            String[] stderrLines = stderr.split("\n");
+            for (int i = 0; i < stderrLines.length; i++) {
+                log.warn("STDERR[{}]: {}", i + 1, stderrLines[i]);
+            }
+            log.warn("📄 ===== COMPLETE STDERR OUTPUT END =====");
+        } else {
+            log.info("📄 No STDERR output");
+        }
+        
+        log.info("==========================================");
+        
+        return new CommandResult(exitCode, stdout, stderr);
+        
+    } catch (Exception e) {
+        log.error("💥 ERROR EXECUTING COMMAND: {}", e.getMessage(), e);
+        throw e;
+    }
+}
+    /**
+     * Backward compatibility method - chỉ trả về exit code
+     */
+    public Integer executeCommandInPod(String podName, String command, int timeoutSeconds, 
+                                    CommandOutputHandler outputHandler) throws Exception {
+        CommandResult result = executeCommandInPodWithOutput(podName, command, timeoutSeconds, outputHandler);
+        return result.getExitCode();
+    }
+
+    /**
+     * Simplified method để chỉ log output mà không cần handler
+     */
+    public CommandResult executeCommandWithLogs(String podName, String command, int timeoutSeconds) throws Exception {
+        return executeCommandInPodWithOutput(podName, command, timeoutSeconds, null);
     }
 
     /**
@@ -329,16 +497,6 @@ public class KubernetesService {
      * Cleanup resources
      */
     public void shutdown() {
-        if (executorService != null && !executorService.isShutdown()) {
-            executorService.shutdown();
-            try {
-                if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
-                    executorService.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                executorService.shutdownNow();
-                Thread.currentThread().interrupt();
-            }
-        }
+        log.info("KubernetesService shutdown completed");
     }
 }
