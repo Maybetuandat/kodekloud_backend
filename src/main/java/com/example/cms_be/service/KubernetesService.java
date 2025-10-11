@@ -85,6 +85,11 @@ public class KubernetesService {
         }
     }
 
+    public ApiClient getApiClient() {
+        return this.client;
+    }
+
+
     // ============ POD MANAGEMENT OPERATIONS ============
 
     public String createLabPod(Lab lab) throws Exception {

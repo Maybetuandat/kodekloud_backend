@@ -1,5 +1,6 @@
 package com.example.cms_be.config;
 
+import com.example.cms_be.handler.TerminalHandler;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
@@ -16,9 +17,14 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     private final PodLogWebSocketHandler podLogHandler;
 
+    private final TerminalHandler terminalHandler;
+
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(podLogHandler, "/ws/pod-logs")
-                .setAllowedOrigins("*"); 
+                .setAllowedOrigins("*");
+
+        registry.addHandler(this.terminalHandler, "/terminal")
+                .setAllowedOrigins("http://localhost:5173/");
     }
 }
