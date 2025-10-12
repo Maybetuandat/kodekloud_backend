@@ -4,12 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.example.cms_be.model.*;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
-import com.example.cms_be.model.Lab;
-import com.example.cms_be.model.SetupExecutionLog;
-import com.example.cms_be.model.SetupStep;
 import com.example.cms_be.repository.LabRepository;
 import com.example.cms_be.repository.SetupExecutionLogRepository;
 import com.example.cms_be.repository.SetupStepRepository;
@@ -27,8 +25,6 @@ public class LabService {
     private final SetupExecutionLogRepository setupExecutionLogRepository;
     private final KubernetesService kubernetesService;
 
-
-
    public Page<Lab> getAllLabs(Pageable pageable) {
         return labRepository.findAll(pageable);
     }
@@ -39,7 +35,7 @@ public class LabService {
     public Page<Lab> searchLabs(String search, Pageable pageable) {
         return labRepository.searchLabs(search, pageable);
     }
-    
+
     public Page<Lab> searchLabsByActivateStatus(String search, Boolean isActive, Pageable pageable) {
         return labRepository.searchLabsByActivateStatus(search, isActive, pageable);
     }
@@ -48,7 +44,7 @@ public class LabService {
 
     public Lab createLab(Lab lab) {
         Lab createLab = new Lab();
-      
+
         try{
             createLab = labRepository.save(lab);
         }
@@ -80,16 +76,13 @@ public class LabService {
             }
 
             Lab existingLab = existingLabOpt.get();
-            
-            
-            
-            
+
             // Update fields
             existingLab.setName(labUpdate.getName());
             existingLab.setDescription(labUpdate.getDescription());
             existingLab.setBaseImage(labUpdate.getBaseImage());
             existingLab.setEstimatedTime(labUpdate.getEstimatedTime());
-            
+
             if (labUpdate.getIsActive() != null) {
                 existingLab.setIsActive(labUpdate.getIsActive());
             }
@@ -102,14 +95,14 @@ public class LabService {
             throw new RuntimeException("Failed to update lab", e);
         }
     }
-    
+
 
     /**
      * Xóa lab
      */
     public boolean deleteLab(String id) {
         try {
-         
+
             labRepository.deleteById(id);
             return true;
         }
@@ -132,7 +125,7 @@ public class LabService {
             Lab lab = labOpt.get();
             lab.setIsActive(!lab.getIsActive());
             Lab updatedLab = labRepository.save(lab);
-            
+
             log.info("Lab status toggled for ID: {}, new status: {}", id, updatedLab.getIsActive());
             return updatedLab;
         } catch (Exception e) {
@@ -150,6 +143,18 @@ public class LabService {
             log.error("Error fetching setup steps for lab {}: {}", labId, e.getMessage());
             throw new RuntimeException("Failed to fetch setup steps", e);
         }
+    }
+
+    public UserLabSession createUserLabSession(Lab lab, CourseUser courseUser) {
+        UserLabSession newLabSession = new UserLabSession();
+
+        try{
+
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Failed to create lab", e);
+        }
+        return newLabSession;
     }
 
 }

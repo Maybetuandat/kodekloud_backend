@@ -51,11 +51,6 @@ public class SetupStepController {
         }
     }
 
-
-
-
-
-
      /**
      * Tạo mới setup step
      * POST /api/setup-step/{labId} - Tạo mới setup step cho lab với  labID cụ thể

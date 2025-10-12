@@ -51,6 +51,11 @@ public class UserLabSession {
     @OneToMany(mappedBy = "labSession", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<SetupExecutionLog> setupExecutionLogs;
 
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "courseuser_id", nullable = false)
+    private CourseUser courseUser;
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {

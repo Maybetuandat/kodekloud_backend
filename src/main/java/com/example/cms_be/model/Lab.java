@@ -35,7 +35,6 @@ public class Lab {
     @NotNull(message = "Thời gian ước tính không được null, đơn vị tính là phút")
     @Min(value = 1, message = "Thời gian ước tính phải ít nhất 1 phút")
     @Max(value = 600, message = "Thời gian ước tính không được vượt quá 600 phút")
-
     @Column(name = "estimated_time", nullable = false)
     private Integer estimatedTime;
 
@@ -48,8 +47,6 @@ public class Lab {
 
     @OneToMany(mappedBy = "lab", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<SetupStep> setupSteps;
-
-
 
     @PrePersist
     protected void onCreate() {
