@@ -56,13 +56,13 @@ public class LabController {
     @GetMapping()
     public ResponseEntity<?> getAllLabs(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Boolean isActive
     ) {
         try {
             Pageable pageable = PageRequest.of(page, size);
-
-            Page<Lab> labPage;
-            labPage = labService.getAllLabs(pageable);
+            Page<Lab> labPage = labService.getAllLabs(pageable, isActive, search);
 
             Map<String, Object> response = new HashMap<>();
             response.put("data", labPage.getContent());
@@ -79,7 +79,7 @@ public class LabController {
         }
     }
 
-    @PostMapping("/create-lab")
+    @PostMapping()
     public ResponseEntity<?> createLab(@Valid @RequestBody Lab lab, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
             // Xử lý lỗi validation

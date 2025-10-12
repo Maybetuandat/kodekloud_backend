@@ -25,22 +25,9 @@ public class LabService {
     private final SetupExecutionLogRepository setupExecutionLogRepository;
     private final KubernetesService kubernetesService;
 
-   public Page<Lab> getAllLabs(Pageable pageable) {
-        return labRepository.findAll(pageable);
-    }
-    
-    public Page<Lab> getLabsByActivateStatus(Boolean isActivate, Pageable pageable) {
-        return labRepository.findByIsActive(isActivate, pageable);
-    }
-    public Page<Lab> searchLabs(String search, Pageable pageable) {
-        return labRepository.searchLabs(search, pageable);
-    }
-
-    public Page<Lab> searchLabsByActivateStatus(String search, Boolean isActive, Pageable pageable) {
-        return labRepository.searchLabsByActivateStatus(search, isActive, pageable);
-    }
-
-    
+   public Page<Lab> getAllLabs(Pageable pageable, Boolean isActive, String searchTerm) {
+       return labRepository.findWithFilters(searchTerm, isActive, pageable);
+   }
 
     public Lab createLab(Lab lab) {
         Lab createLab = new Lab();
