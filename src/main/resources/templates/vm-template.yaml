@@ -1,0 +1,37 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: "{{NAME}}"
+  namespace: "{{NAMESPACE}}"
+spec:
+  runStrategy: Always
+  template:
+    metadata:
+      labels:
+        app: "{{NAME}}"
+    spec:
+      domain:
+        devices:
+          disks:
+            - name: rootdisk
+              disk:
+                bus: virtio
+            - name: cloudinitdisk
+              cdrom:
+                bus: sata
+          interfaces:
+            - name: default
+              masquerade: {}
+        resources:
+          requests:
+            memory: "{{MEMORY}}"
+      networks:
+        - name: default
+          pod: {}
+      volumes:
+        - name: rootdisk
+          persistentVolumeClaim:
+            claimName: "{{NAME}}"
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            userData: "#cloud-config\nuser: ubuntu\npassword: 1234\nchpasswd: { expire: false }\nssh_pwauth: true"

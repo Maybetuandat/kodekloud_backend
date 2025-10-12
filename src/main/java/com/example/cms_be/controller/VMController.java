@@ -1,8 +1,10 @@
 package com.example.cms_be.controller;
 
-import com.example.cms_be.model.CreateVmRequest;
-import com.example.cms_be.service.KubernetesService;
+import com.example.cms_be.dto.CreateLabSessionRequest;
+import com.example.cms_be.model.Lab;
+import com.example.cms_be.service.LabService;
 import com.example.cms_be.service.VMService;
+import io.kubernetes.client.openapi.ApiException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -10,7 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -19,44 +20,35 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class VMController {
     private final VMService vmService;
+    private final LabService labService;
 
-    @GetMapping("/get-all-pods")
-    public ResponseEntity<?> getAllPodsInCluster() {
-        try {
-            List<Map<String, String>> pods = vmService.getAllPods();
-            return ResponseEntity.ok(pods);
-        } catch (Exception e) {
-            log.error("Error getting all pods: {}", e.getMessage(), e);
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Không thể lấy danh sách pods: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-        }
-    }
-
-    @PostMapping("/create-vm")
-    public ResponseEntity<?> createVirtualMachine(@RequestBody CreateVmRequest request) {
-        try {
-            // Gọi service để tạo DataVolume và VirtualMachine
-            vmService.createVirtualMachine(
-                    request.name(),
-                    request.namespace(),
-                    request.imageUrl(),
-                    request.storage(),
-                    request.memory()
-            );
-
-            Map<String, String> response = new HashMap<>();
-            response.put("message", "Yêu cầu tạo máy ảo '" + request.name() + "' đã được gửi thành công.");
-            response.put("details", "Quá trình tải image và khởi động máy ảo sẽ chạy ngầm. Vui lòng kiểm tra trạng thái sau.");
-
-            return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
-
-        } catch (Exception e) {
-            log.error("Error creating virtual machine {}: {}", request.name(), e.getMessage(), e);
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Không thể tạo máy ảo: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-        }
-    }
-
+//    @PostMapping("/create-vm")
+//    public ResponseEntity<?> createVirtualMachine(@RequestBody String labId) throws Exception {
+//        Lab lab = this.labService.getLabById(labId)
+//                .orElseThrow(() -> new Exception("Không tìm thấy Lab với ID: " + labId));
+//        try {
+//            vmService.provisionVmForSession(lab);
+//
+//            Map<String, String> response = new HashMap<>();
+//            response.put("message", "Yêu cầu tạo máy ảo cho lab '" + lab.getName() + "' đã được gửi thành công.");
+//            response.put("details", "Quá trình tải image và khởi động máy ảo sẽ chạy ngầm. Vui lòng kiểm tra trạng thái sau.");
+//
+//            return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+//
+//        } catch (ApiException e) {
+//            log.error("Kubernetes API Error creating VM '{}'. Status Code: {}. Response Body: {}",
+//                    lab.getName(), e.getCode(), e.getResponseBody(), e);
+//
+//            Map<String, String> error = new HashMap<>();
+//            error.put("error", "Lỗi từ Kubernetes API.");
+//            error.put("details", e.getResponseBody());
+//            return ResponseEntity.status(e.getCode()).body(error);
+//
+//        } catch (Exception e) {
+//            log.error("Error creating virtual machine {}: {}", lab.getName(), e.getMessage(), e);
+//            Map<String, String> error = new HashMap<>();
+//            error.put("error", "Không thể tạo máy ảo: " + e.getMessage());
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+//        }
+//    }
 }

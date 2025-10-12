@@ -41,7 +41,9 @@ public class UserLabSession {
 
     @Column(name = "pod_name")
     private String podName;
-    
+
+    @Column(name = "status")
+    private String status;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "lab_id", nullable = false)
@@ -53,7 +55,7 @@ public class UserLabSession {
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "courseuser_id", nullable = false)
+    @JoinColumn(name = "courseuser_id", nullable = true)
     private CourseUser courseUser;
 
     @PrePersist

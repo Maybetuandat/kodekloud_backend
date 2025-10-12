@@ -3,6 +3,7 @@ package com.example.cms_be.model;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -28,22 +29,34 @@ public class Lab {
 
     private String description;
 
-    @NotBlank(message = "Base image không được để trống")
-    @Column(name = "base_image", nullable = false)
+    @Column(name = "base_image", nullable = true)
     private String baseImage;
+
+    @Column(name = "namespace", nullable = true)
+    private String namespace;
+
+    @Column(name = "storage", nullable = true)
+    private String storage;
+
+    @Column(name = "memory", nullable = true)
+    private String memory;
 
     @NotNull(message = "Thời gian ước tính không được null, đơn vị tính là phút")
     @Min(value = 1, message = "Thời gian ước tính phải ít nhất 1 phút")
     @Max(value = 600, message = "Thời gian ước tính không được vượt quá 600 phút")
-    @Column(name = "estimated_time", nullable = false)
+    @Column(name = "estimated_time", nullable = true)
     private Integer estimatedTime;
 
-    @Column(name = "is_active", nullable = false)
+    @Column(name = "is_active", nullable = true)
     private Boolean isActive;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = true, updatable = false)
     private LocalDateTime createdAt;
 
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "course_id", nullable = true)
+    private Course course;
 
     @OneToMany(mappedBy = "lab", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<SetupStep> setupSteps;

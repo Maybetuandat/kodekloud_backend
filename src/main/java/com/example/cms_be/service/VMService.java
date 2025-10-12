@@ -1,5 +1,8 @@
 package com.example.cms_be.service;
 
+import com.example.cms_be.model.Lab;
+import com.example.cms_be.model.UserLabSession;
+import com.example.cms_be.repository.UserLabSessionRepository;
 import com.google.gson.Gson;
 import io.kubernetes.client.Exec;
 import io.kubernetes.client.custom.IntOrString;
@@ -12,15 +15,23 @@ import io.kubernetes.client.openapi.models.*;
 import io.kubernetes.client.util.ClientBuilder;
 import io.kubernetes.client.util.Config;
 import io.kubernetes.client.util.KubeConfig;
+import io.kubernetes.client.util.Yaml;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.util.FileCopyUtils;
 import org.springframework.util.StringUtils;
 
 import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,10 +39,22 @@ import java.util.Map;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class VMService {
-    private CoreV1Api api;
+    private static final String KUBEVIRT_GROUP = "kubevirt.io";
+    private static final String KUBEVIRT_VERSION = "v1";
+    private static final String KUBEVIRT_PLURAL_VM = "virtualmachines";
+
+    private static final String CDI_GROUP = "cdi.kubevirt.io";
+    private static final String CDI_VERSION = "v1beta1";
+    private static final String CDI_PLURAL_DV = "datavolumes";
+
+    private CustomObjectsApi customApi;
     private ApiClient client;
+    private CoreV1Api coreApi;
     private Exec exec;
+
+    private UserLabSessionRepository userLabSessionRepository;
 
     @Value("${kubernetes.namespace:default}")
     private String namespace;
@@ -50,7 +73,7 @@ public class VMService {
      * Get API client
      */
     public CoreV1Api getApi() {
-        return api;
+        return coreApi;
     }
 
     @PostConstruct
@@ -65,9 +88,10 @@ public class VMService {
             }
 
             Configuration.setDefaultApiClient(client);
-            api = new CoreV1Api();
-            exec = new Exec();
+            coreApi = new CoreV1Api();
+            customApi = new CustomObjectsApi(client); // Khởi tạo CustomObjectsApi
             log.info("Kubernetes client initialized successfully");
+
         } catch (Exception e) {
             log.error("Error initializing Kubernetes client: {}", e.getMessage());
             throw new RuntimeException("Failed to initialize Kubernetes client", e);
@@ -90,170 +114,98 @@ public class VMService {
         }
     }
 
-
-    public List<Map<String, String>> getAllPods() throws ApiException {
+    @Async
+    public void provisionVmForSession(UserLabSession session) throws ApiException, IOException {
         try {
-            V1PodList podList = api.listPodForAllNamespaces(
-                    null, null, null, null, null, null, null, null, null, null);
+            log.info("Starting virtual machine creation process for '{}'...", session.getLab().getName());
 
-            List<Map<String, String>> simplifiedPods = new ArrayList<>();
-            for (V1Pod item : podList.getItems()) {
-                Map<String, String> podInfo = new HashMap<>();
+            Lab lab = session.getLab();
+            String vmName = "vm-" + lab.getId();
 
-                if (item.getMetadata() != null) {
-                    podInfo.put("name", item.getMetadata().getName());
-                    podInfo.put("namespace", item.getMetadata().getNamespace());
-                }
-                if (item.getStatus() != null) {
-                    podInfo.put("status", item.getStatus().getPhase());
-                    podInfo.put("ip", item.getStatus().getPodIP());
-                }
-                simplifiedPods.add(podInfo);
-            }
-            return simplifiedPods;
+            System.out.println(vmName + "\n" + lab.getNamespace() + "\n" + lab.getBaseImage() + "\n" + lab.getStorage() + "\n" + lab.getMemory());
 
+            createDataVolumeFromTemplate(vmName, lab.getNamespace(), lab.getBaseImage(), lab.getStorage());
+            createVirtualMachineFromTemplate(vmName, lab.getNamespace(), lab.getMemory());
+            createSshServiceForVM(vmName, lab.getNamespace());
+
+            log.info("Successfully completed virtual machine creation process for '{}'.", lab.getName());
         } catch (ApiException e) {
-            // Log lỗi chi tiết hơn bằng cách log cả response body
-            log.error("Failed to get all pods: {}, response body: {}", e.getMessage(), e.getResponseBody());
-            throw new ApiException("Failed to get all pods: " + e.getMessage());
+            log.error("!!! Kubernetes API Error for session {}. Status Code: {}. Response Body: {}",
+                    session.getId(), e.getCode(), e.getResponseBody(), e);
+
+            // Cập nhật trạng thái FAILED vào database
+            log.error("Updating session {} status to FAILED.", session.getId());
+            session.setStatus("FAILED");
+            userLabSessionRepository.save(session);
+
+        } catch (Exception e) {
+            log.error("Unexpected error provisioning VM for session {}", session.getId(), e);
+
+            // Cập nhật trạng thái FAILED vào database
+            log.error("Updating session {} status to FAILED.", session.getId());
+            session.setStatus("FAILED");
+            userLabSessionRepository.save(session);
         }
     }
 
-    public void createVirtualMachine(
-            String name, String namespace, String imageUrl, String storage, String memory) throws ApiException {
+    private String loadAndRenderTemplate(String templatePath, Map<String, String> values) throws IOException {
+        ClassPathResource resource = new ClassPathResource(templatePath);
+        InputStreamReader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8);
+        String template = FileCopyUtils.copyToString(reader);
 
-        CustomObjectsApi customApi = new CustomObjectsApi(this.client);
-        Gson gson = new Gson();
-
-        // === 1. TẠO DATA VOLUME (từ file ubuntu-pvc.yaml) ===
-        String dataVolumeJson = String.format("""
-        {
-            "apiVersion": "cdi.kubevirt.io/v1beta1",
-            "kind": "DataVolume",
-            "metadata": {
-                "name": "%s",
-                "namespace": "%s"
-            },
-            "spec": {
-                "source": {
-                    "http": {
-                        "url": "%s"
-                    }
-                },
-                "pvc": {
-                    "accessModes": ["ReadWriteOnce"],
-                    "resources": {
-                        "requests": {
-                            "storage": "%s"
-                        }
-                    }
-                }
-            }
+        for (Map.Entry<String, String> entry : values.entrySet()) {
+            template = template.replace("{{" + entry.getKey() + "}}", entry.getValue());
         }
-        """, name, namespace, imageUrl, storage);
+        return template;
+    }
 
-        Object dataVolumeBody = gson.fromJson(dataVolumeJson, Object.class);
+    private void createDataVolumeFromTemplate(String name, String namespace, String imageUrl, String storage) throws IOException, ApiException {
+        Map<String, String> values = Map.of(
+                "NAME", name,
+                "NAMESPACE", namespace,
+                "IMAGE_URL", imageUrl,
+                "STORAGE", storage
+        );
+        String dataVolumeYaml = loadAndRenderTemplate("templates/datavolume-template.yaml", values);
+        @SuppressWarnings("rawtypes")
+        Map dataVolumeBody = Yaml.loadAs(dataVolumeYaml, Map.class);
 
-        log.info("Creating DataVolume '{}' in namespace '{}'...", name, namespace);
-        customApi.createNamespacedCustomObject(
-                "cdi.kubevirt.io",   // group
-                "v1beta1",           // version
-                namespace,           // namespace
-                "datavolumes",       // plural
-                dataVolumeBody,      // body
-                null, null, null);
+        log.info("Creating DataVolume '{}'...", name);
+        customApi.createNamespacedCustomObject(CDI_GROUP, CDI_VERSION, namespace, CDI_PLURAL_DV, dataVolumeBody, null, null, null);
         log.info("DataVolume '{}' created. Image import is in progress.", name);
+    }
 
-        // === 2. TẠO VIRTUAL MACHINE (từ file ubuntu-vm.yaml) ===
-        // Lưu ý: User và password đang được hardcode như trong file YAML của bạn
-        String virtualMachineJson = String.format("""
-        {
-            "apiVersion": "kubevirt.io/v1",
-            "kind": "VirtualMachine",
-            "metadata": {
-                "name": "%s",
-                "namespace": "%s"
-            },
-            "spec": {
-                "runStrategy": "Always",
-                "template": {
-                    "metadata": {
-                        "labels": {
-                            "app": "%s"
-                        }
-                    },
-                    "spec": {
-                        "domain": {
-                            "devices": {
-                                "disks": [
-                                    {"name": "rootdisk", "disk": {"bus": "virtio"}},
-                                    {"name": "cloudinitdisk", "cdrom": {"bus": "sata"}}
-                                ],
-                                "interfaces": [
-                                    {"name": "default", "masquerade": {}}
-                                ]
-                            },
-                            "resources": {
-                                "requests": {
-                                    "memory": "%s"
-                                }
-                            }
-                        },
-                        "networks": [
-                            {"name": "default", "pod": {}}
-                        ],
-                        "volumes": [
-                            {
-                                "name": "rootdisk",
-                                "persistentVolumeClaim": {
-                                    "claimName": "%s"
-                                }
-                            },
-                            {
-                                "name": "cloudinitdisk",
-                                "cloudInitNoCloud": {
-                                    "userData": "#cloud-config\\nuser: ubuntu\\npassword: 1234\\nchpasswd: { expire: false }\\nssh_pwauth: true"
-                                }
-                            }
-                        ]
-                    }
-                }
-            }
-        }
-        """, name, namespace, name, memory, name);
+    private void createVirtualMachineFromTemplate(String name, String namespace, String memory) throws IOException, ApiException {
+        Map<String, String> values = Map.of(
+                "NAME", name,
+                "NAMESPACE", namespace,
+                "MEMORY", memory
+        );
+        String virtualMachineYaml = loadAndRenderTemplate("templates/vm-template.yaml", values);
+        @SuppressWarnings("rawtypes")
+        Map vmBody = Yaml.loadAs(virtualMachineYaml, Map.class);
 
-        Object vmBody = gson.fromJson(virtualMachineJson, Object.class);
-
-        log.info("Creating VirtualMachine '{}' in namespace '{}'...", name, namespace);
-
-        customApi.createNamespacedCustomObject(
-                "kubevirt.io",       // group
-                "v1",                // version
-                namespace,           // namespace
-                "virtualmachines",   // plural
-                vmBody,              // body
-                null, null, null);
+        log.info("Creating VirtualMachine '{}'...", name);
+        customApi.createNamespacedCustomObject(KUBEVIRT_GROUP, KUBEVIRT_VERSION, namespace, KUBEVIRT_PLURAL_VM, vmBody, null, null, null);
         log.info("VirtualMachine '{}' definition created successfully.", name);
+    }
 
+    private void createSshServiceForVM(String name, String namespace) throws ApiException {
         String serviceName = "ssh-" + name;
         V1Service serviceBody = new V1Service()
                 .apiVersion("v1")
                 .kind("Service")
-                .metadata(new V1ObjectMeta()
-                        .name(serviceName)
-                        .namespace(namespace))
+                .metadata(new V1ObjectMeta().name(serviceName).namespace(namespace))
                 .spec(new V1ServiceSpec()
                         .type("NodePort")
-                        .putSelectorItem("vm.kubevirt.io/name", name)
+                        .putSelectorItem("app", name)
                         .addPortsItem(new V1ServicePort()
                                 .protocol("TCP")
                                 .port(22)
                                 .targetPort(new IntOrString(22))));
 
-        // Sử dụng CoreV1Api để tạo service
-        this.api.createNamespacedService(namespace, serviceBody, null, null, null, null);
-
+        log.info("Creating Service '{}'...", serviceName);
+        coreApi.createNamespacedService(namespace, serviceBody, null, null, null, null);
         log.info("Service '{}' created successfully.", serviceName);
     }
-
 }

@@ -3,6 +3,7 @@ package com.example.cms_be.controller;
 import com.example.cms_be.model.CourseUser;
 import com.example.cms_be.model.User;
 import com.example.cms_be.model.UserLabSession;
+import com.example.cms_be.service.VMService;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -38,8 +39,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 
-
-
 @Slf4j
 @RestController
 @RequestMapping("/api/labs")
@@ -50,6 +49,7 @@ public class LabController {
     private final SetupExecutionService setupExecutionService;
     private final KubernetesService kubernetesService;
     private final SocketConnectionInfo socketConnectionInfo;
+    private final VMService vmService;
 
     private static final String WEBSOCKET_ENDPOINT = "/ws/pod-logs";
 
