@@ -30,11 +30,8 @@ public class LabSessionController {
     public ResponseEntity<?> createLabSession(@Valid @RequestBody CreateLabSessionRequest request) {
         try {
             String userIdFromRequest = request.userId();
-
             log.warn("!!! INSECURE !!! Using userId from request body: {}", userIdFromRequest);
-
             UserLabSession session = labSessionService.createAndStartSession(request.labId(), userIdFromRequest);
-
             UserLabSessionResponse responseDto = new UserLabSessionResponse(
                     session.getId(),
                     session.getStatus(),

@@ -3,9 +3,15 @@ package com.example.cms_be.config;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.socket.config.annotation.EnableWebSocket;
+
+import lombok.RequiredArgsConstructor;
 
 @Configuration
-public class WebConfig implements WebMvcConfigurer {
+@EnableWebSocket
+@RequiredArgsConstructor
+public class WebMvcConfig implements WebMvcConfigurer {
+
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {

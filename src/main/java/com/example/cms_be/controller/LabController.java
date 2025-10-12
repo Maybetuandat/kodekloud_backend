@@ -1,11 +1,7 @@
 package com.example.cms_be.controller;
 
-import com.example.cms_be.model.CourseUser;
-import com.example.cms_be.model.User;
-import com.example.cms_be.model.UserLabSession;
 import com.example.cms_be.service.VMService;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.example.cms_be.model.Lab;
 import com.example.cms_be.service.KubernetesService;
@@ -21,22 +17,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 
 
 @Slf4j
@@ -44,14 +28,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 @RequestMapping("/api/labs")
 @RequiredArgsConstructor
 public class LabController {
-    private final LabService labService; 
-
-    private final SetupExecutionService setupExecutionService;
-    private final KubernetesService kubernetesService;
-    private final SocketConnectionInfo socketConnectionInfo;
-    private final VMService vmService;
-
-    private static final String WEBSOCKET_ENDPOINT = "/ws/pod-logs";
+    private final LabService labService;
 
     @GetMapping()
     public ResponseEntity<?> getAllLabs(
@@ -80,32 +57,24 @@ public class LabController {
     }
 
     @PostMapping()
-    public ResponseEntity<?> createLab(@Valid @RequestBody Lab lab, BindingResult bindingResult) {
-        if (bindingResult.hasErrors()) {
-            // Xử lý lỗi validation
-            Map<String, String> errors = new HashMap<>();
-            bindingResult.getFieldErrors().forEach(error ->
-                    errors.put(error.getField(), error.getDefaultMessage())
-            );
-            return ResponseEntity.badRequest().body(errors);
-        }
-
+    public ResponseEntity<?> createLab(@Valid @RequestBody Lab lab) {
         Lab createdLab = labService.createLab(lab);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdLab);
     }
 
-    @PostMapping("create-lab-session")
-    public ResponseEntity<?> createLabSession(@Valid @RequestBody Lab lab, CourseUser courseUser, BindingResult bindingResult) {
-        if (bindingResult.hasErrors()) {
-            // Xử lý lỗi validation
-            Map<String, String> errors = new HashMap<>();
-            bindingResult.getFieldErrors().forEach(error ->
-                    errors.put(error.getField(), error.getDefaultMessage())
-            );
-            return ResponseEntity.badRequest().body(errors);
-        }
-        UserLabSession newUserLabSession = new UserLabSession();
-        return ResponseEntity.status(HttpStatus.CREATED).body(newUserLabSession);
+    @PutMapping("/{labId}")
+    public ResponseEntity<Lab> updateLab(
+            @PathVariable String labId,
+            @Valid @RequestBody Lab lab
+    ) {
+        Lab updatedLab = labService.updateLab(labId, lab);
+        return ResponseEntity.ok(updatedLab);
+    }
+
+    @DeleteMapping("/{labId}")
+    public ResponseEntity<?> deleteLab(@PathVariable String labId) {
+        boolean isDeleted = labService.deleteLab(labId);
+        return ResponseEntity.ok(Map.of("message", "Lab with id " + labId + " has been deleted successfully."));
     }
 
     @GetMapping("test")

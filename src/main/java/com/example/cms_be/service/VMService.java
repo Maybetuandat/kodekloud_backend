@@ -1,6 +1,7 @@
 package com.example.cms_be.service;
 
 import com.example.cms_be.model.Lab;
+import com.example.cms_be.model.User;
 import com.example.cms_be.model.UserLabSession;
 import com.example.cms_be.repository.UserLabSessionRepository;
 import com.google.gson.Gson;
@@ -133,7 +134,6 @@ public class VMService {
             log.error("!!! Kubernetes API Error for session {}. Status Code: {}. Response Body: {}",
                     session.getId(), e.getCode(), e.getResponseBody(), e);
 
-            // Cập nhật trạng thái FAILED vào database
             log.error("Updating session {} status to FAILED.", session.getId());
             session.setStatus("FAILED");
             userLabSessionRepository.save(session);
@@ -141,7 +141,6 @@ public class VMService {
         } catch (Exception e) {
             log.error("Unexpected error provisioning VM for session {}", session.getId(), e);
 
-            // Cập nhật trạng thái FAILED vào database
             log.error("Updating session {} status to FAILED.", session.getId());
             session.setStatus("FAILED");
             userLabSessionRepository.save(session);
@@ -207,5 +206,10 @@ public class VMService {
         log.info("Creating Service '{}'...", serviceName);
         coreApi.createNamespacedService(namespace, serviceBody, null, null, null, null);
         log.info("Service '{}' created successfully.", serviceName);
+    }
+
+    @Async
+    public void excuteSetupStep(Lab lab, User user) {
+
     }
 }

@@ -89,7 +89,6 @@ public class LabService {
      */
     public boolean deleteLab(String id) {
         try {
-
             labRepository.deleteById(id);
             return true;
         }

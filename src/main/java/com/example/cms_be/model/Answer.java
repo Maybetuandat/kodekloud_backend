@@ -1,7 +1,6 @@
 package com.example.cms_be.model;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
