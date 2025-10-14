@@ -13,16 +13,16 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Data
-@Table(name = "lab")
+@Table(name = "labs")
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Lab {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false, unique = true)
-    private String id; 
+    private Integer id;
 
     @NotBlank(message = "Tên lab không được để trống")
     private String name; 

@@ -12,7 +12,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface CourseUserRepository extends JpaRepository<CourseUser, String> {
+public interface CourseUserRepository extends JpaRepository<CourseUser, Integer> {
 
     @Query("SELECT CASE WHEN COUNT(cu) > 0 THEN TRUE ELSE FALSE END " +
             "FROM CourseUser cu " +

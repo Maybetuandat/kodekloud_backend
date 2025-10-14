@@ -9,7 +9,7 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
 import com.example.cms_be.repository.LabRepository;
-import com.example.cms_be.repository.SetupExecutionLogRepository;
+
 import com.example.cms_be.repository.SetupStepRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -22,8 +22,8 @@ public class LabService {
 
     private final LabRepository labRepository;
     private final SetupStepRepository setupStepRepository;
-    private final SetupExecutionLogRepository setupExecutionLogRepository;
-    private final KubernetesService kubernetesService;
+    
+    
 
    public Page<Lab> getAllLabs(Pageable pageable, Boolean isActive, String searchTerm) {
        return labRepository.findWithFilters(searchTerm, isActive, pageable);
@@ -44,7 +44,7 @@ public class LabService {
       /**
      * Lấy thông tin lab theo ID
      */
-    public Optional<Lab> getLabById(String id) {
+    public Optional<Lab> getLabById(Integer id) {
         try {
             return labRepository.findById(id);
         } catch (Exception e) {
@@ -55,7 +55,7 @@ public class LabService {
      /**
      * Cập nhật thông tin lab
      */
-    public Lab updateLab(String id, Lab labUpdate) {
+    public Lab updateLab(Integer id, Lab labUpdate) {
         try {
             Optional<Lab> existingLabOpt = labRepository.findById(id);
             if (existingLabOpt.isEmpty()) {
@@ -87,7 +87,7 @@ public class LabService {
     /**
      * Xóa lab
      */
-    public boolean deleteLab(String id) {
+    public boolean deleteLab(Integer id) {
         try {
             labRepository.deleteById(id);
             return true;
@@ -101,7 +101,7 @@ public class LabService {
     /**
      * Kích hoạt/vô hiệu hóa lab
      */
-    public Lab toggleLabStatus(String id) {
+    public Lab toggleLabStatus(Integer id) {
         try {
             Optional<Lab> labOpt = labRepository.findById(id);
             if (labOpt.isEmpty()) {
@@ -122,7 +122,7 @@ public class LabService {
     /**
      * Lấy danh sách setup steps của lab
      */
-    public List<SetupStep> getLabSetupSteps(String labId) {
+    public List<SetupStep> getLabSetupSteps(Integer labId) {
         try {
             return setupStepRepository.findByLabIdOrderByStepOrder(labId);
         } catch (Exception e) {

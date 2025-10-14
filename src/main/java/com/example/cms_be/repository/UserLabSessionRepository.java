@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface UserLabSessionRepository extends JpaRepository<UserLabSession, String> {
+public interface UserLabSessionRepository extends JpaRepository<UserLabSession, Integer> {
 
     @Query("SELECT uls FROM UserLabSession uls " +
             "WHERE uls.courseUser.user.id = :userId " +
@@ -19,8 +19,8 @@ public interface UserLabSessionRepository extends JpaRepository<UserLabSession, 
             "AND uls.status IN :statuses " +
             "ORDER BY uls.createdAt DESC")
     Optional<UserLabSession> findActiveSessionByUserAndLab(
-            @Param("userId") String userId,
-            @Param("labId") String labId,
+            @Param("userId") Integer userId,
+            @Param("labId") Integer labId,
             @Param("statuses") List<String> statuses
     );
 }

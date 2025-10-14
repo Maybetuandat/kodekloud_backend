@@ -12,15 +12,15 @@ import java.util.List;
 
 @Entity
 @Data
-@Table(name = "course")
+@Table(name = "courses")
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Course {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false, unique = true)
-    private String id;
+    private Integer id;
 
     @Column(name = "title")
     @NotBlank(message = "title không được để trống")

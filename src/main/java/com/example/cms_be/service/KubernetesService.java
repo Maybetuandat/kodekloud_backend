@@ -173,7 +173,7 @@ public class KubernetesService {
 
     private Map<String, String> createLabels(Lab lab) {
         Map<String, String> labels = new HashMap<>();
-        labels.put("lab-id", lab.getId());
+        labels.put("lab-id", lab.getId().toString());
         labels.put("created-by", "admin");
         return labels;
     }

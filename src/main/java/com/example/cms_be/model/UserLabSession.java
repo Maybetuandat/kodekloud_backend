@@ -20,9 +20,9 @@ import lombok.NoArgsConstructor;
 public class UserLabSession {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false, unique = true)
-    private String id;
+    private Integer id;
 
     //private CourseUser courseUser;
     //private SetupQuestionLog setupQuestionLog;
@@ -49,9 +49,7 @@ public class UserLabSession {
     @JoinColumn(name = "lab_id", nullable = false)
     private Lab lab;
 
-    @JsonIgnore
-    @OneToMany(mappedBy = "labSession", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<SetupExecutionLog> setupExecutionLogs;
+    
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)

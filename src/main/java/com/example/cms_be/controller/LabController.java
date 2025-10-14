@@ -64,7 +64,7 @@ public class LabController {
 
     @PutMapping("/{labId}")
     public ResponseEntity<Lab> updateLab(
-            @PathVariable String labId,
+            @PathVariable Integer labId,
             @Valid @RequestBody Lab lab
     ) {
         Lab updatedLab = labService.updateLab(labId, lab);
@@ -72,7 +72,7 @@ public class LabController {
     }
 
     @DeleteMapping("/{labId}")
-    public ResponseEntity<?> deleteLab(@PathVariable String labId) {
+    public ResponseEntity<?> deleteLab(@PathVariable Integer labId) {
         boolean isDeleted = labService.deleteLab(labId);
         return ResponseEntity.ok(Map.of("message", "Lab with id " + labId + " has been deleted successfully."));
     }

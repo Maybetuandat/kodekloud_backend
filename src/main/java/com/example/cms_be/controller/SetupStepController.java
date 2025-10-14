@@ -21,7 +21,7 @@ import com.example.cms_be.service.LabService;
 import com.example.cms_be.service.SetupStepService;
 
 import jakarta.validation.Valid;
-import lombok.NoArgsConstructor;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -39,7 +39,7 @@ public class SetupStepController {
      * GET /api/lab/{id}/setup-steps
      */
     @GetMapping("/{labId}")
-    public ResponseEntity<?> getLabSetupSteps(@PathVariable String labId) {
+    public ResponseEntity<?> getLabSetupSteps(@PathVariable Integer labId) {
         try {
             var setupSteps = labService.getLabSetupSteps(labId);
             return ResponseEntity.ok(setupSteps);
@@ -57,7 +57,7 @@ public class SetupStepController {
      */
     @PostMapping("/{labId}")
     public ResponseEntity<?> createSetupStep(
-        @PathVariable String labId,
+        @PathVariable Integer labId,
         @Valid @RequestBody SetupStep setupStep,
         BindingResult bindingResult) {
 
@@ -86,7 +86,7 @@ public class SetupStepController {
      */
 
     @PostMapping("/batch/{labId}")
-    public ResponseEntity<?> createBatchSetupSteps(@PathVariable String labId,
+    public ResponseEntity<?> createBatchSetupSteps(@PathVariable Integer labId,
                                                    @Valid @RequestBody List<SetupStep> setupSteps,
                                                    BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
@@ -150,7 +150,7 @@ public class SetupStepController {
      * DELETE /api/setup-step/{id}
     */
     @DeleteMapping("/{setupStepId}")
-    public ResponseEntity<?> deleteSetupStep(@PathVariable String setupStepId) {
+    public ResponseEntity<?> deleteSetupStep(@PathVariable Integer setupStepId) {
         try {
             boolean deleted = setupStepService.deleteSetupStep(setupStepId);
             if (deleted) {
@@ -176,7 +176,7 @@ public class SetupStepController {
      * DELETE /api/setup-step/batch
      */
     @DeleteMapping("/batch")
-    public ResponseEntity<?> deleteBatchSetupSteps(@RequestBody List<String> setupStepIds) {
+    public ResponseEntity<?> deleteBatchSetupSteps(@RequestBody List<Integer> setupStepIds) {
         try {
             if (setupStepIds == null || setupStepIds.isEmpty()) {
                 Map<String, String> error = new HashMap<>();

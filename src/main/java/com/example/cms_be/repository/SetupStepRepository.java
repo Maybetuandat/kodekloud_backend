@@ -6,8 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.example.cms_be.model.SetupStep;
 
-public interface SetupStepRepository  extends JpaRepository<SetupStep, String> {
+public interface SetupStepRepository  extends JpaRepository<SetupStep, Integer> {
 
-    List<SetupStep> findByLabIdOrderByStepOrder(String labId);
+    List<SetupStep> findByLabIdOrderByStepOrder(Integer labId);
 
 }

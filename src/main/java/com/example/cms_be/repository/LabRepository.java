@@ -8,7 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import com.example.cms_be.model.Lab;
 
-public interface LabRepository extends JpaRepository<Lab, String> {
+public interface LabRepository extends JpaRepository<Lab, Integer> {
 
     /**
      * @param search Chuỗi ký tự để tìm trong name, description, và baseImage.

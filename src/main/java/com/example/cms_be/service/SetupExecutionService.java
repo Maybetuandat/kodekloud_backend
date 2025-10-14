@@ -25,7 +25,7 @@ public class SetupExecutionService {
     /**
      * Thực thi setup steps cho Admin test - HOÀN TOÀN TUẦN TỰ với FULL BACKEND LOGGING
      */
-    public boolean executeSetupStepsForAdminTest(String labId, String podName) {
+    public boolean executeSetupStepsForAdminTest(Integer labId, String podName) {
         try {
             return executeSetupStepsSequentially(labId, podName);
         } catch (Exception e) {
@@ -39,7 +39,7 @@ public class SetupExecutionService {
     /**
      * Thực thi setup steps HOÀN TOÀN TUẦN TỰ với ENHANCED BACKEND LOGGING
      */
-    private boolean executeSetupStepsSequentially(String labId, String podName) throws Exception {
+    private boolean executeSetupStepsSequentially(Integer labId, String podName) throws Exception {
         log.info("========================================");
         log.info("🔥 STARTING SEQUENTIAL SETUP EXECUTION");
         log.info("🏷️ LAB ID: {}", labId);

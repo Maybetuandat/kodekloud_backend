@@ -29,9 +29,9 @@ import lombok.NoArgsConstructor;
 public class SetupStep {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false, unique = true)
-    private String id;
+    private Integer id;
     
     @Column(name = "step_order", nullable = false)
     private Integer stepOrder; 
@@ -68,7 +68,5 @@ public class SetupStep {
     private Lab lab;
 
 
-    @JsonIgnore
-    @OneToMany(mappedBy = "setupStep", fetch = FetchType.LAZY)
-    private List<SetupExecutionLog> setupExecutionLogs;
+  
 }

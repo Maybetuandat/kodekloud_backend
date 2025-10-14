@@ -11,16 +11,16 @@ import java.util.List;
 
 @Entity
 @Data
-@Table(name = "courseuser")
+@Table(name = "course_users")
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class CourseUser {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false, unique = true)
-    private String id;
+    private Integer id;
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)

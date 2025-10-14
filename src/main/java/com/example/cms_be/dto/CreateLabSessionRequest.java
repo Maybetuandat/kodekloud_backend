@@ -4,8 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 
 public record CreateLabSessionRequest(
         @NotBlank(message = "labId không được để trống")
-        String labId,
+        Integer labId,
 
         @NotBlank(message = "userId không được để trống")
-        String userId
+        Integer userId
 ) {}

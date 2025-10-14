@@ -30,7 +30,7 @@ public class LabSessionService {
     private final VMService vmService;
 
     @Transactional
-    public UserLabSession createAndStartSession(String labId, String userId) throws IOException, ApiException {
+    public UserLabSession createAndStartSession(Integer labId, Integer userId) throws IOException, ApiException {
         Lab lab = labRepository.findById(labId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Lab với ID: " + labId));
 
