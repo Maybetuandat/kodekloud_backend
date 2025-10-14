@@ -18,12 +18,12 @@ public interface LabRepository extends JpaRepository<Lab, Integer> {
      */
     @Query("SELECT l FROM Lab l WHERE " +
             "(:isActive IS NULL OR l.isActive = :isActive) AND " +
-            "(:search IS NULL OR :search = '' OR " +
-            "(LOWER(l.name) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-            "LOWER(l.description) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-            "LOWER(l.baseImage) LIKE LOWER(CONCAT('%', :search, '%'))))")
+            "(:keyword IS NULL OR :keyword = '' OR " +
+            "(LOWER(l.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(l.description) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(l.baseImage) LIKE LOWER(CONCAT('%', :keyword, '%'))))")
     Page<Lab> findWithFilters(
-            @Param("search") String search,
+            @Param("keyword") String keyword,
             @Param("isActive") Boolean isActive,
             Pageable pageable
     );

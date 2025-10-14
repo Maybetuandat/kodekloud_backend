@@ -23,24 +23,28 @@ public class User {
     @Column(name = "id", nullable = false, unique = true)
     private Integer id;
 
-    @Column(name = "fullname")
-    @NotBlank(message = "Tên user không được để trống")
-    private String fullname;
+    @Column(name = "last_name")
+    private String lastName;
+
+    @Column(name="first_name")
+    private String firstName;
 
     @Column(name = "username")
-    @NotBlank(message = "Username không được để trống")
     private String username;
 
     @Column(name = "password")
-    @NotBlank(message = "Password không được để trống")
     private String password;
 
     @Column(name = "email")
-    @NotBlank(message = "Email không được để trống")
     private String email;
 
+    @Column(name = "phone_number")
+    private String phoneNumber;
+
+    @Column(name = "is_active")
+    private Boolean isActive ;
+
     @Column(name = "role")
-    @NotBlank(message = "role cho user")
     private String role;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

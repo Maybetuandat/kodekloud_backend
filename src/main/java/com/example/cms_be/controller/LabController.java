@@ -1,26 +1,25 @@
 package com.example.cms_be.controller;
 
-import com.example.cms_be.service.VMService;
+
 import org.springframework.web.bind.annotation.*;
 
 import com.example.cms_be.model.Lab;
-import com.example.cms_be.service.KubernetesService;
+
 import com.example.cms_be.service.LabService;
-import com.example.cms_be.service.SetupExecutionService;
-import com.example.cms_be.ultil.SocketConnectionInfo;
+
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
+
 import java.util.HashMap;
-import java.util.List;
+
 import java.util.Map;
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.BindingResult;
+
 
 
 @Slf4j
@@ -58,8 +57,13 @@ public class LabController {
 
     @PostMapping()
     public ResponseEntity<?> createLab(@Valid @RequestBody Lab lab) {
-        Lab createdLab = labService.createLab(lab);
+        try {
+            Lab createdLab = labService.createLab(lab);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdLab);
+        } catch (Exception e) {
+            log.error("Error creating lab: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @PutMapping("/{labId}")
@@ -67,18 +71,25 @@ public class LabController {
             @PathVariable Integer labId,
             @Valid @RequestBody Lab lab
     ) {
-        Lab updatedLab = labService.updateLab(labId, lab);
+       try {
+         Lab updatedLab = labService.updateLab(labId, lab);
         return ResponseEntity.ok(updatedLab);
+       } catch (Exception e) {
+           log.error("Error updating lab: {}", e.getMessage());
+           return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+       }
     }
 
     @DeleteMapping("/{labId}")
     public ResponseEntity<?> deleteLab(@PathVariable Integer labId) {
-        boolean isDeleted = labService.deleteLab(labId);
+       try {
+         boolean isDeleted = labService.deleteLab(labId);
         return ResponseEntity.ok(Map.of("message", "Lab with id " + labId + " has been deleted successfully."));
+       } catch (Exception e) {
+           log.error("Error deleting lab: {}", e.getMessage());
+           return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+       }
     }
 
-    @GetMapping("test")
-    public int testLab() {
-        return 1;
-    }
+   
 }

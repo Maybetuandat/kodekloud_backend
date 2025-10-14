@@ -25,8 +25,8 @@ public class LabService {
     
     
 
-   public Page<Lab> getAllLabs(Pageable pageable, Boolean isActive, String searchTerm) {
-       return labRepository.findWithFilters(searchTerm, isActive, pageable);
+   public Page<Lab> getAllLabs(Pageable pageable, Boolean isActive, String keyword) {
+       return labRepository.findWithFilters(keyword, isActive, pageable);
    }
 
     public Lab createLab(Lab lab) {
