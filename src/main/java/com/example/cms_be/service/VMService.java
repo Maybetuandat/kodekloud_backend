@@ -1,6 +1,7 @@
 package com.example.cms_be.service;
 
 import com.example.cms_be.model.Lab;
+import com.example.cms_be.model.SetupStep;
 import com.example.cms_be.model.User;
 import com.example.cms_be.model.UserLabSession;
 import com.example.cms_be.repository.UserLabSessionRepository;
@@ -32,6 +33,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -50,101 +53,32 @@ public class VMService {
     private static final String CDI_VERSION = "v1beta1";
     private static final String CDI_PLURAL_DV = "datavolumes";
 
-    private CustomObjectsApi customApi;
-    private ApiClient client;
-    private CoreV1Api coreApi;
+    private final CustomObjectsApi customApi;
+    private final ApiClient client;
+    private final CoreV1Api coreApi;
     private Exec exec;
 
-    private UserLabSessionRepository userLabSessionRepository;
+    private static final int defaultSshPort = 22;
 
+    private final UserLabSessionRepository userLabSessionRepository;
+
+    private final SetupExecutionService setupExecutionService;
+
+    @Getter
     @Value("${kubernetes.namespace:default}")
     private String namespace;
 
-    @Value("${kubernetes.config.file.path:}")
-    private String kubeConfigPath;
+    @Value("${app.execution-environment}")
+    private String executionEnvironment;
 
-    /**
-     * Get namespace being used
-     */
-    public String getNamespace() {
-        return namespace;
-    }
+    public void createKubernetesResourcesForSession(UserLabSession session) throws IOException, ApiException {
+        String vmName = "vm-" + session.getId();
+        String namespace = session.getLab().getNamespace();
+        Lab lab = session.getLab();
 
-    /**
-     * Get API client
-     */
-    public CoreV1Api getApi() {
-        return coreApi;
-    }
-
-    @PostConstruct
-    public void init() {
-        try {
-            if (StringUtils.hasText(kubeConfigPath)) {
-                log.info("Using Kubernetes config from: {}", kubeConfigPath);
-                client = loadConfigFromFile(kubeConfigPath);
-            } else {
-                log.info("Using default Kubernetes config");
-                client = Config.defaultClient();
-            }
-
-            Configuration.setDefaultApiClient(client);
-            coreApi = new CoreV1Api();
-            customApi = new CustomObjectsApi(client); // Khởi tạo CustomObjectsApi
-            log.info("Kubernetes client initialized successfully");
-
-        } catch (Exception e) {
-            log.error("Error initializing Kubernetes client: {}", e.getMessage());
-            throw new RuntimeException("Failed to initialize Kubernetes client", e);
-        }
-    }
-
-    private ApiClient loadConfigFromFile(String configPath) throws Exception {
-        File configFile = new File(configPath);
-
-        if (!configFile.exists()) {
-            throw new RuntimeException("Kubernetes config file not found at: " + configPath);
-        }
-
-        try (FileReader reader = new FileReader(configFile)) {
-            KubeConfig kubeConfig = KubeConfig.loadKubeConfig(reader);
-            return ClientBuilder.kubeconfig(kubeConfig).build();
-        } catch (Exception e) {
-            log.error("Failed to load config from file {}: {}", configPath, e.getMessage());
-            throw new RuntimeException("Failed to load Kubernetes config from file: " + configPath, e);
-        }
-    }
-
-    @Async
-    public void provisionVmForSession(UserLabSession session) throws ApiException, IOException {
-        try {
-            log.info("Starting virtual machine creation process for '{}'...", session.getLab().getName());
-
-            Lab lab = session.getLab();
-            String vmName = "vm-" + lab.getId();
-
-            System.out.println(vmName + "\n" + lab.getNamespace() + "\n" + lab.getBaseImage() + "\n" + lab.getStorage() + "\n" + lab.getMemory());
-
-            createDataVolumeFromTemplate(vmName, lab.getNamespace(), lab.getBaseImage(), lab.getStorage());
-            createVirtualMachineFromTemplate(vmName, lab.getNamespace(), lab.getMemory());
-            createSshServiceForVM(vmName, lab.getNamespace());
-
-            log.info("Successfully completed virtual machine creation process for '{}'.", lab.getName());
-        } catch (ApiException e) {
-            log.error("!!! Kubernetes API Error for session {}. Status Code: {}. Response Body: {}",
-                    session.getId(), e.getCode(), e.getResponseBody(), e);
-
-            log.error("Updating session {} status to FAILED.", session.getId());
-            session.setStatus("FAILED");
-            userLabSessionRepository.save(session);
-
-        } catch (Exception e) {
-            log.error("Unexpected error provisioning VM for session {}", session.getId(), e);
-
-            log.error("Updating session {} status to FAILED.", session.getId());
-            session.setStatus("FAILED");
-            userLabSessionRepository.save(session);
-        }
+        createDataVolumeFromTemplate(vmName, namespace, lab.getBaseImage(), lab.getStorage());
+        createVirtualMachineFromTemplate(vmName, namespace, lab.getMemory());
+        createSshServiceForVM(vmName, namespace);
     }
 
     private String loadAndRenderTemplate(String templatePath, Map<String, String> values) throws IOException {
@@ -200,16 +134,18 @@ public class VMService {
                         .putSelectorItem("app", name)
                         .addPortsItem(new V1ServicePort()
                                 .protocol("TCP")
-                                .port(22)
-                                .targetPort(new IntOrString(22))));
+                                .port(defaultSshPort)
+                                .targetPort(new IntOrString(defaultSshPort))));
 
         log.info("Creating Service '{}'...", serviceName);
         coreApi.createNamespacedService(namespace, serviceBody, null, null, null, null);
         log.info("Service '{}' created successfully.", serviceName);
     }
 
-    @Async
-    public void excuteSetupStep(Lab lab, User user) {
 
+    private void updateSessionStatus(UserLabSession session, String status) {
+        log.info("Updating session {} status from '{}' to '{}'.", session.getId(), session.getStatus(), status);
+        session.setStatus(status);
+        userLabSessionRepository.save(session);
     }
 }

@@ -27,7 +27,8 @@ public class LabSessionService {
     private final UserRepository userRepository;
     private final CourseUserRepository courseUserRepository;
     private final UserLabSessionRepository userLabSessionRepository;
-    private final VMService vmService;
+
+    private final LabOrchestrationService orchestrationService;
 
     @Transactional
     public UserLabSession createAndStartSession(String labId, String userId) throws IOException, ApiException {
@@ -53,18 +54,16 @@ public class LabSessionService {
 
         UserLabSession session = new UserLabSession();
         session.setLab(lab);
-
         session.setSetupStartedAt(LocalDateTime.now());
         session.setStatus("PENDING");
         CourseUser courseUser = courseUserRepository.findByUserAndCourse(user, lab.getCourse())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bản ghi đăng ký khóa học (CourseUser) tương ứng."));
-
         session.setCourseUser(courseUser);
 
         UserLabSession savedSession = userLabSessionRepository.save(session);
         log.info("Created UserLabSession {} for user {}", savedSession.getId(), userId);
 
-        vmService.provisionVmForSession(savedSession);
+        orchestrationService.provisionAndSetupLab(savedSession);
 
         return savedSession;
     }

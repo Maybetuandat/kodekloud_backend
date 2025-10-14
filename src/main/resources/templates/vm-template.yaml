@@ -34,4 +34,13 @@ spec:
             claimName: "{{NAME}}"
         - name: cloudinitdisk
           cloudInitNoCloud:
-            userData: "#cloud-config\nuser: ubuntu\npassword: 1234\nchpasswd: { expire: false }\nssh_pwauth: true"
+            userData: |
+              #cloud-config
+              ssh_pwauth: true
+              users:
+                - name: ubuntu
+                  groups: [adm, sudo]
+                  shell: /bin/bash
+                  sudo: ['ALL=(ALL) NOPASSWD:ALL']
+                  plain_text_passwd: '1234'
+                  lock_passwd: false
