@@ -32,6 +32,9 @@ public class Course {
     @Column(name = "level")
     private String level;
 
+    @Column(name = "is_active")
+    private Boolean isActive;
+
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<CourseUser> listCourseUser;
 }

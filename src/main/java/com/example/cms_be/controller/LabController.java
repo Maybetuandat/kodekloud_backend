@@ -16,9 +16,14 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.HashMap;
 
 import java.util.Map;
+import java.util.Optional;
+
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
 
 
 
@@ -55,6 +60,18 @@ public class LabController {
         }
     }
 
+    @GetMapping("/{labId}")
+    public ResponseEntity<?> getLabById(@PathVariable Integer labId) {
+        try {
+            Optional<Lab> lab = labService.getLabById(labId);
+            return lab.map(ResponseEntity::ok)
+                      .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+        } catch (Exception e) {
+            log.error("Error getting lab: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
     @PostMapping()
     public ResponseEntity<?> createLab(@Valid @RequestBody Lab lab) {
         try {
