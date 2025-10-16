@@ -52,7 +52,7 @@ public class LabOrchestrationService {
         }
     }
 
-    private void updateSessionStatus(String sessionId, String status) {
+    private void updateSessionStatus(Integer sessionId, String status) {
         userLabSessionRepository.findById(sessionId).ifPresent(session -> {
             log.info("Orchestrator: Updating session {} status to '{}'.", sessionId, status);
             session.setStatus(status);

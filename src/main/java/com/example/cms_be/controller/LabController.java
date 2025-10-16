@@ -12,7 +12,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-
+import java.nio.file.Path;
 import java.util.HashMap;
 
 import java.util.Map;
@@ -72,16 +72,7 @@ public class LabController {
         }
     }
     
-    @PostMapping()
-    public ResponseEntity<?> createLab(@Valid @RequestBody Lab lab) {
-        try {
-            Lab createdLab = labService.createLab(lab);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdLab);
-        } catch (Exception e) {
-            log.error("Error creating lab: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
+   
 
     @PutMapping("/{labId}")
     public ResponseEntity<Lab> updateLab(

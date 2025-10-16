@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.cms_be.model.Course;
 import com.example.cms_be.model.Lab;
 import com.example.cms_be.service.CourseService;
+import com.example.cms_be.service.LabService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class CourseController {
 
     private final CourseService courseService;
+    private final LabService labService;
     
     @GetMapping()
     public ResponseEntity<?> getAllLabs(
@@ -70,6 +72,18 @@ public class CourseController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+    @PostMapping("/{courseId}/labs")
+    public ResponseEntity<?> createLab(@RequestBody Lab lab, @PathVariable Integer courseId) {
+        try {
+            Lab createdLab = labService.createLab(lab, courseId);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdLab);
+        } catch (Exception e) {
+            log.error("Error creating lab: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
     
     @PutMapping("/{courseId}")
     public ResponseEntity<Course> updateCourse(

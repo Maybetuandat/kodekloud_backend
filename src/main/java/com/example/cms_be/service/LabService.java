@@ -8,6 +8,7 @@ import com.example.cms_be.model.*;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
+import com.example.cms_be.repository.CourseRepository;
 import com.example.cms_be.repository.LabRepository;
 
 import com.example.cms_be.repository.SetupStepRepository;
@@ -22,6 +23,7 @@ public class LabService {
 
     private final LabRepository labRepository;
     private final SetupStepRepository setupStepRepository;
+    private final CourseRepository courseRepository;
     
     
 
@@ -29,11 +31,18 @@ public class LabService {
        return labRepository.findWithFilters(keyword, isActive, pageable);
    }
 
-    public Lab createLab(Lab lab) {
+    public Lab createLab(Lab lab, Integer courseId) {
         Lab createLab = new Lab();
 
         try{
+            Course course = courseRepository.findById(courseId).orElse(null);
+            if (course != null) {
+                lab.setCourse(course);
+            }
+
             createLab = labRepository.save(lab);
+            log.info("Lab created successfully with ID: {}", createLab.getId());
+
         }
         catch (Exception e) {
             log.error("Error creating lab: {}", e.getMessage());
