@@ -1,13 +1,13 @@
 package com.example.cms_be.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -31,6 +31,16 @@ public class Course {
 
     @Column(name = "level")
     private String level;
+
+    @Column(name = "duration_minutes")
+
+    private Integer durationMinutes;  
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "short_description")
+    private String shortDescription;
 
     @Column(name = "is_active")
     private Boolean isActive;

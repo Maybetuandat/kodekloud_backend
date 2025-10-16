@@ -44,8 +44,7 @@ public class LabSessionService {
 
         // check exist session
         List<String> activeStatuses = List.of("PENDING", "RUNNING");
-        Optional<UserLabSession> existingSession = userLabSessionRepository
-                .findActiveSessionByUserAndLab(userId, labId, activeStatuses);
+        Optional<UserLabSession> existingSession = userLabSessionRepository.findActiveSessionByUserAndLab(userId, labId, activeStatuses);
         if (existingSession.isPresent()) {
             log.info("User {} already has an active session for lab {}. Returning existing session.", userId, labId);
             return existingSession.get();
