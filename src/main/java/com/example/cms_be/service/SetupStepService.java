@@ -111,7 +111,7 @@ public class SetupStepService {
             
             
 
-           
+
             // Update fields
             if (setupStepUpdate.getStepOrder() != null &&  !setupStepUpdate.getStepOrder().equals(existingStep.getStepOrder())) {
                 existingStep.setStepOrder(setupStepUpdate.getStepOrder());
