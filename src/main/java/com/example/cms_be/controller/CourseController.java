@@ -38,25 +38,29 @@ public class CourseController {
     
     @GetMapping("")
     public ResponseEntity<?> getAllCourses(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(name = "page", defaultValue = "1") int page,
+            @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Boolean isActive
     ) {
         try {
-            Pageable pageable = PageRequest.of(page, size);
+            int pageNumber = page > 0 ? page - 1 : 0;
+
+            System.err.println("Search parameter: '" + search + "'" + pageSize);
+            Pageable pageable = PageRequest.of(pageNumber, pageSize);
+
+            if (search != null) {
+                search = search.trim(); 
+            }
             Page<Course> coursePage = courseService.getAllCourses(pageable, isActive, search);
 
-           
             Map<String, Object> response = new HashMap<>();
             response.put("data", coursePage.getContent());
-            response.put("currentPage", coursePage.getNumber());
+            response.put("currentPage", coursePage.getNumber() + 1); 
             response.put("totalItems", coursePage.getTotalElements());
             response.put("totalPages", coursePage.getTotalPages());
             response.put("hasNext", coursePage.hasNext());
             response.put("hasPrevious", coursePage.hasPrevious());
-
-            // System.err.println(response);
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
