@@ -24,7 +24,7 @@ public class Lab {
     @Column(name = "id", nullable = false, unique = true)
     private Integer id;
 
-    @NotBlank(message = "Tên lab không được để trống")
+    @Column(name = "name", nullable = false)
     private String name; 
 
     private String description;
@@ -41,9 +41,9 @@ public class Lab {
     @Column(name = "memory", nullable = true)
     private String memory;
 
-    @NotNull(message = "Thời gian ước tính không được null, đơn vị tính là phút")
-    @Min(value = 1, message = "Thời gian ước tính phải ít nhất 1 phút")
-    @Max(value = 600, message = "Thời gian ước tính không được vượt quá 600 phút")
+    
+    
+    
     @Column(name = "estimated_time", nullable = true)
     private Integer estimatedTime;
 
@@ -55,11 +55,15 @@ public class Lab {
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "course_id", nullable = true)
+    @JoinColumn(name = "course_id", nullable = false)
     private Course course;
 
     @OneToMany(mappedBy = "lab", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<SetupStep> setupSteps;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "lab", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<UserLabSession> userLabSessions;
 
     @PrePersist
     protected void onCreate() {

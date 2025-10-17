@@ -36,8 +36,8 @@ public class CourseController {
     private final CourseService courseService;
     private final LabService labService;
     
-    @GetMapping()
-    public ResponseEntity<?> getAllLabs(
+    @GetMapping("")
+    public ResponseEntity<?> getAllCourses(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String search,
@@ -47,6 +47,7 @@ public class CourseController {
             Pageable pageable = PageRequest.of(page, size);
             Page<Course> coursePage = courseService.getAllCourses(pageable, isActive, search);
 
+           
             Map<String, Object> response = new HashMap<>();
             response.put("data", coursePage.getContent());
             response.put("currentPage", coursePage.getNumber());
@@ -55,6 +56,8 @@ public class CourseController {
             response.put("hasNext", coursePage.hasNext());
             response.put("hasPrevious", coursePage.hasPrevious());
 
+            // System.err.println(response);
+
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error getting courses: {}", e.getMessage());
@@ -62,6 +65,20 @@ public class CourseController {
         }
     }
 
+    @GetMapping("/{courseId}")
+    public ResponseEntity<?> getCourseById(@PathVariable Integer courseId) {
+        try {
+            Course course = courseService.getCourseById(courseId);
+            if (course != null) {
+                return ResponseEntity.ok(course);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Course not found");
+            }
+        } catch (Exception e) {
+            log.error("Error getting course by id: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
     @PostMapping()
     public ResponseEntity<?> createCourse(@Valid @RequestBody Course course) {
         try {

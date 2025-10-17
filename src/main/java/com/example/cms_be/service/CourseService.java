@@ -26,6 +26,10 @@ public class CourseService {
         return courseRepository.save(course);
     }
 
+    public Course getCourseById(Integer id) {
+        return courseRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Course not found with id: " + id));
+    }
     public Course updateCourse(Integer id, Course updatedCourse) {
         var existingCourse = courseRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Course not found with id: " + id));

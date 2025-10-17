@@ -10,6 +10,8 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 @Entity
 @Data
 @Table(name = "courses")
@@ -23,7 +25,6 @@ public class Course {
     private Integer id;
 
     @Column(name = "title")
-    @NotBlank(message = "title không được để trống")
     private String title;
 
     @Column(name = "description")
@@ -45,6 +46,11 @@ public class Course {
     @Column(name = "is_active")
     private Boolean isActive;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<CourseUser> listCourseUser;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<Lab> labs;
 }
