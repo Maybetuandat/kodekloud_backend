@@ -1,0 +1,26 @@
+[
+  {
+    "title": "Docker",
+    "description": "Learn how to containerize applications, manage images, and deploy using Docker.",
+    "slug": "docker",
+    "isActive": true,
+    "createdAt": "2025-10-19T15:30:00",
+    "updatedAt": "2025-10-19T15:30:00"
+  },
+  {
+    "title": "Linux",
+    "description": "Covers Linux fundamentals, shell commands, system administration, and server management.",
+    "slug": "linux",
+    "isActive": true,
+    "createdAt": "2025-10-19T15:30:00",
+    "updatedAt": "2025-10-19T15:30:00"
+  },
+  {
+    "title": "Git",
+    "description": "Version control with Git: commits, branches, merges, and collaboration using GitHub or GitLab.",
+    "slug": "git",
+    "isActive": true,
+    "createdAt": "2025-10-19T15:30:00",
+    "updatedAt": "2025-10-19T15:30:00"
+  }
+]
