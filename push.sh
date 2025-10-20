@@ -1,4 +1,3 @@
     git add .
-    git commit -m "feat(model): add Category model and link it to Course
-    BREAKING CHANGE: Course now requires a category_id field."
+    git commit -m "fix: add logic for add new course and filter by category slug"
     git push origin main

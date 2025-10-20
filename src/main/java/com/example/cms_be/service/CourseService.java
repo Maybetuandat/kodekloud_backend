@@ -16,9 +16,9 @@ public class CourseService {
 
     private final CourseRepository courseRepository;
     
-    public Page<Course> getAllCourses(Pageable pageable, Boolean isActive, String keyword)
+    public Page<Course> getAllCourses(Pageable pageable, Boolean isActive, String keyword, String slugCategory)
     {
-        return courseRepository.findWithFilters(keyword, isActive, pageable);
+        return courseRepository.findWithFilters(keyword, isActive, slugCategory, pageable);
     }
 
     public Course createCourse(Course course) {

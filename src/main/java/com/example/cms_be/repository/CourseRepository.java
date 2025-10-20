@@ -8,15 +8,16 @@ import org.springframework.data.repository.query.Param;
 
 import com.example.cms_be.model.Course;
 
-
 public interface CourseRepository extends JpaRepository<Course, Integer> {
-    @Query("SELECT c FROM Course c WHERE " +
-           "(:isActive IS NULL OR c.isActive = :isActive) AND " +
-           "(:keyword IS NULL OR :keyword = '' OR " +
-           "LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    @Query("SELECT c FROM Course c " +
+           "LEFT JOIN c.category cat " +
+           "WHERE (:isActive IS NULL OR c.isActive = :isActive) " +
+           "AND (:keyword IS NULL OR :keyword = '' OR LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+           "AND (:categorySlug IS NULL OR :categorySlug = '' OR cat.slug = :categorySlug)")
     Page<Course> findWithFilters(
             @Param("keyword") String keyword,
             @Param("isActive") Boolean isActive,
+            @Param("categorySlug") String categorySlug,
             Pageable pageable
     );
 }

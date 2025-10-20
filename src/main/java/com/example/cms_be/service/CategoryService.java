@@ -2,6 +2,7 @@ package com.example.cms_be.service;
 
 
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -53,6 +54,8 @@ public class CategoryService {
             existingCategory.setTitle(updatedCategory.getTitle());
             existingCategory.setDescription(updatedCategory.getDescription());
             existingCategory.setIsActive(updatedCategory.getIsActive());
+            existingCategory.setSlug(updatedCategory.getSlug());
+            existingCategory.setUpdatedAt(LocalDateTime.now());
 
             return categoryRepository.save(existingCategory);
         } catch (Exception e) {

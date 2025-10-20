@@ -41,7 +41,8 @@ public class CourseController {
             @RequestParam(name = "page", defaultValue = "1") int page,
             @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) Boolean isActive
+            @RequestParam(required = false) Boolean isActive,
+            @RequestParam(required = false) String slugCategory
     ) {
         try {
             int pageNumber = page > 0 ? page - 1 : 0;
@@ -52,7 +53,8 @@ public class CourseController {
             if (search != null) {
                 search = search.trim(); 
             }
-            Page<Course> coursePage = courseService.getAllCourses(pageable, isActive, search);
+
+            Page<Course> coursePage = courseService.getAllCourses(pageable, isActive, search, slugCategory);
 
             Map<String, Object> response = new HashMap<>();
             response.put("data", coursePage.getContent());
@@ -84,7 +86,8 @@ public class CourseController {
         }
     }
     @PostMapping()
-    public ResponseEntity<?> createCourse(@Valid @RequestBody Course course) {
+    public ResponseEntity<?> createCourse( @RequestBody Course course) {
+        log.info("Creating course: {}", course);
         try {
             Course createdCourse = courseService.createCourse(course);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdCourse);
