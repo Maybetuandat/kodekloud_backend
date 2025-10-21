@@ -1,3 +1,3 @@
     git add .
-    git commit -m "feat(Answer, Question): add logic crud api for add new answer, question"
+    git commit -m "refactor(model): change attribute type description in Course entity to TEXT"
     git push origin main
