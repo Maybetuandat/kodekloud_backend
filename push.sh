@@ -1,3 +1,3 @@
     git add .
-    git commit -m "refactor(model): change attribute type description in Course entity to TEXT"
+    git commit -m "refactor(controller): change updateCourse method to use PATCH"
     git push origin main
