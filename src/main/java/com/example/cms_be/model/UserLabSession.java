@@ -29,13 +29,13 @@ public class UserLabSession {
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
-    
+
     @Column(name = "setup_started_at")
     private LocalDateTime setupStartedAt;
-    
+
     @Column(name = "setup_completed_at")
     private LocalDateTime setupCompletedAt;
-    
+
     @Column(name = "expires_at")
     private LocalDateTime expiresAt;
 
@@ -45,15 +45,15 @@ public class UserLabSession {
     @Column(name = "status")
     private String status;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "lab_id", nullable = false)
     private Lab lab;
 
-    
+
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "courseuser_id", nullable = false)
+    @JoinColumn(name = "courseuser_id", nullable = true)
     private CourseUser courseUser;
 
     @PrePersist
@@ -61,6 +61,6 @@ public class UserLabSession {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
         }
-        
+
     }
 }
