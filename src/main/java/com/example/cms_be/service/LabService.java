@@ -1,6 +1,6 @@
 package com.example.cms_be.service;
 
-import java.util.ArrayList;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -27,8 +27,13 @@ public class LabService {
     
     
 
-   public Page<Lab> getAllLabs(Pageable pageable, Boolean isActive, String keyword) {
-       return labRepository.findWithFilters(keyword, isActive, pageable);
+   public Page<Lab> getAllLabs(Pageable pageable, Boolean isActive, String keyword, Integer courseId) {
+       try {
+        return labRepository.findWithFilters(keyword, isActive,courseId, pageable );
+       } catch (Exception e) {
+           log.error("Error fetching labs: {}", e.getMessage());
+           return Page.empty();
+       }
    }
 
     public Lab createLab(Lab lab, Integer courseId) {
@@ -50,9 +55,6 @@ public class LabService {
         }
         return createLab;
     }
-      /**
-     * Lấy thông tin lab theo ID
-     */
     public Optional<Lab> getLabById(Integer id) {
         try {
             return labRepository.findById(id);
@@ -61,9 +63,6 @@ public class LabService {
             throw new RuntimeException("Failed to fetch lab by ID", e);
         }
     }
-     /**
-     * Cập nhật thông tin lab
-     */
     public Lab updateLab(Integer id, Lab labUpdate) {
         try {
             Optional<Lab> existingLabOpt = labRepository.findById(id);
@@ -92,10 +91,6 @@ public class LabService {
         }
     }
 
-
-    /**
-     * Xóa lab
-     */
     public boolean deleteLab(Integer id) {
         try {
             labRepository.deleteById(id);
@@ -106,10 +101,6 @@ public class LabService {
             throw new RuntimeException("Failed to delete lab", e);
         }
     }
-
-    /**
-     * Kích hoạt/vô hiệu hóa lab
-     */
     public Lab toggleLabStatus(Integer id) {
         try {
             Optional<Lab> labOpt = labRepository.findById(id);
@@ -128,9 +119,6 @@ public class LabService {
             throw new RuntimeException("Failed to toggle lab status", e);
         }
     }
-    /**
-     * Lấy danh sách setup steps của lab
-     */
     public List<SetupStep> getLabSetupSteps(Integer labId) {
         try {
             return setupStepRepository.findByLabIdOrderByStepOrder(labId);

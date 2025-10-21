@@ -4,7 +4,7 @@ services:
   postgres:
     container_name: postgres
     image: postgres:15-alpine
-    restart: always # will always restart the container if it stops
+    restart: always
     environment:
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}

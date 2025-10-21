@@ -58,6 +58,7 @@ public class Lab {
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "lab", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<SetupStep> setupSteps;
 
@@ -65,6 +66,10 @@ public class Lab {
     @OneToMany(mappedBy = "lab", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<UserLabSession> userLabSessions;
 
+
+
+    @OneToMany(mappedBy = "lab", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Question> labQuestions;
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {

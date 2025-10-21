@@ -3,7 +3,6 @@ package com.example.cms_be.model;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,12 +21,8 @@ public class Answer {
     @Column(name = "id", nullable = false, unique = true)
     private Integer id;
 
-    @NotBlank(message = "Nội dung câu trả lời không được để trống")
     @Column(columnDefinition = "TEXT")
     private String content;
-
-    @NotBlank(message = "Loại câu trả lời không được để trống")
-    private String type;
 
     @Column(name = "is_right_ans", nullable = false)
     private Boolean isRightAns;
@@ -39,10 +34,16 @@ public class Answer {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
+        }
+        if (updatedAt == null) {
+            updatedAt = LocalDateTime.now();
         }
         if (isRightAns == null) {
             isRightAns = false;

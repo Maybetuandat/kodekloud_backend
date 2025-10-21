@@ -85,6 +85,34 @@ public class CourseController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+    @GetMapping("/{courseId}/labs")
+    public ResponseEntity<?> getLabByCourseIdWithPagination(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Boolean isActive,
+            @PathVariable Integer courseId
+    ) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Lab> labPage = labService.getAllLabs(pageable, isActive, search, courseId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("data", labPage.getContent());
+            response.put("currentPage", labPage.getNumber());
+            response.put("totalItems", labPage.getTotalElements());
+            response.put("totalPages", labPage.getTotalPages());
+            response.put("hasNext", labPage.hasNext());
+            response.put("hasPrevious", labPage.hasPrevious());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error getting labs: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
     @PostMapping()
     public ResponseEntity<?> createCourse( @RequestBody Course course) {
         log.info("Creating course: {}", course);

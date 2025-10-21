@@ -4,9 +4,9 @@ package com.example.cms_be.controller;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.cms_be.model.Lab;
-
+import com.example.cms_be.model.Question;
 import com.example.cms_be.service.LabService;
-
+import com.example.cms_be.service.QuestionService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,8 +21,6 @@ import java.util.Optional;
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 
 
 
@@ -33,32 +31,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 @RequiredArgsConstructor
 public class LabController {
     private final LabService labService;
-
-    @GetMapping()
-    public ResponseEntity<?> getAllLabs(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) Boolean isActive
-    ) {
-        try {
-            Pageable pageable = PageRequest.of(page, size);
-            Page<Lab> labPage = labService.getAllLabs(pageable, isActive, search);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("data", labPage.getContent());
-            response.put("currentPage", labPage.getNumber());
-            response.put("totalItems", labPage.getTotalElements());
-            response.put("totalPages", labPage.getTotalPages());
-            response.put("hasNext", labPage.hasNext());
-            response.put("hasPrevious", labPage.hasPrevious());
-
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("Error getting labs: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
+    private final QuestionService questionService;
 
     @GetMapping("/{labId}")
     public ResponseEntity<?> getLabById(@PathVariable Integer labId) {
@@ -72,7 +45,53 @@ public class LabController {
         }
     }
     
-   
+
+    @GetMapping("/{labId}/questions")
+   public ResponseEntity<?> getAllQuestionWithPagination(
+            @RequestParam(name = "page", defaultValue = "1") int page,
+            @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String search,
+            @PathVariable Integer labId
+   ) {
+      
+    try {
+        int pageNumber = page > 0 ? page - 1 : 0;
+        if (search != null) {
+            search = search.trim(); 
+        }
+        Pageable pageable = PageRequest.of(pageNumber, pageSize);
+        
+        Page<Question> questionPage = questionService.getAllQuestionsWithPaginations(search, labId, pageable);
+        Map<String, Object> response = Map.of(
+            "data", questionPage.getContent(),
+            "currentPage", questionPage.getNumber() + 1,
+            "totalItems", questionPage.getTotalElements(),
+            "totalPages", questionPage.getTotalPages(), 
+            "hasNext", questionPage.hasNext(),
+            "hasPrevious", questionPage.hasPrevious()
+        );
+        return ResponseEntity.ok(response); 
+    } catch (Exception e) {
+          log.error("Error occurred while fetching questions with search: {}", search, e);
+            return ResponseEntity.status(500).body("An error occurred while fetching questions.");
+    }
+   }
+
+
+
+    @PostMapping("/{labId}/questions")
+    public ResponseEntity<Question> createQuestionInLab(
+            @PathVariable Integer labId,
+            @RequestBody Question question
+    ) {
+       try {
+         Question createdQuestion = questionService.createQuestion(labId, question);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdQuestion);
+       } catch (Exception e) {
+           log.error("Error creating question in lab: {}", e.getMessage());
+           return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+       }
+    }
 
     @PutMapping("/{labId}")
     public ResponseEntity<Lab> updateLab(

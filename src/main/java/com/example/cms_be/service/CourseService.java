@@ -23,12 +23,23 @@ public class CourseService {
 
     public Course createCourse(Course course) {
 
-        return courseRepository.save(course);
+        try {
+            return courseRepository.save(course);
+        } catch (Exception e) {
+            log.error("Error creating course: {}", e.getMessage());
+            throw new RuntimeException("Failed to create course", e);
+        }
+        
     }
 
     public Course getCourseById(Integer id) {
-        return courseRepository.findById(id)
+       try {
+         return courseRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Course not found with id: " + id));
+       } catch (Exception e) {
+           log.error("Error fetching course by id: {}", e.getMessage());
+           throw new RuntimeException("Failed to fetch course", e);
+       }
     }
     public Course updateCourse(Integer id, Course updatedCourse) {
         var existingCourse = courseRepository.findById(id)
