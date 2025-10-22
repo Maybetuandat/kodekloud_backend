@@ -28,7 +28,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) // THÊM DÒNG NÀY
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) 
 public class Category {
 
     @Id

@@ -48,7 +48,7 @@ public class CourseController {
         try {
             int pageNumber = page > 0 ? page - 1 : 0;
 
-            System.err.println("Search parameter: '" + search + "'" + pageSize);
+            System.err.println("Search parameter: '" + search + "'" + pageSize + " " + pageNumber + " " + isActive + " " + slugCategory);
             Pageable pageable = PageRequest.of(pageNumber, pageSize);
 
             if (search != null) {
