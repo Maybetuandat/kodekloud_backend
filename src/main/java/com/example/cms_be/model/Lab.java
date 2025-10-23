@@ -28,8 +28,7 @@ public class Lab {
 
     private String description;
 
-    @Column(name = "base_image", nullable = true)
-    private String baseImage;
+   
 
     @Column(name = "namespace", nullable = true)
     private String namespace;

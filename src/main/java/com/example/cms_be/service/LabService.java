@@ -75,7 +75,7 @@ public class LabService {
             // Update fields
             existingLab.setName(labUpdate.getName());
             existingLab.setDescription(labUpdate.getDescription());
-            existingLab.setBaseImage(labUpdate.getBaseImage());
+            
             existingLab.setEstimatedTime(labUpdate.getEstimatedTime());
 
             if (labUpdate.getIsActive() != null) {

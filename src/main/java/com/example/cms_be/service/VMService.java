@@ -63,6 +63,7 @@ public class VMService {
     private final UserLabSessionRepository userLabSessionRepository;
 
     private final SetupExecutionService setupExecutionService;
+    private final String IMAGE_URL = "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img";
 
     @Getter
     @Value("${kubernetes.namespace:default}")
@@ -76,7 +77,7 @@ public class VMService {
         String namespace = session.getLab().getNamespace();
         Lab lab = session.getLab();
 
-        createDataVolumeFromTemplate(vmName, namespace, lab.getBaseImage(), lab.getStorage());
+        createDataVolumeFromTemplate(vmName, namespace, IMAGE_URL, lab.getStorage());
         createVirtualMachineFromTemplate(vmName, namespace, lab.getMemory());
         createSshServiceForVM(vmName, namespace);
     }
