@@ -5,8 +5,10 @@ import org.springframework.web.bind.annotation.*;
 
 import com.example.cms_be.model.Lab;
 import com.example.cms_be.model.Question;
+import com.example.cms_be.model.SetupStep;
 import com.example.cms_be.service.LabService;
 import com.example.cms_be.service.QuestionService;
+import com.example.cms_be.service.SetupStepService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +23,7 @@ import java.util.Optional;
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
 
 
 
@@ -32,6 +35,7 @@ import org.springframework.http.ResponseEntity;
 public class LabController {
     private final LabService labService;
     private final QuestionService questionService;
+    private final SetupStepService setupStepService;
 
     @GetMapping("/{labId}")
     public ResponseEntity<?> getLabById(@PathVariable Integer labId) {
@@ -78,6 +82,39 @@ public class LabController {
    }
 
 
+
+
+
+    @GetMapping("/{labId}/setup-steps")
+    public ResponseEntity<?> getLabSetupSteps(@PathVariable Integer labId) {
+        try {
+            var setupSteps = labService.getLabSetupSteps(labId);
+            return ResponseEntity.ok(setupSteps);
+        } catch (Exception e) {
+            log.error("Error getting setup steps for lab {}: {}", labId, e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Không thể lấy danh sách setup steps: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+   
+    @PostMapping("/{labId}/setup-steps")
+    public ResponseEntity<?> createSetupStep(
+        @PathVariable Integer labId,
+         @RequestBody SetupStep setupStep) {
+
+       
+        try {
+            SetupStep createdSetupStep = setupStepService.createSetupStep(setupStep,  labId);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdSetupStep);
+        } catch (Exception e) {
+            log.error("Error creating setup step: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Không thể tạo setup step: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
 
     @PostMapping("/{labId}/questions")
     public ResponseEntity<Question> createQuestionInLab(

@@ -19,7 +19,7 @@ public interface LabRepository extends JpaRepository<Lab, Integer> {
             "(:courseId IS NULL OR l.course.id = :courseId) AND " +
             "(:isActive IS NULL OR l.isActive = :isActive) AND " +
             "(:keyword IS NULL OR :keyword = '' OR " +
-            "LOWER(l.name) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+            "LOWER(l.title) LIKE LOWER(CONCAT('%', :keyword, '%')))")
     Page<Lab> findWithFilters(
             @Param("keyword") String keyword,
             @Param("isActive") Boolean isActive,

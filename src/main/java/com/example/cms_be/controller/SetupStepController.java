@@ -31,102 +31,9 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class SetupStepController {
     private final SetupStepService setupStepService;
-    private final LabService labService;
-
-
-    /**
-     * Lấy danh sách setup steps của lab
-     * GET /api/lab/{id}/setup-steps
-     */
-    @GetMapping("/{labId}")
-    public ResponseEntity<?> getLabSetupSteps(@PathVariable Integer labId) {
-        try {
-            var setupSteps = labService.getLabSetupSteps(labId);
-            return ResponseEntity.ok(setupSteps);
-        } catch (Exception e) {
-            log.error("Error getting setup steps for lab {}: {}", labId, e.getMessage());
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Không thể lấy danh sách setup steps: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-        }
-    }
-
-     /**
-     * Tạo mới setup step
-     * POST /api/setup-step/{labId} - Tạo mới setup step cho lab với  labID cụ thể
-     */
-    @PostMapping("/{labId}")
-    public ResponseEntity<?> createSetupStep(
-        @PathVariable Integer labId,
-        @Valid @RequestBody SetupStep setupStep,
-        BindingResult bindingResult) {
-
-        if (bindingResult.hasErrors()) {
-            Map<String, String> errors = new HashMap<>();
-            bindingResult.getFieldErrors().forEach(error -> 
-                errors.put(error.getField(), error.getDefaultMessage())
-            );
-            return ResponseEntity.badRequest().body(errors);
-        }
-
-        try {
-            SetupStep createdSetupStep = setupStepService.createSetupStep(setupStep,  labId);
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdSetupStep);
-        } catch (Exception e) {
-            log.error("Error creating setup step: {}", e.getMessage());
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Không thể tạo setup step: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-        }
-    }
-
-    /**
-     * Tạo nhiều setup steps cùng lúc cho một lab
-     * POST /api/setup-step/batch/{labId}
-     */
-
-    @PostMapping("/batch/{labId}")
-    public ResponseEntity<?> createBatchSetupSteps(@PathVariable Integer labId,
-                                                   @Valid @RequestBody List<SetupStep> setupSteps,
-                                                   BindingResult bindingResult) {
-        if (bindingResult.hasErrors()) {
-            Map<String, String> errors = new HashMap<>();
-            bindingResult.getFieldErrors().forEach(error -> 
-                errors.put(error.getField(), error.getDefaultMessage())
-            );
-            return ResponseEntity.badRequest().body(errors);
-        }
-
-        try {
-            List<SetupStep> createdSetupSteps = setupStepService.createBatchSetupSteps(labId, setupSteps);
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "Đã tạo thành công " + createdSetupSteps.size() + " setup steps cho lab " + labId);
-            response.put("setupSteps", createdSetupSteps);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (Exception e) {
-            log.error("Error creating batch setup steps for lab {}: {}", labId, e.getMessage());
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Không thể tạo batch setup steps: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-        }
-    }
-
-
-
-    /**
-     * Cập nhật setup step
-     * PUT /api/setup-step/ - Cập nhật setup step với ID cụ thể
-     */
+    
     @PutMapping()
-    public ResponseEntity<?> updateSetupStep(@RequestBody SetupStep setupStep,
-                                             BindingResult bindingResult) {
-        if (bindingResult.hasErrors()) {
-            Map<String, String> errors = new HashMap<>();
-            bindingResult.getFieldErrors().forEach(error -> 
-                errors.put(error.getField(), error.getDefaultMessage())
-            );
-            return ResponseEntity.badRequest().body(errors);
-        }
+    public ResponseEntity<?> updateSetupStep(@RequestBody SetupStep setupStep) {
 
         try {
             SetupStep updatedSetupStep = setupStepService.updateSetupStep( setupStep);
@@ -145,10 +52,7 @@ public class SetupStepController {
         }
     }
 
-    /**
-     * Xóa một setup step
-     * DELETE /api/setup-step/{id}
-    */
+   
     @DeleteMapping("/{setupStepId}")
     public ResponseEntity<?> deleteSetupStep(@PathVariable Integer setupStepId) {
         try {
@@ -171,31 +75,6 @@ public class SetupStepController {
     }
 
 
-     /**
-     * Xóa nhiều setup steps cùng lúc
-     * DELETE /api/setup-step/batch
-     */
-    @DeleteMapping("/batch")
-    public ResponseEntity<?> deleteBatchSetupSteps(@RequestBody List<Integer> setupStepIds) {
-        try {
-            if (setupStepIds == null || setupStepIds.isEmpty()) {
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "Danh sách ID setup steps không được để trống");
-                return ResponseEntity.badRequest().body(error);
-            }
-
-            int deletedCount = setupStepService.deleteBatchSetupSteps(setupStepIds);
-            Map<String, Object> response = new HashMap<>();
-            response.put("message", "Đã xóa thành công " + deletedCount + " setup steps");
-            response.put("deletedCount", deletedCount);
-            response.put("requestedCount", setupStepIds.size());
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("Error deleting batch setup steps: {}", e.getMessage());
-            Map<String, String> error = new HashMap<>();
-            error.put("error", "Không thể xóa batch setup steps: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
-        }
-    }
+  
 
 }

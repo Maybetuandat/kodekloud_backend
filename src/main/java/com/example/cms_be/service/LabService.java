@@ -73,7 +73,7 @@ public class LabService {
             Lab existingLab = existingLabOpt.get();
 
             // Update fields
-            existingLab.setName(labUpdate.getName());
+            existingLab.setTitle(labUpdate.getTitle());
             existingLab.setDescription(labUpdate.getDescription());
             
             existingLab.setEstimatedTime(labUpdate.getEstimatedTime());
