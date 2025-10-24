@@ -119,14 +119,7 @@ public class LabService {
             throw new RuntimeException("Failed to toggle lab status", e);
         }
     }
-    public List<SetupStep> getLabSetupSteps(Integer labId) {
-        try {
-            return setupStepRepository.findByLabIdOrderByStepOrder(labId);
-        } catch (Exception e) {
-            log.error("Error fetching setup steps for lab {}: {}", labId, e.getMessage());
-            throw new RuntimeException("Failed to fetch setup steps", e);
-        }
-    }
+   
 
     public UserLabSession createUserLabSession(Lab lab, CourseUser courseUser) {
         UserLabSession newLabSession = new UserLabSession();

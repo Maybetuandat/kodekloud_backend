@@ -14,7 +14,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import java.nio.file.Path;
+
 import java.util.HashMap;
 
 import java.util.Map;
@@ -23,7 +23,7 @@ import java.util.Optional;
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.BindingResult;
+
 
 
 
@@ -88,7 +88,7 @@ public class LabController {
     @GetMapping("/{labId}/setup-steps")
     public ResponseEntity<?> getLabSetupSteps(@PathVariable Integer labId) {
         try {
-            var setupSteps = labService.getLabSetupSteps(labId);
+            var setupSteps = setupStepService.getLabSetupSteps(labId);
             return ResponseEntity.ok(setupSteps);
         } catch (Exception e) {
             log.error("Error getting setup steps for lab {}: {}", labId, e.getMessage());

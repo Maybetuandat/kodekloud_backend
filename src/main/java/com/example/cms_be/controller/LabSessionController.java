@@ -3,14 +3,14 @@ package com.example.cms_be.controller;
 import com.example.cms_be.dto.CreateLabSessionRequest;
 import com.example.cms_be.dto.UserLabSessionResponse;
 import com.example.cms_be.model.UserLabSession;
-import com.example.cms_be.repository.UserLabSessionRepository;
+
 import com.example.cms_be.service.LabSessionService;
-import com.example.cms_be.service.SetupExecutionService;
+
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springdoc.core.service.SecurityService;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,8 +25,8 @@ import java.util.Map;
 public class LabSessionController {
 
     private final LabSessionService labSessionService;
-    private final SetupExecutionService setupExecutionService;
-    private final UserLabSessionRepository userLabSessionRepository;
+    
+    
 
     @PostMapping()
     public ResponseEntity<?> createLabSession(@Valid @RequestBody CreateLabSessionRequest request) {

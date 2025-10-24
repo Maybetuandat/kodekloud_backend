@@ -13,7 +13,7 @@ import com.example.cms_be.model.SetupStep;
 import com.example.cms_be.repository.LabRepository;
 import com.example.cms_be.repository.SetupStepRepository;
 
-import jakarta.transaction.Transactional;
+
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,32 +26,38 @@ public class SetupStepService {
     private final SetupStepRepository setupStepRepository;
 
     private final LabRepository labRepository;
-   
-    /**
-     * Tạo mới setup step
-     */
-    @Transactional
+
+
+
+
+
+    public List<SetupStep> getLabSetupSteps(Integer labId) {
+        try {
+            return setupStepRepository.findByLabIdOrderByStepOrder(labId);
+        } catch (Exception e) {
+            log.error("Error fetching setup steps for lab {}: {}", labId, e.getMessage());
+            throw new RuntimeException("Failed to fetch setup steps", e);
+        }
+    }
+
+
+
+
+    
     public SetupStep createSetupStep(SetupStep setupStep, Integer labId) {
         try {
-            
-            
-            
            if(labId == null ) {
-                throw new IllegalArgumentException("Lab ID không được để trống");
+                throw new IllegalArgumentException("Lab id cant be null");
             }
-
             Optional<Lab> labOpt = labRepository.findById(  labId);
             if (labOpt.isEmpty()) {
-                throw new IllegalArgumentException("Lab không tồn tại với ID: " + labId);
+                throw new IllegalArgumentException("Dont find lab: " + labId);
             }
-            
             Lab lab = labOpt.get();
             setupStep.setLab(lab);
-
-            if (setupStep.getStepOrder() == null) {
-                Integer nextOrder = getNextStepOrder(lab.getId());
-                setupStep.setStepOrder(nextOrder);
-            }
+            Integer nextOrder = getNextStepOrder(lab.getId());
+            setupStep.setStepOrder(nextOrder);
+            
             SetupStep createdStep = setupStepRepository.save(setupStep);
             log.info("Setup step created successfully with ID: {}", createdStep.getId());
             return createdStep;
@@ -60,48 +66,38 @@ public class SetupStepService {
             throw new RuntimeException("Failed to create setup step", e);
         }
     }
-       
-    /**
-     * Tạo nhiều setup steps cùng lúc cho một lab cụ thể
-     */
-    @Transactional
-    public List<SetupStep> createBatchSetupSteps(Integer labId, List<SetupStep> setupSteps) {
+  
+    public void swapOrderSetupStep(Integer fromStepId, Integer toStepId) {
         try {
-            if (setupSteps == null || setupSteps.isEmpty()) {
-                throw new IllegalArgumentException("Danh sách setup steps không được để trống");
+            Optional<SetupStep> fromStepOpt = setupStepRepository.findById(fromStepId);
+            Optional<SetupStep> toStepOpt = setupStepRepository.findById(toStepId);
+
+            if (fromStepOpt.isEmpty() || toStepOpt.isEmpty()) {
+                throw new IllegalArgumentException("One or both setup steps not found for swapping");
             }
 
-            // Kiểm tra lab tồn tại
-            Optional<Lab> labOpt = labRepository.findById(labId);
-            if (labOpt.isEmpty()) {
-                throw new IllegalArgumentException("Lab không tồn tại với ID: " + labId);
-            }
+            SetupStep fromStep = fromStepOpt.get();
+            SetupStep toStep = toStepOpt.get();
 
-            Lab lab = labOpt.get();
-         
-            Integer nextOrder = getNextStepOrder(labId);
-            for(int i=0; i < setupSteps.size(); i++)
-            {
-                setupSteps.get(i).setLab(lab);
-                setupSteps.get(i).setStepOrder(nextOrder + i); 
-            }
-            List<SetupStep> savedSteps = setupStepRepository.saveAll(setupSteps);
-            log.info("Created {} setup steps successfully for lab {}", savedSteps.size(), labId);
-            return savedSteps;
+            int tempOrder = fromStep.getStepOrder();
+            fromStep.setStepOrder(toStep.getStepOrder());
+            toStep.setStepOrder(tempOrder);
+
+            setupStepRepository.save(fromStep);
+            setupStepRepository.save(toStep);
+
+            log.info("Swapped order of setup steps {} and {}", fromStepId, toStepId);
         } catch (Exception e) {
-            log.error("Error creating batch setup steps for lab {}: {}", labId, e.getMessage());
-            throw new RuntimeException("Failed to create batch setup steps", e);
+            log.error("Error swapping setup steps {} and {}: {}", fromStepId, toStepId, e.getMessage());
+            throw new RuntimeException("Failed to swap setup steps", e);
         }
     }
-
+    
    
-    /**
-     * Cập nhật setup step
-     */
-    @Transactional
-    public SetupStep updateSetupStep( SetupStep setupStepUpdate) {
+    
+    public SetupStep updateSetupStep( SetupStep setupStepUpdate, Integer setupStepId) {
         try {
-            Optional<SetupStep> existingStepOpt = setupStepRepository.findById(setupStepUpdate.getId());
+            Optional<SetupStep> existingStepOpt = setupStepRepository.findById(setupStepId);
             if (existingStepOpt.isEmpty()) {
                 return null;
             }
@@ -145,7 +141,7 @@ public class SetupStepService {
     /**
      * Xóa một setup step
      */
-    @Transactional
+    
     public boolean deleteSetupStep(Integer id) {
         try {
             Optional<SetupStep> stepOpt = setupStepRepository.findById(id);
@@ -186,69 +182,7 @@ public class SetupStepService {
         }
     }
 
-     /**
-     * Xóa nhiều setup steps cùng lúc
-     */
-    @Transactional
-    public int deleteBatchSetupSteps(List<Integer> setupStepIds) {
-        try {
-            if (setupStepIds == null || setupStepIds.isEmpty()) {
-                throw new IllegalArgumentException("Danh sách setup step IDs không được để trống");
-            }
-
-            // Lấy danh sách các steps cần xóa
-            List<SetupStep> stepsToDelete = setupStepRepository.findAllById(setupStepIds);
-            
-            if (stepsToDelete.isEmpty()) {
-                log.warn("Không tìm thấy setup steps nào với IDs: {}", setupStepIds);
-                return 0;
-            }
-
-            // Group by lab để xử lý reorder
-            Map<Integer, List<SetupStep>> stepsByLab = stepsToDelete.stream()
-                .collect(Collectors.groupingBy(step -> step.getLab().getId()));
-
-            // Xóa tất cả steps
-            setupStepRepository.deleteAll(stepsToDelete);
-
-            // Reorder lại cho từng lab
-            for (Map.Entry<Integer, List<SetupStep>> entry : stepsByLab.entrySet()) {
-                Integer labId = entry.getKey();
-                List<Integer> deletedOrders = entry.getValue().stream()
-                    .map(SetupStep::getStepOrder)
-                    .sorted()
-                    .collect(Collectors.toList());
-                
-                reorderStepsAfterBatchDeletion(labId, deletedOrders);
-            }
-
-            int deletedCount = stepsToDelete.size();
-            log.info("Deleted {} setup steps successfully", deletedCount);
-            return deletedCount;
-        } catch (Exception e) {
-            log.error("Error deleting batch setup steps: {}", e.getMessage());
-            throw new RuntimeException("Failed to delete batch setup steps", e);
-        }
-    }
-      private void reorderStepsAfterBatchDeletion(Integer labId, List<Integer> deletedOrders) {
-        List<SetupStep> allSteps = setupStepRepository.findByLabIdOrderByStepOrder(labId);
-        
-        // Tính toán order mới cho từng step
-        for (SetupStep step : allSteps) {
-            int currentOrder = step.getStepOrder();
-            long deletedBefore = deletedOrders.stream()
-                .mapToInt(Integer::intValue)
-                .filter(order -> order < currentOrder)
-                .count();
-            
-            if (deletedBefore > 0) {
-                step.setStepOrder(currentOrder - (int) deletedBefore);
-            }
-        }
-
-        setupStepRepository.saveAll(allSteps);
-        log.info("Reordered steps after batch deletion in lab {}", labId);
-    }
+   
     private Integer getNextStepOrder(Integer labId) {
         List<SetupStep> existingSteps = setupStepRepository.findByLabIdOrderByStepOrder(labId);
         return existingSteps.isEmpty() ? 1 : 
