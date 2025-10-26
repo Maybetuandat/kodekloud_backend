@@ -33,8 +33,12 @@ public class Course {
     @Column(name = "level")
     private String level;
 
-    @Column(name = "duration_minutes")
-    private Integer durationMinutes;  
+
+    @Column(name="start_at")
+    private LocalDateTime startAt;
+
+    @Column(name = "expired_at")
+    private LocalDateTime expiredAt;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;

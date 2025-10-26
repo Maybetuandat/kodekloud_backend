@@ -1,3 +1,3 @@
         git add .
-        git commit -m "refractor(Setup Steps): refractor setup step swap order logic"
+        git commit -m "refractor(Course): refractor course model"
         git push origin main

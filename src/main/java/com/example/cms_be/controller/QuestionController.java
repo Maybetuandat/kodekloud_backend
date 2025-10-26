@@ -17,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import com.example.cms_be.model.Answer;
 import com.example.cms_be.model.Question;
-import org.springframework.web.bind.annotation.GetMapping;
 
 
 
@@ -27,9 +26,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 @RequiredArgsConstructor
 public class QuestionController {
 
-    @Autowired
-    private QuestionService questionService;
-    private AnswerService answerService;
+    private final QuestionService questionService;
+    private final AnswerService answerService;
 
   
 
