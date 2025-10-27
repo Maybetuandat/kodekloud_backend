@@ -51,10 +51,10 @@ public class Lab {
     @Column(name = "created_at", nullable = true, updatable = false)
     private LocalDateTime createdAt;
 
+  
     @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "course_id", nullable = false)
-    private Course course;
+    @OneToMany(mappedBy = "lab", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<CourseLab> courseLabs;
 
     @JsonIgnore
     @OneToMany(mappedBy = "lab", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

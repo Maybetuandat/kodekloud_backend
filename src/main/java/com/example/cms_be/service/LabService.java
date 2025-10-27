@@ -22,28 +22,24 @@ import lombok.extern.slf4j.Slf4j;
 public class LabService {
 
     private final LabRepository labRepository;
-    private final SetupStepRepository setupStepRepository;
+    
     private final CourseRepository courseRepository;
     
     
 
-   public Page<Lab> getAllLabs(Pageable pageable, Boolean isActive, String keyword, Integer courseId) {
+   public Page<Lab> getAllLabs(Pageable pageable, Boolean isActive, String keyword) {
        try {
-        return labRepository.findWithFilters(keyword, isActive,courseId, pageable );
+        return labRepository.findWithFilters(keyword, isActive, pageable );
        } catch (Exception e) {
            log.error("Error fetching labs: {}", e.getMessage());
            return Page.empty();
        }
    }
 
-    public Lab createLab(Lab lab, Integer courseId) {
+    public Lab createLab(Lab lab) {
         Lab createLab = new Lab();
 
         try{
-            Course course = courseRepository.findById(courseId).orElse(null);
-            if (course != null) {
-                lab.setCourse(course);
-            }
 
             createLab = labRepository.save(lab);
             log.info("Lab created successfully with ID: {}", createLab.getId());

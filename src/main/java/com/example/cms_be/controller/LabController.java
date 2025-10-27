@@ -37,6 +37,35 @@ public class LabController {
     private final QuestionService questionService;
     private final SetupStepService setupStepService;
 
+
+    
+    @GetMapping("")
+    public ResponseEntity<?> getLabWithPagination(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Boolean isActive
+    ) {
+        try {
+            Pageable pageable = PageRequest.of(page, size);
+            Page<Lab> labPage = labService.getAllLabs(pageable, isActive, search);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("data", labPage.getContent());
+            response.put("currentPage", labPage.getNumber());
+            response.put("totalItems", labPage.getTotalElements());
+            response.put("totalPages", labPage.getTotalPages());
+            response.put("hasNext", labPage.hasNext());
+            response.put("hasPrevious", labPage.hasPrevious());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error getting labs: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+
     @GetMapping("/{labId}")
     public ResponseEntity<?> getLabById(@PathVariable Integer labId) {
         try {
@@ -99,6 +128,20 @@ public class LabController {
     }
 
    
+
+    @PostMapping("")
+    public ResponseEntity<?> createLab(@RequestBody Lab lab) {
+        try {
+            Lab createdLab = labService.createLab(lab);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdLab);
+        } catch (Exception e) {
+            log.error("Error creating lab: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+
+
     @PostMapping("/{labId}/setup-steps")
     public ResponseEntity<?> createSetupStep(
         @PathVariable Integer labId,

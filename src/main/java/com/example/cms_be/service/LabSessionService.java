@@ -1,6 +1,7 @@
 package com.example.cms_be.service;
 
 import com.example.cms_be.model.*;
+import com.example.cms_be.repository.CourseLabRepository;
 import com.example.cms_be.repository.CourseUserRepository;
 import com.example.cms_be.repository.LabRepository;
 import com.example.cms_be.repository.UserLabSessionRepository;
@@ -29,6 +30,7 @@ public class LabSessionService {
     private final UserLabSessionRepository userLabSessionRepository;
 
     private final LabOrchestrationService orchestrationService;
+    private final CourseLabRepository courseLabRepository;
 
     @Transactional
     public UserLabSession createAndStartSession(Integer labId, Integer userId) throws IOException, ApiException {
@@ -38,7 +40,10 @@ public class LabSessionService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy User với ID: " + userId));
 
-        boolean isEnrolled = courseUserRepository.existsByUserAndCourseId(user, lab.getCourse());
+
+        CourseLab courseLab = courseLabRepository.findByLabId(labId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy CourseLab với Lab ID: " + labId));
+        boolean isEnrolled = courseUserRepository.existsByUserAndCourseId(user, courseLab.getCourse());
         if (!isEnrolled) {
             throw new AccessDeniedException("Người dùng chưa đăng ký khóa học này.");
         }
@@ -55,7 +60,7 @@ public class LabSessionService {
         session.setLab(lab);
         session.setSetupStartedAt(LocalDateTime.now());
         session.setStatus("PENDING");
-        CourseUser courseUser = courseUserRepository.findByUserAndCourse(user, lab.getCourse())
+        CourseUser courseUser = courseUserRepository.findByUserAndCourse(user, courseLab.getCourse())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bản ghi đăng ký khóa học (CourseUser) tương ứng."));
         session.setCourseUser(courseUser);
 
