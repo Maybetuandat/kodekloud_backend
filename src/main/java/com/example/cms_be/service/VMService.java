@@ -77,7 +77,8 @@ public class VMService {
         String namespace = session.getLab().getNamespace();
         Lab lab = session.getLab();
 
-        createDataVolumeFromTemplate(vmName, namespace, IMAGE_URL, lab.getStorage());
+//        createDataVolumeFromTemplate(vmName, namespace, IMAGE_URL, lab.getStorage());
+        createPvcForSession(vmName, namespace, session.getLab().getStorage());
         createVirtualMachineFromTemplate(vmName, namespace, lab.getMemory());
         createSshServiceForVM(vmName, namespace);
     }
@@ -105,19 +106,36 @@ public class VMService {
         Map dataVolumeBody = Yaml.loadAs(dataVolumeYaml, Map.class);
 
         log.info("Creating DataVolume '{}'...", vmName);
-        // Bên trong file VMService.java, phương thức createDataVolumeFromTemplate
 
-try {
-    log.info("Creating DataVolume '{}'...", vmName);
-    // Dòng code này gây ra lỗi
-    customApi.createNamespacedCustomObject(CDI_GROUP, CDI_VERSION, namespace, CDI_PLURAL_DV, dataVolumeBody, null, null, null);
-    log.info("DataVolume '{}' created. Image import is in progress.", vmName);
-} catch (ApiException e) {
-    // DÒNG NÀY LÀ QUAN TRỌNG NHẤT ĐỂ TÌM RA LỖI GỐC
-    log.error("K8S API Exception when creating DataVolume. Status code: {}. Response body: {}", e.getCode(), e.getResponseBody());
-    // Ném lại lỗi để các service khác có thể xử lý
-    throw e;
-}
+        try {
+            log.info("Creating DataVolume '{}'...", vmName);
+            customApi.createNamespacedCustomObject(CDI_GROUP, CDI_VERSION, namespace, CDI_PLURAL_DV, dataVolumeBody, null, null, null);
+            log.info("DataVolume '{}' created. Image import is in progress.", vmName);
+        } catch (ApiException e) {
+            log.error("K8S API Exception when creating DataVolume. Status code: {}. Response body: {}", e.getCode(), e.getResponseBody());
+            throw e;
+        }
+    }
+
+    private void createPvcForSession(String vmName, String namespace, String storage) throws IOException, ApiException {
+        Map<String, String> values = Map.of(
+                "NAME", vmName,
+                "NAMESPACE", namespace,
+                "STORAGE", storage
+        );
+        String pvcYaml = loadAndRenderTemplate("templates/pvc.yaml", values);
+
+        V1PersistentVolumeClaim pvcBody = Yaml.loadAs(pvcYaml, V1PersistentVolumeClaim.class);
+
+        log.info("Creating PersistentVolumeClaim '{}' using StorageClass 'longhorn-ext4-backing'...", vmName);
+
+        try {
+            coreApi.createNamespacedPersistentVolumeClaim(namespace, pvcBody, null, null, null, null);
+            log.info("PersistentVolumeClaim '{}' created successfully.", vmName);
+        } catch (ApiException e) {
+            log.error("K8S API Exception when creating PVC. Status code: {}. Response body: {}", e.getCode(), e.getResponseBody());
+            throw e;
+        }
     }
 
     private void createVirtualMachineFromTemplate(String vmName, String namespace, String memory) throws IOException, ApiException {
