@@ -1,18 +1,12 @@
 package com.example.cms_be.service;
-
-
-import java.util.List;
 import java.util.Optional;
 
 import com.example.cms_be.model.*;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
-import com.example.cms_be.repository.CourseRepository;
+
 import com.example.cms_be.repository.LabRepository;
-
-import com.example.cms_be.repository.SetupStepRepository;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -23,7 +17,7 @@ public class LabService {
 
     private final LabRepository labRepository;
     
-    private final CourseRepository courseRepository;
+    
     
     
 
@@ -87,6 +81,26 @@ public class LabService {
         }
     }
 
+
+    public Lab toggleLabActivation(Integer id)
+    {
+        try {
+            
+            Lab existingLabOpt = labRepository.findById(id).orElse(null);
+            if (existingLabOpt == null) {
+                log.error("Lab not found for ID: {}", id);
+                throw new RuntimeException("Lab not found");
+            }
+            existingLabOpt.setIsActive(!existingLabOpt.getIsActive());
+            Lab updatedLab = labRepository.save(existingLabOpt);
+            log.info("Lab activation toggled successfully for ID: {}, new status: {}", id, updatedLab.getIsActive());
+            return updatedLab;
+
+        } catch (Exception e) {
+            log.error("Error toggling lab activation {}: {}", id, e.getMessage());
+            throw new RuntimeException("Failed to toggle lab activation", e);
+        }
+    }
     public boolean deleteLab(Integer id) {
         try {
             labRepository.deleteById(id);

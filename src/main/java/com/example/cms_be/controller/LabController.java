@@ -140,6 +140,8 @@ public class LabController {
         }
     }
 
+    
+
 
 
     @PostMapping("/{labId}/setup-steps")
@@ -186,6 +188,18 @@ public class LabController {
            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
        }
     }
+
+    @PatchMapping("/{labId}/toggle-activation")
+    public ResponseEntity<Lab> toggleLabActivation(@PathVariable Integer labId) {
+         try {
+            Lab updatedLab = labService.toggleLabActivation(labId);
+            return ResponseEntity.ok(updatedLab);
+        } catch (Exception e) {
+            log.error("Error toggling lab activation: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
 
     @DeleteMapping("/{labId}")
     public ResponseEntity<?> deleteLab(@PathVariable Integer labId) {
