@@ -54,7 +54,7 @@ public class Question {
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    @JoinColumn(name = "lab_id", nullable = false)
+    @JoinColumn(name = "lab_id", nullable = true)
     private Lab lab;
     @PrePersist
     protected void onCreate() {

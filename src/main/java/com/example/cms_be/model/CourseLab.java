@@ -34,13 +34,13 @@ public class CourseLab {
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "lab_id", nullable = false)
+    @JoinColumn(name = "lab_id", nullable = true)
     private Lab lab;
 
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "course_id", nullable = false)
+    @JoinColumn(name = "course_id", nullable = true)
     private Course course;
 
     private LocalDateTime createAt;
