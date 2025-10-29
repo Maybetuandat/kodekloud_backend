@@ -46,14 +46,15 @@ public class QuestionController {
             return ResponseEntity.status(500).body("An error occurred while creating the answer.");
         }
     }
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateQuestion(@PathVariable Integer id, @RequestBody Question question) {
+  
+    @PatchMapping("/{id}")
+    public ResponseEntity<Question> updateQuestion(@PathVariable Integer id, @RequestBody Question questionDetails) {
         try {
-            Question updatedQuestion = questionService.updateQuestion(id, question);
+            Question updatedQuestion = questionService.updateQuestion(id, questionDetails);
             return ResponseEntity.ok(updatedQuestion);
         } catch (Exception e) {
             log.error("Error updating question with id {}: {}", id, e.getMessage());
-            return ResponseEntity.status(500).body("An error occurred while updating the question.");
+            return ResponseEntity.status(500).build();
         }
     }
     @DeleteMapping("/{id}")

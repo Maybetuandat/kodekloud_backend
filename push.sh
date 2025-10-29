@@ -1,3 +1,3 @@
         git add .
-        git commit -m "feat[Lab Object]: add logic to handle update toggle status of lab"
+        git commit -m "feat[Lab Object]: Update Question and QuestionController to support partial updates"
         git push origin main
