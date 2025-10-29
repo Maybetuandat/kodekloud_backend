@@ -5,24 +5,24 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.cms_be.model.CourseUser;
-import com.example.cms_be.service.EnrollmentService;
+import com.example.cms_be.service.CourseUserService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.data.repository.query.Param;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+
 
 
 @RestController
 @Slf4j
 @RequiredArgsConstructor
 @RequestMapping("/api/enrollments")
-public class EnrollmentController {
-    private final EnrollmentService enrollmentService;
+public class CourseUserController {
+    private final CourseUserService enrollmentService;
 
     @PostMapping()
     public ResponseEntity<?> createEnrollment(@RequestParam("courseId") Integer courseId, @RequestParam("userId") Integer userId) {

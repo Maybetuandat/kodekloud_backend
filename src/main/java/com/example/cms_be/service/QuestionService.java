@@ -100,11 +100,10 @@ public class QuestionService {
             if (updatedQuestion.getSolution() != null) {
                 existingQuestion.setSolution(updatedQuestion.getSolution());
             }
-            
             if (updatedQuestion.getAnswers() != null) {
                 if (existingQuestion.getAnswers() != null) {
                     existingQuestion.getAnswers().clear();
-                }
+                }    
                 for (Answer answer : updatedQuestion.getAnswers()) {
                     answer.setQuestion(existingQuestion); 
                     existingQuestion.getAnswers().add(answer);

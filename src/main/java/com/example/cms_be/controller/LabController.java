@@ -45,13 +45,13 @@ public class LabController {
     
     @GetMapping("")
     public ResponseEntity<?> getLabWithPagination(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(name = "page", defaultValue = "1") int page,
+            @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Boolean isActive
     ) {
         try {
-            Pageable pageable = PageRequest.of(page, size);
+            Pageable pageable = PageRequest.of(page, pageSize);
             Page<Lab> labPage = labService.getAllLabs(pageable, isActive, search);
 
             Map<String, Object> response = new HashMap<>();

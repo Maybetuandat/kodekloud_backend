@@ -13,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class EnrollmentService {
+public class CourseUserService {
     
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;

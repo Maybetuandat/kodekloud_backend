@@ -46,7 +46,6 @@ public class QuestionController {
             return ResponseEntity.status(500).body("An error occurred while creating the answer.");
         }
     }
-  
     @PatchMapping("/{id}")
     public ResponseEntity<Question> updateQuestion(@PathVariable Integer id, @RequestBody Question questionDetails) {
         try {
