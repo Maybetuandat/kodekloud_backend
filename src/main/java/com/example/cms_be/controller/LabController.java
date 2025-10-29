@@ -1,6 +1,9 @@
 package com.example.cms_be.controller;
 
 
+import com.example.cms_be.dto.BackingImageDTO;
+import com.example.cms_be.service.StorageService;
+import io.kubernetes.client.openapi.ApiException;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.cms_be.model.Lab;
@@ -17,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -36,6 +40,7 @@ public class LabController {
     private final LabService labService;
     private final QuestionService questionService;
     private final SetupStepService setupStepService;
+    private final StorageService storageService;
 
 
     
@@ -198,5 +203,22 @@ public class LabController {
        }
     }
 
+    @GetMapping("/backing-images")
+    public ResponseEntity<?> getAllBackingImages() {
+        try {
+            List<BackingImageDTO> backingImages = storageService.getAllBackingImages();
+            return ResponseEntity.ok(backingImages);
+        } catch (ApiException e) {
+            log.error("Failed to fetch Longhorn backing images due to Kubernetes API error.");
+            return ResponseEntity
+                    .status(e.getCode()) // Trả về mã lỗi thực tế từ K8s
+                    .body(Map.of("error", "Failed to communicate with Kubernetes API", "details", e.getResponseBody()));
+        } catch (Exception e) {
+            log.error("An unexpected error occurred while fetching Longhorn backing images.", e);
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "An internal server error occurred."));
+        }
+    }
    
 }
