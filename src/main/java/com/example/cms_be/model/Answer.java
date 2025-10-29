@@ -28,7 +28,7 @@ public class Answer {
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "is_right_ans", nullable = false)
+    @Column(name = "is_right_ans", nullable = true)
     private Boolean isRightAns;
 
     @ManyToOne(fetch = FetchType.LAZY)

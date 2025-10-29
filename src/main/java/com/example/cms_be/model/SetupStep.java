@@ -57,7 +57,7 @@ public class SetupStep {
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "lab_id", nullable = false)
+    @JoinColumn(name = "lab_id", nullable = true)
     private Lab lab;
 
 
