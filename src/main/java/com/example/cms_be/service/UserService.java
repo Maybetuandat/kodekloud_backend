@@ -20,7 +20,12 @@ public class UserService {
 
     public Page<User> getAllUsersWithPagination(Pageable pageable, Boolean isActive, String keyword)
     {
-        return userRepository.findWithFilters(keyword, isActive, pageable);
+        try {
+                    return userRepository.findWithFilters(keyword, isActive, pageable);
+        } catch (Exception e) {
+            log.error("Error fetching users with pagination: {}", e.getMessage());
+            throw new RuntimeException("Failed to fetch users", e);
+        }
     }
     public User createUser(User user)
     {

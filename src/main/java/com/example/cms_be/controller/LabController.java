@@ -48,7 +48,8 @@ public class LabController {
             @RequestParam(required = false) Boolean isActive
     ) {
         try {
-            Pageable pageable = PageRequest.of(page, pageSize);
+            int pageNumber = page > 0 ? page - 1 : 0;
+            Pageable pageable = PageRequest.of(pageNumber, pageSize);
             Page<Lab> labPage = labService.getAllLabs(pageable, isActive, search);
 
             Map<String, Object> response = new HashMap<>();
@@ -168,11 +169,6 @@ public class LabController {
             @RequestBody Question question
     ) {
        try {
-
-       System.out.println("Is calling create question");
-
-
-        log.info("Creating question in lab with id {}: {}", labId, question);
          Question createdQuestion = questionService.createQuestion(labId, question);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdQuestion);
        } catch (Exception e) {

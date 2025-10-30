@@ -133,6 +133,9 @@ public class CourseController {
             @PathVariable Integer courseId
     ) {
         try {
+            if(page > 0){
+                page = page - 1;
+            }
             Pageable pageable = PageRequest.of(page, pageSize);
             Page<Lab> labPage = labService.getLabsNotInCourse(courseId, search, isActive, pageable);
 

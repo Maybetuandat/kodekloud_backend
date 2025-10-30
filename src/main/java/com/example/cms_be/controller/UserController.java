@@ -35,14 +35,16 @@ public class UserController {
 
     @GetMapping()
     public ResponseEntity<?> getAllUserWithPagination(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(name = "page", defaultValue = "1") int page,
+            @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Boolean isActive
     ) {
         try {
-            
-            Pageable pageable = PageRequest.of(page, size);
+            if(page > 0) {
+                page = page - 1;
+            }
+            Pageable pageable = PageRequest.of(page, pageSize);
             Page<User> userPage = userService.getAllUsersWithPagination(pageable, isActive, keyword);
             Map<String, Object> response = Map.of(
                 "data", userPage.getContent(),
