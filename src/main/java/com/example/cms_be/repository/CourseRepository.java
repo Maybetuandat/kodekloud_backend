@@ -1,5 +1,6 @@
 package com.example.cms_be.repository;
 
+import com.example.cms_be.dto.CourseDetailResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,6 +9,9 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.example.cms_be.model.Course;
+
+import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CourseRepository extends JpaRepository<Course, Integer> {
@@ -22,4 +26,7 @@ public interface CourseRepository extends JpaRepository<Course, Integer> {
             @Param("categorySlug") String categorySlug,
             Pageable pageable
     );
+
+    @Query("SELECT c FROM Course c LEFT JOIN FETCH c.courseLabs cl LEFT JOIN FETCH cl.lab l WHERE c.id = :courseId")
+    Optional<Course> findCourseWithLabsById(@Param("courseId") Integer courseId);
 }

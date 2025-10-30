@@ -1,5 +1,6 @@
 package com.example.cms_be.controller;
 
+import com.example.cms_be.dto.CourseDetailResponse;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.cms_be.model.Course;
@@ -9,7 +10,6 @@ import com.example.cms_be.service.CourseLabService;
 import com.example.cms_be.service.CourseService;
 import com.example.cms_be.service.LabService;
 
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -92,7 +92,11 @@ public class CourseController {
         }
     }
 
-   
+    @GetMapping("/{courseId}/detail")
+    public ResponseEntity<CourseDetailResponse> getCourseDetailById(@PathVariable Integer courseId) {
+        CourseDetailResponse courseDetail = courseService.getCourseDetailById(courseId);
+        return ResponseEntity.ok(courseDetail);
+    }
     
     @GetMapping("/{courseId}/labs")
     public ResponseEntity<?> getLabsByCourse(

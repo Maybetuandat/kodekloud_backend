@@ -2,6 +2,10 @@ package com.example.cms_be.service;
 
 
 
+import com.example.cms_be.dto.CourseDetailResponse;
+import com.example.cms_be.dto.LabInfo;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
@@ -12,6 +16,9 @@ import com.example.cms_be.repository.CourseRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -24,7 +31,7 @@ public class CourseService {
     public Page<Course> getAllCourses(Pageable pageable, Boolean isActive, String keyword, String slugCategory)
     {
         try {
-                return courseRepository.findWithFilters(keyword, isActive, slugCategory, pageable);
+            return courseRepository.findWithFilters(keyword, isActive, slugCategory, pageable);
         } catch (Exception e) {
             log.error("Error fetching courses with filters: {}", e.getMessage());
             throw new RuntimeException("Failed to fetch courses", e);
@@ -52,6 +59,30 @@ public class CourseService {
            throw new RuntimeException("Failed to fetch course", e);
        }
     }
+
+    public CourseDetailResponse getCourseDetailById(Integer id) {
+        Course course = courseRepository.findCourseWithLabsById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Course not found with id: " + id));
+        return mapToDetailDto(course);
+    }
+
+    private CourseDetailResponse mapToDetailDto(Course course) {
+        CourseDetailResponse dto = new CourseDetailResponse();
+        dto.setId(course.getId());
+        dto.setTitle(course.getTitle());
+        dto.setDescription(course.getDescription());
+
+        List<LabInfo> labDtos = course.getCourseLabs().stream()
+                .map(courseLab -> {
+                    var lab = courseLab.getLab();
+                    return new LabInfo(lab.getId(), lab.getTitle());
+                })
+                .collect(Collectors.toList());
+        dto.setLabs(labDtos);
+
+        return dto;
+    }
+
     public Course updateCourse(Integer id, Course updatedCourse) {
       try {
           var existingCourse = courseRepository.findById(id)
