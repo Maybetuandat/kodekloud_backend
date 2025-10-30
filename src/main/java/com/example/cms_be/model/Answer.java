@@ -2,11 +2,14 @@ package com.example.cms_be.model;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Entity
 @Data
@@ -14,6 +17,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+
 public class Answer {
 
     @Id
@@ -28,7 +32,8 @@ public class Answer {
     private Boolean isRightAns;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "question_id", nullable = true)
+    @JoinColumn(name = "question_id", nullable = false)
+    @JsonIgnore
     private Question question;
 
     @Column(name = "created_at", nullable = false, updatable = false)

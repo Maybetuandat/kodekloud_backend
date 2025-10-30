@@ -12,4 +12,5 @@ public interface CourseLabRepository  extends JpaRepository<CourseLab, Integer> 
 
     Optional<CourseLab> findByCourseId(Integer courseId);
     Optional<CourseLab> findByLabId(Integer labId);
+    Optional<CourseLab> findByCourseIdAndLabId(Integer courseId, Integer labId);
 }

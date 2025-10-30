@@ -1,3 +1,3 @@
         git add .
-        git commit -m "refractor(Model): refractor relationship between models CourseLab, Lab, CourseUser"
+        git commit -m "fix[CourseLab]: Update logic for asssign lab into a course "
         git push origin main

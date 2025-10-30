@@ -1,10 +1,11 @@
 package com.example.cms_be.service;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
-import com.example.cms_be.dto.CreateCourseLabRequest;
+
 import com.example.cms_be.model.Course;
 import com.example.cms_be.model.CourseLab;
 import com.example.cms_be.model.Lab;
@@ -24,23 +25,40 @@ public class CourseLabService {
     private final CourseRepository courseRepository;
     private final LabRepository labRepository;
 
-    public CourseLab assignLabToCourse(CreateCourseLabRequest createCourseLabRequest) {
+    
+
+    public List<CourseLab> assignLabsToCourseBulk(Integer courseId, List<Integer> labIds) {
         try {
-           Course course = courseRepository.findById(createCourseLabRequest.courseId())
-                    .orElseThrow(() -> new IllegalArgumentException("Course not found with id: " + createCourseLabRequest.courseId()));
-            Lab lab = labRepository.findById(createCourseLabRequest.labId())
-                    .orElseThrow(() -> new IllegalArgumentException("Lab not found with id: " + createCourseLabRequest.labId()));
+            Course course = courseRepository.findById(courseId)
+                    .orElseThrow(() -> new IllegalArgumentException("Course not found with id: " + courseId));
 
-            CourseLab courseLab = CourseLab.builder()
-                    .course(course)
-                    .lab(lab)
-                    .build();
+            List<CourseLab> courseLabs = labIds.stream().map(labId -> {
+                Lab lab = labRepository.findById(labId)
+                        .orElseThrow(() -> new IllegalArgumentException("Lab not found with id: " + labId));
 
-            return courseLabRepository.save(courseLab);
+                return CourseLab.builder()
+                        .course(course)
+                        .lab(lab)
+                        .build();
+            }).toList();
+
+            return courseLabRepository.saveAll(courseLabs);
         } catch (Exception e) {
-            log.error("Error assigning lab to course: {}", e.getMessage());
-            throw new RuntimeException("Failed to assign lab to course", e);
+            log.error("Error assigning labs to course in bulk: {}", e.getMessage());
+            throw new RuntimeException("Failed to assign labs to course in bulk", e);
         }
     }
-
+    public void removeLabFromCourse(Integer courseId, Integer labId) {
+        try {
+            Optional<CourseLab> courseLabOpt = courseLabRepository.findByCourseIdAndLabId(courseId, labId);
+            if (courseLabOpt.isPresent()) {
+                courseLabRepository.delete(courseLabOpt.get());
+            } else {
+                throw new IllegalArgumentException("No association found between course ID " + courseId + " and lab ID " + labId);
+            }
+        } catch (Exception e) {
+            log.error("Error removing lab from course: {}", e.getMessage());
+            throw new RuntimeException("Failed to remove lab from course", e);
+        }
+    }
 }

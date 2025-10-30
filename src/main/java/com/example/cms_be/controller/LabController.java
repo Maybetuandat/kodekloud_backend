@@ -6,15 +6,18 @@ import com.example.cms_be.service.StorageService;
 import io.kubernetes.client.openapi.ApiException;
 import org.springframework.web.bind.annotation.*;
 
+import com.example.cms_be.model.Answer;
 import com.example.cms_be.model.Lab;
 import com.example.cms_be.model.Question;
 import com.example.cms_be.model.SetupStep;
+import com.example.cms_be.service.AnswerService;
 import com.example.cms_be.service.LabService;
 import com.example.cms_be.service.QuestionService;
 import com.example.cms_be.service.SetupStepService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.var;
 import lombok.extern.slf4j.Slf4j;
 
 
@@ -29,30 +32,28 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 
-
-
-
 @Slf4j
 @RestController
 @RequestMapping("/api/labs")
 @RequiredArgsConstructor
 public class LabController {
+
+    
     private final LabService labService;
     private final QuestionService questionService;
     private final SetupStepService setupStepService;
     private final StorageService storageService;
 
-
     
     @GetMapping("")
     public ResponseEntity<?> getLabWithPagination(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(name = "page", defaultValue = "1") int page,
+            @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Boolean isActive
     ) {
         try {
-            Pageable pageable = PageRequest.of(page, size);
+            Pageable pageable = PageRequest.of(page, pageSize);
             Page<Lab> labPage = labService.getAllLabs(pageable, isActive, search);
 
             Map<String, Object> response = new HashMap<>();
@@ -145,6 +146,8 @@ public class LabController {
         }
     }
 
+    
+
 
 
     @PostMapping("/{labId}/setup-steps")
@@ -170,10 +173,29 @@ public class LabController {
             @RequestBody Question question
     ) {
        try {
+
+       System.out.println("Is calling create question");
+
+
+        log.info("Creating question in lab with id {}: {}", labId, question);
          Question createdQuestion = questionService.createQuestion(labId, question);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdQuestion);
        } catch (Exception e) {
            log.error("Error creating question in lab: {}", e.getMessage());
+           return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+       }
+    }
+    @PostMapping("{labId}/questions/bulk")
+    public ResponseEntity<?> createBulkQuestion(
+            @PathVariable Integer labId,
+            @RequestBody List<Question> questions
+    ) {
+       try {
+            
+            List<Question> createdQuestions = questionService.createBulkQuestion(labId, questions);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdQuestions);
+       } catch (Exception e) {
+           log.error("Error creating bulk questions in lab: {}", e.getMessage());
            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
        }
     }
@@ -191,6 +213,18 @@ public class LabController {
            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
        }
     }
+
+    @PatchMapping("/{labId}/toggle-activation")
+    public ResponseEntity<Lab> toggleLabActivation(@PathVariable Integer labId) {
+         try {
+            Lab updatedLab = labService.toggleLabActivation(labId);
+            return ResponseEntity.ok(updatedLab);
+        } catch (Exception e) {
+            log.error("Error toggling lab activation: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
 
     @DeleteMapping("/{labId}")
     public ResponseEntity<?> deleteLab(@PathVariable Integer labId) {

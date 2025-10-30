@@ -38,7 +38,7 @@ public class Question {
     @Column(columnDefinition = "TEXT")
     private String solution;
 
-    @JsonIgnore
+    
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Answer> answers;
 
@@ -53,8 +53,8 @@ public class Question {
     private LocalDateTime updatedAt;
 
     @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    @JoinColumn(name = "lab_id", nullable = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lab_id", nullable = false)
     private Lab lab;
     @PrePersist
     protected void onCreate() {

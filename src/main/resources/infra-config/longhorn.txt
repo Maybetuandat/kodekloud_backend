@@ -1,0 +1,23 @@
+#worker node
+sudo apt-get update
+sudo apt-get install open-iscsi
+
+kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.6.2/deploy/longhorn.yaml
+kubectl get pods -n longhorn-system --watch
+kubectl patch storageclass longhorn -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+
+kubectl patch svc longhorn-frontend -n longhorn-system -p '{"spec": {"type": "NodePort"}}'
+kubectl get svc longhorn-frontend -n longhorn-system
+
+câu lệnh thao tác với longhorn
+
+-- xem volume trên worker node
+#/ lsblk /dev/longhorn/pvc-0512ca9b-f2a4-4e7b-b428-6fa81b273bcb
+NAME    MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
+sdb       8:16   0    4G  0 disk
+├─sdb1    8:17   0  2.1G  0 part
+├─sdb14   8:30   0    4M  0 part
+└─sdb15   8:31   0  106M  0 part
+hoặc xem trên phân vùng đã tạo sẵn cho longhorn
+
+kernel log: dmesg

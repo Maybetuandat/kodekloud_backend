@@ -1,18 +1,12 @@
 package com.example.cms_be.service;
-
-
-import java.util.List;
 import java.util.Optional;
 
 import com.example.cms_be.model.*;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
-import com.example.cms_be.repository.CourseRepository;
+
 import com.example.cms_be.repository.LabRepository;
-
-import com.example.cms_be.repository.SetupStepRepository;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,11 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 public class LabService {
 
     private final LabRepository labRepository;
-    
-    private final CourseRepository courseRepository;
-    
-    
-
    public Page<Lab> getAllLabs(Pageable pageable, Boolean isActive, String keyword) {
        try {
         return labRepository.findWithFilters(keyword, isActive, pageable );
@@ -35,6 +24,40 @@ public class LabService {
            return Page.empty();
        }
    }
+
+
+    public Page<Lab> getLabsByCourseId(Integer courseId, String keyword, Boolean isActive, Pageable pageable) {
+        try {
+
+
+            Page<Lab> labsInCourse = labRepository.findLabsByCourseId(courseId, keyword, isActive, pageable);
+            
+            System.out.println(labsInCourse.getContent().size());
+            System.out.println("Total elements: " + labsInCourse.getTotalElements());
+            System.out.println("Total pages: " + labsInCourse.getTotalPages());
+
+            System.out.println("Has next: " + labsInCourse.hasNext());
+            System.out.println("Has previous: " + labsInCourse.hasPrevious());
+            System.out.println("Current page number: " + labsInCourse.getNumber());
+            System.out.println("Page size: " + labsInCourse.getSize());
+            return labsInCourse;
+
+        } catch (Exception e) {
+            log.error("Error fetching labs by course ID {}: {}", courseId, e.getMessage());
+            return Page.empty();
+        }
+    }
+
+    public Page<Lab> getLabsNotInCourse(Integer courseId, String keyword, Boolean isActive, Pageable pageable) {
+        try {
+            return labRepository.findLabsNotInCourseId(courseId, keyword, isActive, pageable);
+        } catch (Exception e) {
+            log.error("Error fetching labs not in course ID {}: {}", courseId, e.getMessage());
+            return Page.empty();
+        }
+    }
+
+
 
     public Lab createLab(Lab lab) {
         Lab createLab = new Lab();
@@ -87,6 +110,26 @@ public class LabService {
         }
     }
 
+
+    public Lab toggleLabActivation(Integer id)
+    {
+        try {
+            
+            Lab existingLabOpt = labRepository.findById(id).orElse(null);
+            if (existingLabOpt == null) {
+                log.error("Lab not found for ID: {}", id);
+                throw new RuntimeException("Lab not found");
+            }
+            existingLabOpt.setIsActive(!existingLabOpt.getIsActive());
+            Lab updatedLab = labRepository.save(existingLabOpt);
+            log.info("Lab activation toggled successfully for ID: {}, new status: {}", id, updatedLab.getIsActive());
+            return updatedLab;
+
+        } catch (Exception e) {
+            log.error("Error toggling lab activation {}: {}", id, e.getMessage());
+            throw new RuntimeException("Failed to toggle lab activation", e);
+        }
+    }
     public boolean deleteLab(Integer id) {
         try {
             labRepository.deleteById(id);
@@ -97,24 +140,7 @@ public class LabService {
             throw new RuntimeException("Failed to delete lab", e);
         }
     }
-    public Lab toggleLabStatus(Integer id) {
-        try {
-            Optional<Lab> labOpt = labRepository.findById(id);
-            if (labOpt.isEmpty()) {
-                return null;
-            }
-
-            Lab lab = labOpt.get();
-            lab.setIsActive(!lab.getIsActive());
-            Lab updatedLab = labRepository.save(lab);
-
-            log.info("Lab status toggled for ID: {}, new status: {}", id, updatedLab.getIsActive());
-            return updatedLab;
-        } catch (Exception e) {
-            log.error("Error toggling lab status {}: {}", id, e.getMessage());
-            throw new RuntimeException("Failed to toggle lab status", e);
-        }
-    }
+  
    
 
     public UserLabSession createUserLabSession(Lab lab, CourseUser courseUser) {
