@@ -65,7 +65,7 @@ public class Lab {
     private List<UserLabSession> userLabSessions;
 
 
-
+    @JsonIgnore
     @OneToMany(mappedBy = "lab", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Question> labQuestions;
     @PrePersist

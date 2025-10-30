@@ -3,7 +3,9 @@ package com.example.cms_be.controller;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.cms_be.model.Course;
+import com.example.cms_be.model.CourseLab;
 import com.example.cms_be.model.Lab;
+import com.example.cms_be.service.CourseLabService;
 import com.example.cms_be.service.CourseService;
 import com.example.cms_be.service.LabService;
 
@@ -11,7 +13,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.data.domain.*;
@@ -22,7 +26,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
+
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -36,6 +40,7 @@ public class CourseController {
 
     private final CourseService courseService;
     private final LabService labService;
+    private final CourseLabService courseLabService;
     
     @GetMapping("")
     public ResponseEntity<?> getAllCourses(
@@ -89,6 +94,65 @@ public class CourseController {
 
    
     
+    @GetMapping("/{courseId}/labs")
+    public ResponseEntity<?> getLabsByCourse(
+            @RequestParam(name = "page", defaultValue = "1") int page,
+            @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Boolean isActive,
+            @PathVariable Integer courseId
+    ) {
+        try {
+            if(page > 0){
+                page = page - 1;
+            }
+            Pageable pageable = PageRequest.of(page, pageSize);
+            Page<Lab> labPage = labService.getLabsByCourseId(courseId, search, isActive, pageable);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("data", labPage.getContent());
+            response.put("currentPage", labPage.getNumber());
+            response.put("totalItems", labPage.getTotalElements());
+            response.put("totalPages", labPage.getTotalPages());
+            response.put("hasNext", labPage.hasNext());
+            response.put("hasPrevious", labPage.hasPrevious());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error getting labs: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/{courseId}/labs/not-in-course")
+    public ResponseEntity<?> getLabsNotInCourse(
+            @RequestParam(name = "page", defaultValue = "1") int page,
+            @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Boolean isActive,
+            @PathVariable Integer courseId
+    ) {
+        try {
+            Pageable pageable = PageRequest.of(page, pageSize);
+            Page<Lab> labPage = labService.getLabsNotInCourse(courseId, search, isActive, pageable);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("data", labPage.getContent());
+            response.put("currentPage", labPage.getNumber());
+            response.put("totalItems", labPage.getTotalElements());
+            response.put("totalPages", labPage.getTotalPages());
+            response.put("hasNext", labPage.hasNext());
+            response.put("hasPrevious", labPage.hasPrevious());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error getting labs: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+
+
     @PostMapping()
     public ResponseEntity<?> createCourse( @RequestBody Course course) {
         log.info("Creating course: {}", course);
@@ -103,7 +167,24 @@ public class CourseController {
 
    
     
+
+
+   
     
+    @PostMapping("/{courseId}/labs")
+    public ResponseEntity<?> addLabsToCourseBulk(
+            @PathVariable Integer courseId,
+            @RequestBody List<Integer> labIds
+    ) {
+        try {
+            List<CourseLab> courseLabs = courseLabService.assignLabsToCourseBulk(courseId, labIds);
+            
+            return ResponseEntity.status(HttpStatus.CREATED).body(courseLabs);
+        } catch (Exception e) {
+            log.error("Error adding labs to course in bulk: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
     @PatchMapping("/{courseId}")
     public ResponseEntity<Course> updateCourse(
             @PathVariable Integer courseId,
@@ -127,6 +208,26 @@ public class CourseController {
            log.error("Error deleting course: {}", e.getMessage());
            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
        }
+    }
+
+    @DeleteMapping("/{courseId}/labs/{labId}")
+    public ResponseEntity<?> removeLabFromCourse(
+            @PathVariable Integer courseId,
+            @PathVariable Integer labId
+    ) {
+        try {
+            courseLabService.removeLabFromCourse(courseId, labId);
+            
+            return ResponseEntity.ok(Map.of(
+                "message", "Lab removed from course successfully",
+                "courseId", courseId,
+                "labId", labId
+            ));
+        } catch (Exception e) {
+            log.error("Error removing lab from course: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", e.getMessage()));
+        }
     }
 
 

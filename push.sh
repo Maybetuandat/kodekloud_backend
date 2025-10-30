@@ -1,3 +1,3 @@
         git add .
-        git commit -m "feat[CourseUser]: Update CourseUser and CourseUserController to support partial updates"
+        git commit -m "fix[CourseLab]: Update logic for asssign lab into a course "
         git push origin main

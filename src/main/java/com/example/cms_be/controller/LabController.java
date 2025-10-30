@@ -39,9 +39,6 @@ public class LabController {
     private final QuestionService questionService;
     private final SetupStepService setupStepService;
 
-
-   
-
     
     @GetMapping("")
     public ResponseEntity<?> getLabWithPagination(
