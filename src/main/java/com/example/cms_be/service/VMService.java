@@ -149,8 +149,16 @@ public class VMService {
         Map vmBody = Yaml.loadAs(virtualMachineYaml, Map.class);
 
         log.info("Creating VirtualMachine '{}'...", vmName);
-        customApi.createNamespacedCustomObject(KUBEVIRT_GROUP, KUBEVIRT_VERSION, namespace, KUBEVIRT_PLURAL_VM, vmBody, null, null, null);
-        log.info("VirtualMachine '{}' definition created successfully.", vmName);
+
+        try {
+            customApi.createNamespacedCustomObject(KUBEVIRT_GROUP, KUBEVIRT_VERSION, namespace, KUBEVIRT_PLURAL_VM, vmBody, null, null, null);
+            log.info("VirtualMachine '{}' definition created successfully.", vmName);
+        } catch (ApiException e) {
+            log.error("K8s error code: {}", e.getCode());
+            log.error("K8s response body: {}", e.getResponseBody());
+            log.error("Response headers: {}", e.getResponseHeaders());
+            throw e;
+        }
     }
 
     private void createSshServiceForVM(String name, String namespace) throws ApiException {

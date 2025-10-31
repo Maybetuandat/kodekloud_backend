@@ -5,9 +5,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.cms_be.model.Course;
 import com.example.cms_be.model.CourseLab;
+import com.example.cms_be.model.CourseUser;
 import com.example.cms_be.model.Lab;
 import com.example.cms_be.service.CourseLabService;
 import com.example.cms_be.service.CourseService;
+import com.example.cms_be.service.CourseUserService;
 import com.example.cms_be.service.LabService;
 
 import lombok.RequiredArgsConstructor;
@@ -41,6 +43,7 @@ public class CourseController {
     private final CourseService courseService;
     private final LabService labService;
     private final CourseLabService courseLabService;
+    private final CourseUserService courseUserService;
     
     @GetMapping("")
     public ResponseEntity<?> getAllCourses(
@@ -97,6 +100,8 @@ public class CourseController {
         CourseDetailResponse courseDetail = courseService.getCourseDetailById(courseId);
         return ResponseEntity.ok(courseDetail);
     }
+
+    
     
     @GetMapping("/{courseId}/labs")
     public ResponseEntity<?> getLabsByCourse(
@@ -171,13 +176,6 @@ public class CourseController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-
-   
-    
-
-
-   
-    
     @PostMapping("/{courseId}/labs")
     public ResponseEntity<?> addLabsToCourseBulk(
             @PathVariable Integer courseId,
@@ -192,6 +190,25 @@ public class CourseController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+
+    @PostMapping("/{courseId}/users")
+    public ResponseEntity<List<CourseUser>> addUserToCourse(
+            @PathVariable Integer courseId, 
+            @RequestBody List<Integer> userIds)
+    {
+        try {
+            List<CourseUser> enrollments = courseUserService.createListEnrollment(courseId, userIds);
+            return ResponseEntity.status(HttpStatus.CREATED).body(enrollments);
+            
+        } catch (Exception e) {
+            log.error("Error adding users to course: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+
+
     @PatchMapping("/{courseId}")
     public ResponseEntity<Course> updateCourse(
             @PathVariable Integer courseId,
@@ -206,7 +223,7 @@ public class CourseController {
        }
     }
    
-     @DeleteMapping("/{courseId}")
+    @DeleteMapping("/{courseId}")
     public ResponseEntity<?> deleteCourse(@PathVariable Integer courseId) {
        try {
          boolean isDeleted = courseService.deleteCourse(courseId);

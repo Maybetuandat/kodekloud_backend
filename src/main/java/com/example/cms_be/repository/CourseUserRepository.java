@@ -19,4 +19,6 @@ public interface CourseUserRepository extends JpaRepository<CourseUser, Integer>
             "WHERE cu.user = :user AND cu.course = :course")
     boolean existsByUserAndCourseId(@Param("user") User user, @Param("course")Course course);
 
-    Optional<CourseUser> findByUserAndCourse(User user, Course course);}
+    Optional<CourseUser> findByUserAndCourse(User user, Course course);
+        Optional<CourseUser> findByCourseIdAndUserId(Integer courseId, Integer userId);
+}

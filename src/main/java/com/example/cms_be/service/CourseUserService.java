@@ -1,5 +1,7 @@
 package com.example.cms_be.service;
 
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 
 import com.example.cms_be.model.CourseUser;
@@ -31,5 +33,29 @@ public class CourseUserService {
         courseUser.setUser(user);
 
         return courseUserRepository.save(courseUser);
+    }
+    public void removeEnrollment(Integer courseId, Integer userId) {
+        var courseUser = courseUserRepository.findByCourseIdAndUserId(courseId, userId)
+                .orElseThrow(() -> new RuntimeException("Enrollment not found for course id: " + courseId + " and user id: " + userId));
+
+        courseUserRepository.delete(courseUser);
+        
+    }
+    public List<CourseUser> createListEnrollment(Integer courseId, List<Integer> userIds) {
+        var course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new RuntimeException("Course not found with id: " + courseId));
+
+        List<CourseUser> enrollments = userIds.stream().map(userId -> {
+            var user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+
+            var courseUser = new CourseUser();
+            courseUser.setCourse(course);
+            courseUser.setUser(user);
+
+            return courseUser;
+        }).toList();
+
+        return courseUserRepository.saveAll(enrollments);
     }
 }
