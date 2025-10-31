@@ -1,0 +1,48 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: vm9999
+  namespace: test
+spec:
+  runStrategy: Always
+  template:
+    metadata:
+      labels:
+        kubevirt.io/vm: vm9999
+    spec:
+      volumes:
+        - name: bootdisk
+          persistentVolumeClaim:
+            claimName: vm9999
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            userData: |
+              #cloud-config
+              ssh_pwauth: true
+              users:
+                - name: ubuntu
+                  groups: [adm, sudo]
+                  shell: /bin/bash
+                  sudo: ['ALL=(ALL) NOPASSWD:ALL']
+                  plain_text_passwd: '1234'
+                  lock_passwd: false
+      domain:
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 2
+        devices:
+          disks:
+            - name: bootdisk
+              lun:
+                bus: scsi
+              bootOrder: 1
+            - name: cloudinitdisk
+              cdrom:
+                bus: sata
+          interfaces:
+            - name: default
+              masquerade: {}
+      networks:
+        - name: default
+          pod: {}
