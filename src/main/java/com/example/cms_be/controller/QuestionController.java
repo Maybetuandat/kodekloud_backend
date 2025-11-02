@@ -1,7 +1,10 @@
 package com.example.cms_be.controller;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
+import com.example.cms_be.model.Lab;
+import com.example.cms_be.service.LabService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -28,8 +31,8 @@ public class QuestionController {
 
     private final QuestionService questionService;
     private final AnswerService answerService;
+    private final LabService labService;
 
-  
 
     @GetMapping("/{questionId}/answers")
     public List<Answer> getAnswersByQuestionId(@PathVariable Integer questionId) {

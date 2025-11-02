@@ -1,5 +1,6 @@
 package com.example.cms_be.config;
 
+import com.example.cms_be.handler.LabTimerHandler;
 import com.example.cms_be.handler.TerminalHandler;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -23,8 +24,8 @@ import java.util.Map;
 public class WebSocketConfig implements WebSocketConfigurer, WebMvcConfigurer {
 
     private final PodLogWebSocketHandler podLogHandler;
-
     private final TerminalHandler terminalHandler;
+    private final LabTimerHandler labTimerHandler;
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
@@ -34,7 +35,13 @@ public class WebSocketConfig implements WebSocketConfigurer, WebMvcConfigurer {
         registry.addHandler(terminalHandler, "/api/terminal/{labSessionId}")
                 .addInterceptors(new SessionIdInterceptor())
                 .setAllowedOrigins("*");
+
+        registry.addHandler(labTimerHandler, "ws/lab-timer/{labSessionId}")
+                .addInterceptors(new SessionIdInterceptor())
+                .setAllowedOrigins("*");
     }
+
+
 
     private static class SessionIdInterceptor implements HandshakeInterceptor {
         @Override

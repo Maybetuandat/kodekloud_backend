@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.example.cms_be.handler.LabTimerHandler;
+import com.example.cms_be.model.Lab;
 import com.example.cms_be.model.UserLabSession;
 import com.example.cms_be.repository.UserLabSessionRepository;
 import com.jcraft.jsch.ChannelExec;
@@ -37,6 +39,7 @@ public class SetupExecutionService {
     private final SetupStepRepository setupStepRepository;
     private final PodLogWebSocketHandler webSocketHandler;
     private final KubernetesService kubernetesService;
+    private final LabTimerHandler labTimerHandler;
 
     private final CoreV1Api coreApi;
     private final UserLabSessionRepository userLabSessionRepository;
@@ -396,24 +399,43 @@ public class SetupExecutionService {
         log.info("Starting setup steps execution for session ID: {}", session.getId());
 
         try {
-            List<SetupStep> setupSteps = session.getLab().getSetupSteps().stream()
+            Lab lab = session.getLab();
+            List<SetupStep> setupSteps = lab.getSetupSteps().stream()
                     .sorted(Comparator.comparing(SetupStep::getStepOrder))
                     .collect(Collectors.toList());
 
             boolean overallSuccess = true;
-            for (SetupStep step : setupSteps) {
-                KubernetesService.CommandResult result = executeCommandViaSsh(connectionDetails, step.getSetupCommand(), step.getTimeoutSeconds());
-                logStepResult(session, step, result);
+            log.info("[Session {}] Found {} setup steps to execute.", session.getId(), setupSteps.size());
+            if(!setupSteps.isEmpty()) {
+                for (SetupStep step : setupSteps) {
+                    log.info("[Session {}] Executing step: '{}' (Order: {})", session.getId(), step.getTitle(), step.getStepOrder());
+                    KubernetesService.CommandResult result = executeCommandViaSsh(connectionDetails, step.getSetupCommand(), step.getTimeoutSeconds());
+                    logStepResult(session, step, result);
 
-                if (result.getExitCode() != step.getExpectedExitCode()) {
-                    log.error("Step '{}' failed...", step.getTitle());
-                    if (!step.getContinueOnFailure()) {
-                        overallSuccess = false;
-                        break;
+                    if (result.getExitCode() != step.getExpectedExitCode()) {
+                        log.error("[Session {}] Step '{}' FAILED! (Expected: {}, Got: {})", session.getId(), step.getTitle(), step.getExpectedExitCode(), result.getExitCode());
+                        if (!step.getContinueOnFailure()) {
+                            log.warn("[Session {}] 'ContinueOnFailure' is false. Stopping execution.", session.getId());
+                            overallSuccess = false;
+                            break;
+                        } else {
+                            log.warn("[Session {}] 'ContinueOnFailure' is true. Continuing execution despite failure.", session.getId());
+                        }
+                    } else {
+                        log.info("[Session {}] Step '{}' successful.", session.getId(), step.getTitle());
                     }
                 }
             }
+
             updateSessionStatus(session, overallSuccess ? "READY" : "SETUP_FAILED");
+
+            if(overallSuccess) {
+                log.info("[Session {}] LAB IS READY. Calling labTimerHandler.startTimerForSession().", session.getId());
+                labTimerHandler.startTimerForSession(session);
+            } else {
+                log.warn("[Session {}] Lab setup failed. Notifying client and NOT starting timer.", session.getId());
+//                labTimerHandler.notifySessionFailed(String.valueOf(session.getId()), "Setup failed");
+            }
         } catch (Exception e) {
             log.error("A critical error occurred during setup execution for session {}: {}", session.getId(), e.getMessage(), e);
             updateSessionStatus(session, "SETUP_FAILED");

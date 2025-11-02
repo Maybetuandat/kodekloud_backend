@@ -87,7 +87,6 @@ public class TerminalHandler extends TextWebSocketHandler {
                     cleanup(wsSessionId);
                 }
             }).start();
-
             // 6. Lưu lại các đối tượng cần thiết để quản lý phiên
             sshSessions.put(wsSessionId, jschSession);
             sshChannels.put(wsSessionId, channel);

@@ -52,6 +52,18 @@ public class LabOrchestrationService {
         }
     }
 
+    @Async
+    public void cleanupLabResources(UserLabSession session) {
+        String vmName = "vm-" + session.getId();
+        log.info("Phase 4: Cleaning up Kubernetes resources for session {} (VM: {})...", session.getId(), vmName);
+        try {
+            vmService.deleteKubernetesResourcesForSession(session);
+            log.info("Successfully cleaned up resources for session {}.", session.getId());
+        } catch (Exception e) {
+            log.error("Error during background cleanup for session {}: {}", session.getId(), e.getMessage(), e);
+        }
+    }
+
     private void updateSessionStatus(Integer sessionId, String status) {
         userLabSessionRepository.findById(sessionId).ifPresent(session -> {
             log.info("Orchestrator: Updating session {} status to '{}'.", sessionId, status);

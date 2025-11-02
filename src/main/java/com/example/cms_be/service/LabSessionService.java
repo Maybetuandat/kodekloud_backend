@@ -71,4 +71,20 @@ public class LabSessionService {
 
         return savedSession;
     }
+
+    @Transactional // (org.springframework...)
+    public void submitSession(Integer labSessionId) {
+        log.info("Submitting session {}...", labSessionId);
+
+        UserLabSession session = userLabSessionRepository.findById(labSessionId)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy UserLabSession với ID: " + labSessionId));
+
+        session.setStatus("COMPLETED");
+        session.setExpiresAt(LocalDateTime.now());
+        userLabSessionRepository.save(session);
+        log.info("Session {} status updated to COMPLETED.", labSessionId);
+
+        // 2. Kích hoạt "nhạc trưởng" để dọn dẹp tài nguyên K8s chạy ngầm
+        orchestrationService.cleanupLabResources(session);
+    }
 }
