@@ -51,19 +51,19 @@ public class CourseController {
             @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Boolean isActive,
-            @RequestParam(required = false) String slugCategory
+            @RequestParam(required = false) String code
     ) {
         try {
             int pageNumber = page > 0 ? page - 1 : 0;
 
-            System.err.println("Search parameter: '" + search + "'" + pageSize + " " + pageNumber + " " + isActive + " " + slugCategory);
+            System.err.println("Search parameter: '" + search + "'" + pageSize + " " + pageNumber + " " + isActive + " " + code);
             Pageable pageable = PageRequest.of(pageNumber, pageSize);
 
             if (search != null) {
                 search = search.trim(); 
             }
 
-            Page<Course> coursePage = courseService.getAllCourses(pageable, isActive, search, slugCategory);
+            Page<Course> coursePage = courseService.getAllCourses(pageable, isActive, search, code);
 
             Map<String, Object> response = new HashMap<>();
             response.put("data", coursePage.getContent());

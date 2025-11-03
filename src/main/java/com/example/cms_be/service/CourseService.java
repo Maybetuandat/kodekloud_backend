@@ -5,13 +5,13 @@ package com.example.cms_be.service;
 import com.example.cms_be.dto.CourseDetailResponse;
 import com.example.cms_be.dto.LabInfo;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
+
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
-import com.example.cms_be.model.Category;
+import com.example.cms_be.model.Subject;
 import com.example.cms_be.model.Course;
-import com.example.cms_be.repository.CategoryRepository;
+import com.example.cms_be.repository.SubjectRepository;
 import com.example.cms_be.repository.CourseRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -26,12 +26,12 @@ import java.util.stream.Collectors;
 public class CourseService {
 
     private final CourseRepository courseRepository;
-    private final CategoryRepository categoryRepository;
+    private final SubjectRepository SubjectRepository;
 
-    public Page<Course> getAllCourses(Pageable pageable, Boolean isActive, String keyword, String slugCategory)
+    public Page<Course> getAllCourses(Pageable pageable, Boolean isActive, String keyword, String code)
     {
         try {
-            return courseRepository.findWithFilters(keyword, isActive, slugCategory, pageable);
+            return courseRepository.findWithFilters(keyword, isActive, code, pageable);
         } catch (Exception e) {
             log.error("Error fetching courses with filters: {}", e.getMessage());
             throw new RuntimeException("Failed to fetch courses", e);
@@ -88,10 +88,10 @@ public class CourseService {
           var existingCourse = courseRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Course not found with id: " + id));
 
-        if (updatedCourse.getCategory() != null) {
-            Category category = categoryRepository.findById(updatedCourse.getCategory().getId())
-                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + updatedCourse.getCategory().getId()));
-            existingCourse.setCategory(category);
+        if (updatedCourse.getSubject() != null) {
+            Subject Subject = SubjectRepository.findById(updatedCourse.getSubject().getId())
+                    .orElseThrow(() -> new RuntimeException("Subject not found with id: " + updatedCourse.getSubject().getId()));
+            existingCourse.setSubject(Subject);
         }
         if(updatedCourse.getTitle() != null) {
             existingCourse.setTitle(updatedCourse.getTitle());

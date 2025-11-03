@@ -24,12 +24,12 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Data
-@Table(name = "categories")
+@Table(name = "subjects")
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) 
-public class Category {
+public class Subject {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,11 +42,15 @@ public class Category {
     @Column(name="description")
     private String description;
 
-    @Column(name="slug")
-    private String slug;
+    @Column(name="code")
+    private String code;
 
     @Column(name="is_active")
     private Boolean isActive;
+
+
+    @Column(name = "credits")
+    private Integer credits;
 
     @Column(name="created_at")
     private LocalDateTime createdAt;
@@ -55,7 +59,7 @@ public class Category {
     private LocalDateTime updatedAt;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(mappedBy = "subject", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<Course> courses;
 
     @PrePersist
