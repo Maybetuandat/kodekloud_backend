@@ -180,6 +180,42 @@ public class VMService {
         log.info("Service '{}' created successfully.", serviceName);
     }
 
+    public void deleteKubernetesResourcesForSession(UserLabSession session) {
+        String vmName = "vm-" + session.getId();
+        String namespace = session.getLab().getNamespace();
+        String serviceName = "ssh-" + vmName;
+
+        // Xóa Service
+        try {
+            log.info("Deleting Service: {} in namespace {}", serviceName, namespace);
+            coreApi.deleteNamespacedService(serviceName, namespace, null, null, null, null, null, null);
+        } catch (ApiException e) {
+            log.warn("Failed to delete Service {}: {} (May already be deleted)", serviceName, e.getResponseBody());
+        }
+
+        // Xóa VirtualMachine (việc này sẽ tự động xóa VMI và Pod)
+        try {
+            log.info("Deleting VirtualMachine: {} in namespace {}", vmName, namespace);
+            customApi.deleteNamespacedCustomObject(
+                    KUBEVIRT_GROUP,
+                    KUBEVIRT_VERSION,
+                    namespace,
+                    KUBEVIRT_PLURAL_VM,
+                    vmName,
+                    null, null, null, null, null
+            );
+        } catch (ApiException e) {
+            log.warn("Failed to delete VirtualMachine {}: {} (May already be deleted)", vmName, e.getResponseBody());
+        }
+
+        // Xóa PVC (Longhorn sẽ tự động dọn dẹp Volume vật lý dựa trên reclaimPolicy)
+        try {
+            log.info("Deleting PersistentVolumeClaim: {} in namespace {}", vmName, namespace);
+            coreApi.deleteNamespacedPersistentVolumeClaim(vmName, namespace, null, null, null, null, null, null);
+        } catch (ApiException e) {
+            log.warn("Failed to delete PVC {}: {} (May already be deleted)", vmName, e.getResponseBody());
+        }
+    }
 
     private void updateSessionStatus(UserLabSession session, String status) {
         log.info("Updating session {} status from '{}' to '{}'.", session.getId(), session.getStatus(), status);
