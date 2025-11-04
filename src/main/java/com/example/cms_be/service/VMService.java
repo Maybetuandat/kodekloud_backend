@@ -1,44 +1,38 @@
 package com.example.cms_be.service;
 
 import com.example.cms_be.model.Lab;
-import com.example.cms_be.model.SetupStep;
-import com.example.cms_be.model.User;
+
+
 import com.example.cms_be.model.UserLabSession;
 import com.example.cms_be.repository.UserLabSessionRepository;
-import com.google.gson.Gson;
+
 import io.kubernetes.client.Exec;
 import io.kubernetes.client.custom.IntOrString;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
-import io.kubernetes.client.openapi.Configuration;
+
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.apis.CustomObjectsApi;
 import io.kubernetes.client.openapi.models.*;
-import io.kubernetes.client.util.ClientBuilder;
-import io.kubernetes.client.util.Config;
-import io.kubernetes.client.util.KubeConfig;
+
 import io.kubernetes.client.util.Yaml;
-import jakarta.annotation.PostConstruct;
+
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.scheduling.annotation.Async;
+
 import org.springframework.stereotype.Service;
 import org.springframework.util.FileCopyUtils;
-import org.springframework.util.StringUtils;
 
-import java.io.File;
-import java.io.FileReader;
+
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.InetSocketAddress;
-import java.net.Socket;
+
+
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+
 import java.util.Map;
 
 @Service
@@ -193,7 +187,7 @@ public class VMService {
             log.warn("Failed to delete Service {}: {} (May already be deleted)", serviceName, e.getResponseBody());
         }
 
-        // Xóa VirtualMachine (việc này sẽ tự động xóa VMI và Pod)
+        
         try {
             log.info("Deleting VirtualMachine: {} in namespace {}", vmName, namespace);
             customApi.deleteNamespacedCustomObject(
@@ -208,7 +202,6 @@ public class VMService {
             log.warn("Failed to delete VirtualMachine {}: {} (May already be deleted)", vmName, e.getResponseBody());
         }
 
-        // Xóa PVC (Longhorn sẽ tự động dọn dẹp Volume vật lý dựa trên reclaimPolicy)
         try {
             log.info("Deleting PersistentVolumeClaim: {} in namespace {}", vmName, namespace);
             coreApi.deleteNamespacedPersistentVolumeClaim(vmName, namespace, null, null, null, null, null, null);
