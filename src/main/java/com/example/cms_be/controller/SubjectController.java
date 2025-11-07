@@ -2,6 +2,7 @@ package com.example.cms_be.controller;
 
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,7 +12,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.cms_be.model.Course;
 import com.example.cms_be.model.Subject;
+import com.example.cms_be.service.CourseService;
 import com.example.cms_be.service.SubjectService;
 
 import lombok.RequiredArgsConstructor;
@@ -25,19 +28,18 @@ import org.springframework.web.bind.annotation.PutMapping;
 @Slf4j
 public class SubjectController {
         private final SubjectService SubjectService;
-
-
+        private final CourseService courseService;
 
         @GetMapping("")
-       public ResponseEntity<?> getAllSubjects() {
-           try {
-               List<Subject> subjects = SubjectService.getAllSubjects();
-               return ResponseEntity.ok(subjects);
-           } catch (Exception e) {
-               log.error("Error fetching all subjects: {}", e.getMessage());
-               return ResponseEntity.status(500).body("Failed to fetch subjects");
-           }
-       }
+        public ResponseEntity<?> getAllSubjects() {
+            try {
+                List<Subject> subjects = SubjectService.getAllSubjects();
+                return ResponseEntity.ok(subjects);
+            } catch (Exception e) {
+                log.error("Error fetching all subjects: {}", e.getMessage());
+                return ResponseEntity.status(500).body("Failed to fetch subjects");
+            }
+        }
         @GetMapping("/{id}")
         public ResponseEntity<?> getSubjectById(@PathVariable Integer id) {
             try {
@@ -48,39 +50,50 @@ public class SubjectController {
                  return ResponseEntity.status(404).body("Subject not found");
             }
          }
-       @PostMapping("")
-       public ResponseEntity<?> createSubject(@RequestBody Subject Subject) {
-           try {
-               Subject createdSubject = SubjectService.createSubject(Subject);
-               return ResponseEntity.ok(createdSubject);
-           } catch (Exception e) {
-               log.error("Error creating Subject: {}", e.getMessage());
-               return ResponseEntity.status(500).body("Failed to create Subject");
-           }
-       }
-       @PutMapping("/{id}")
-       public ResponseEntity<?> updateSubject(@PathVariable Integer id, @RequestBody Subject Subject) {
-           try {
-               Subject updatedSubject = SubjectService.updateSubject(id, Subject);
-               return ResponseEntity.ok(updatedSubject);
-           } catch (Exception e) {
-               log.error("Error updating Subject with ID {}: {}", id, e.getMessage());
-               return ResponseEntity.status(404).body("Subject not found");
-           }
-       }
-       @DeleteMapping("/{id}")
-       public ResponseEntity<?> deleteSubject(@PathVariable Integer id) {
-           try {
-               Boolean deleted = SubjectService.deleteSubject(id);
-               if (deleted) {
-                   return ResponseEntity.ok("Subject deleted successfully");
-               } else {
-                   return ResponseEntity.status(404).body("Subject not found");
-               }
-           } catch (Exception e) {
-               log.error("Error deleting Subject with ID {}: {}", id, e.getMessage());
-               return ResponseEntity.status(500).body("Failed to delete Subject");
-           }
-       }
+        @PostMapping("")
+        public ResponseEntity<?> createSubject(@RequestBody Subject Subject) {
+            try {
+                Subject createdSubject = SubjectService.createSubject(Subject);
+                return ResponseEntity.ok(createdSubject);
+            } catch (Exception e) {
+                log.error("Error creating Subject: {}", e.getMessage());
+                return ResponseEntity.status(500).body("Failed to create Subject");
+            }
+        }
+        @PostMapping("/{subjectId}/courses")
+        public ResponseEntity<?> createCourse(@RequestBody Course course, @PathVariable Integer subjectId) {
+            log.info("Creating course: {}", course);
+            try {
+                Course createdCourse = courseService.createCourse(course, subjectId);
+                return ResponseEntity.status(HttpStatus.CREATED).body(createdCourse);
+            } catch (Exception e) {
+                log.error("Error creating course: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            }
+        }
+        @PutMapping("/{id}")
+        public ResponseEntity<?> updateSubject(@PathVariable Integer id, @RequestBody Subject Subject) {
+            try {
+                Subject updatedSubject = SubjectService.updateSubject(id, Subject);
+                return ResponseEntity.ok(updatedSubject);
+            } catch (Exception e) {
+                log.error("Error updating Subject with ID {}: {}", id, e.getMessage());
+                return ResponseEntity.status(404).body("Subject not found");
+            }
+        }
+        @DeleteMapping("/{id}")
+        public ResponseEntity<?> deleteSubject(@PathVariable Integer id) {
+            try {
+                Boolean deleted = SubjectService.deleteSubject(id);
+                if (deleted) {
+                    return ResponseEntity.ok("Subject deleted successfully");
+                } else {
+                    return ResponseEntity.status(404).body("Subject not found");
+                }
+            } catch (Exception e) {
+                log.error("Error deleting Subject with ID {}: {}", id, e.getMessage());
+                return ResponseEntity.status(500).body("Failed to delete Subject");
+            }
+        }
 
 }

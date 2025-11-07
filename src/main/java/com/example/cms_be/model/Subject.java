@@ -28,7 +28,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) 
+
 public class Subject {
 
     @Id
@@ -42,7 +42,7 @@ public class Subject {
     @Column(name="description")
     private String description;
 
-    @Column(name="code")
+    @Column(name="code", unique = true)
     private String code;
 
     @Column(name="is_active")
@@ -66,5 +66,6 @@ public class Subject {
     private void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+        this.isActive = true;
     }
 }

@@ -23,10 +23,9 @@ public class SubjectService {
 
     public Subject createSubject(Subject Subject) {
 
-        log.info("Creating Subject: {}", Subject);
-          Subject createSubject = new Subject();
+        log.info("Creating Subject in Service: {}", Subject);
+        Subject createSubject = new Subject();
         try {
-          
             createSubject = SubjectRepository.save(Subject);
             log.info("Subject created successfully with ID: {}", createSubject.getId());
         } catch (Exception e) {

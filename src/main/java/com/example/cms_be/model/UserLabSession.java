@@ -53,7 +53,7 @@ public class UserLabSession {
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "courseuser_id", nullable = true)
+    @JoinColumn(name = "course_user_id", nullable = true)
     private CourseUser courseUser;
 
     @PrePersist

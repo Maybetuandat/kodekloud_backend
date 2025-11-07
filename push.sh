@@ -1,3 +1,3 @@
         git add .
-        git commit -m "refractor(Subject model): refractor Category to Subject and update related code"
+        git commit -m "feature(User): update logic for add user into a course"
         git push origin main

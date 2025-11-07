@@ -34,9 +34,6 @@ public class Course {
     private String level;
 
 
-    @Column(name="start_at")
-    private LocalDateTime startAt;
-
     @Column(name = "expired_at")
     private LocalDateTime expiredAt;
 
@@ -57,7 +54,7 @@ public class Course {
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<CourseLab> courseLabs;
 
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "subject_id", nullable = true)
     private Subject subject;

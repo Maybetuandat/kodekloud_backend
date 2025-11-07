@@ -7,10 +7,12 @@ import com.example.cms_be.model.Course;
 import com.example.cms_be.model.CourseLab;
 import com.example.cms_be.model.CourseUser;
 import com.example.cms_be.model.Lab;
+import com.example.cms_be.model.User;
 import com.example.cms_be.service.CourseLabService;
 import com.example.cms_be.service.CourseService;
 import com.example.cms_be.service.CourseUserService;
 import com.example.cms_be.service.LabService;
+import com.example.cms_be.service.UserService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +46,7 @@ public class CourseController {
     private final LabService labService;
     private final CourseLabService courseLabService;
     private final CourseUserService courseUserService;
+    private final UserService userService;
     
     @GetMapping("")
     public ResponseEntity<?> getAllCourses(
@@ -103,6 +106,66 @@ public class CourseController {
 
     
     
+
+    @GetMapping("/{courseId}/users")
+    public ResponseEntity<?> getUsersByCourse(
+            @RequestParam(name = "page", defaultValue = "1") int page,
+            @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
+            @PathVariable Integer courseId,
+            @RequestParam(required = false) Boolean isActive,
+            @RequestParam(required = false) String search
+    ) {
+        try {
+            if(page > 0){
+                page = page - 1;
+            }
+            Pageable pageable = PageRequest.of(page, pageSize);
+            Page<User> userPage = userService.getUsersByCourseId(courseId, search, isActive, pageable);
+            Map<String, Object> response = new HashMap<>();
+            response.put("data", userPage.getContent());
+            response.put("currentPage", userPage.getNumber());
+            response.put("totalItems", userPage.getTotalElements());
+            response.put("totalPages", userPage.getTotalPages());
+            response.put("hasNext", userPage.hasNext());
+            response.put("hasPrevious", userPage.hasPrevious());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error getting users by course id: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+
+
+     @GetMapping("/{courseId}/users/not-in-course")
+    public ResponseEntity<?> getUsersNotInCourse(
+            @RequestParam(name = "page", defaultValue = "1") int page,
+            @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Boolean isActive,
+            @PathVariable Integer courseId
+    ) {
+        try {
+            if(page > 0){
+                page = page - 1;
+            }
+            Pageable pageable = PageRequest.of(page, pageSize);
+            Page<User> userPage = userService.getUsersNotInCourse(courseId, search, isActive, pageable);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("data", userPage.getContent());
+            response.put("currentPage", userPage.getNumber());
+            response.put("totalItems", userPage.getTotalElements());
+            response.put("totalPages", userPage.getTotalPages());
+            response.put("hasNext", userPage.hasNext());
+            response.put("hasPrevious", userPage.hasPrevious());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error getting users not in course: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
     @GetMapping("/{courseId}/labs")
     public ResponseEntity<?> getLabsByCourse(
             @RequestParam(name = "page", defaultValue = "1") int page,
@@ -159,20 +222,6 @@ public class CourseController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error getting labs: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-
-
-    @PostMapping()
-    public ResponseEntity<?> createCourse( @RequestBody Course course) {
-        log.info("Creating course: {}", course);
-        try {
-            Course createdCourse = courseService.createCourse(course);
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdCourse);
-        } catch (Exception e) {
-            log.error("Error creating course: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

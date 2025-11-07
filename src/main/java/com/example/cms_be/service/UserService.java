@@ -1,5 +1,7 @@
 package com.example.cms_be.service;
 
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,24 @@ public class UserService {
         } catch (Exception e) {
             log.error("Error fetching users with pagination: {}", e.getMessage());
             throw new RuntimeException("Failed to fetch users", e);
+        }
+    }
+    public Page<User> getUsersByCourseId(Integer courseId, String search, Boolean isActive, Pageable pageable) {
+        try {
+            Page<User> usersInCourse = userRepository.findUsersByCourseId(courseId, search, isActive, pageable);
+            return usersInCourse;
+        } catch (Exception e) {
+            log.error("Error fetching users by course ID {}: {}", courseId, e.getMessage());
+            throw new RuntimeException("Failed to fetch users by course ID", e);
+        }
+    }
+      public Page<User> getUsersNotInCourse(Integer courseId,String search, Boolean isActive,  Pageable pageable) {
+        try {
+            Page<User> usersInCourse = userRepository.findUsersNotInCourseId(courseId, search, isActive, pageable);
+            return usersInCourse;
+        } catch (Exception e) {
+            log.error("Error fetching users by course ID {}: {}", courseId, e.getMessage());
+            throw new RuntimeException("Failed to fetch users by course ID", e);
         }
     }
     public User createUser(User user)

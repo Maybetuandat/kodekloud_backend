@@ -16,10 +16,10 @@ import java.util.Optional;
 @Repository
 public interface CourseRepository extends JpaRepository<Course, Integer> {
     @Query("SELECT c FROM Course c " +
-           "LEFT JOIN c.subject cat " +
+           "LEFT JOIN c.subject sub " +
            "WHERE (:isActive IS NULL OR c.isActive = :isActive) " +
            "AND (:keyword IS NULL OR :keyword = '' OR LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-           "AND (:code IS NULL OR :code = '' OR cat.code = :code)")
+           "AND (:code IS NULL OR :code = '' OR sub.code = :code)")
     Page<Course> findWithFilters(
             @Param("keyword") String keyword,
             @Param("isActive") Boolean isActive,

@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 public class CourseService {
 
     private final CourseRepository courseRepository;
-    private final SubjectRepository SubjectRepository;
+    private final SubjectRepository subjectRepository;
 
     public Page<Course> getAllCourses(Pageable pageable, Boolean isActive, String keyword, String code)
     {
@@ -39,9 +39,12 @@ public class CourseService {
     }
 
    
-    public Course createCourse(Course course) {
+    public Course createCourse(Course course, Integer subjectId) {
 
         try {
+            Subject subject = subjectRepository.findById(subjectId)
+                    .orElseThrow(() -> new RuntimeException("Subject not found with id: " + subjectId));
+            course.setSubject(subject);    
             return courseRepository.save(course);
         } catch (Exception e) {
             log.error("Error creating course: {}", e.getMessage());
@@ -89,7 +92,7 @@ public class CourseService {
                 .orElseThrow(() -> new RuntimeException("Course not found with id: " + id));
 
         if (updatedCourse.getSubject() != null) {
-            Subject Subject = SubjectRepository.findById(updatedCourse.getSubject().getId())
+            Subject Subject = subjectRepository.findById(updatedCourse.getSubject().getId())
                     .orElseThrow(() -> new RuntimeException("Subject not found with id: " + updatedCourse.getSubject().getId()));
             existingCourse.setSubject(Subject);
         }
