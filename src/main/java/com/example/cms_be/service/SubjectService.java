@@ -18,36 +18,42 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class SubjectService {
 
-    private final SubjectRepository SubjectRepository;
+    private final SubjectRepository subjectRepository;
 
 
-    public Subject createSubject(Subject Subject) {
-
-        log.info("Creating Subject in Service: {}", Subject);
-        Subject createSubject = new Subject();
+    public Subject createSubject(Subject subject) {
         try {
-            createSubject = SubjectRepository.save(Subject);
-            log.info("Subject created successfully with ID: {}", createSubject.getId());
+
+            return subjectRepository.save(subject);
         } catch (Exception e) {
             log.error("Error creating Subject: {}", e.getMessage());
             throw new RuntimeException("Failed to create Subject", e);
         }
-        return createSubject;
     }
 
     public List<Subject> getAllSubjects() {
-        return SubjectRepository.findAll();
+        try {
+            return subjectRepository.findAll();
+        } catch (Exception e) {
+            log.error("Error fetching all Subjects: {}", e.getMessage());
+            throw new RuntimeException("Failed to fetch all Subjects", e);
+        }
     }
 
     public Subject getSubjectById(Integer id) {
-        return SubjectRepository.findById(id)
+        try {
+            return subjectRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Subject not found with id: " + id));
+        } catch (Exception e) {
+            log.error("Error fetching Subject by ID {}: {}", id, e.getMessage());
+            throw new RuntimeException("Failed to fetch Subject by ID", e);
+        }
     }
 
     public Subject updateSubject(Integer id, Subject updatedSubject) {
 
         try {
-            var existingSubject = SubjectRepository.findById(id)
+            var existingSubject = subjectRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Subject not found with id: " + id));
 
             existingSubject.setTitle(updatedSubject.getTitle());
@@ -56,7 +62,7 @@ public class SubjectService {
             existingSubject.setCode(updatedSubject.getCode());
             existingSubject.setUpdatedAt(LocalDateTime.now());
 
-            return SubjectRepository.save(existingSubject);
+            return subjectRepository.save(existingSubject);
         } catch (Exception e) {
             log.error("Error updating Subject: {}", e.getMessage());
             throw new RuntimeException("Failed to update Subject", e);
@@ -66,9 +72,9 @@ public class SubjectService {
 
     public Boolean deleteSubject(Integer id) {
         try {
-            var existingSubject = SubjectRepository.findById(id)
+            var existingSubject = subjectRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Subject not found with id: " + id));
-            SubjectRepository.delete(existingSubject);
+            subjectRepository.delete(existingSubject);
             return true;
         } catch (Exception e) {
             log.error("Error deleting Subject: {}", e.getMessage());

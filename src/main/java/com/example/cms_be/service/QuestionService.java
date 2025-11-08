@@ -23,8 +23,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RequiredArgsConstructor
 public class QuestionService {
-
-    private final AnswerRepository answerRepository;
     private final QuestionRepository questionRepository;
     private final LabRepository labRepository;
     
@@ -66,7 +64,8 @@ public class QuestionService {
     
 
     public List<Question> createBulkQuestion(Integer labId, List<Question> questions) {
-        Optional<Lab> labOptional = labRepository.findById(labId);
+       try {
+         Optional<Lab> labOptional = labRepository.findById(labId);
         if (labOptional.isEmpty()) {
             throw new RuntimeException("Lab not found with id: " + labId);
         }
@@ -85,6 +84,9 @@ public class QuestionService {
         }
         List<Question> savedQuestions = questionRepository.saveAll(questions);
         return savedQuestions;
+       } catch (Exception e) {
+          throw new RuntimeException("Failed to create bulk questions", e);
+       }
     }
 
     public Question updateQuestion(Integer id, Question updatedQuestion) {

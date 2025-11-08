@@ -31,7 +31,6 @@ public class QuestionController {
 
     private final QuestionService questionService;
     private final AnswerService answerService;
-    private final LabService labService;
 
 
     @GetMapping("/{questionId}/answers")

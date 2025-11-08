@@ -58,7 +58,7 @@ public class LabController {
 
             Map<String, Object> response = new HashMap<>();
             response.put("data", labPage.getContent());
-            response.put("currentPage", labPage.getNumber());
+            response.put("currentPage", labPage.getNumber() + 1);
             response.put("totalItems", labPage.getTotalElements());
             response.put("totalPages", labPage.getTotalPages());
             response.put("hasNext", labPage.hasNext());

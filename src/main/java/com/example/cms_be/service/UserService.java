@@ -49,16 +49,12 @@ public class UserService {
     }
     public User createUser(User user)
     {
-        user.setIsActive(true);
-        User createUser = new User();
-        try{
-            createUser = userRepository.save(user);
-        }
-        catch (Exception e) {
-            log.error("Error creating user: {}", e.getMessage());
-            throw new RuntimeException("Failed to create user", e);
-        }
-        return createUser;
+       try {
+            return userRepository.save(user);
+       } catch (Exception e) {
+              log.error("Error creating user: {}", e.getMessage());
+              throw new RuntimeException("Failed to create user", e);
+       }
     }
     public User getUserById(Integer id)
     {

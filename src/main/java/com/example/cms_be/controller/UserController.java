@@ -48,7 +48,7 @@ public class UserController {
             Page<User> userPage = userService.getAllUsersWithPagination(pageable, isActive, keyword);
             Map<String, Object> response = Map.of(
                 "data", userPage.getContent(),
-                "currentPage", userPage.getNumber(),
+                "currentPage", userPage.getNumber() + 1,
                 "totalItems", userPage.getTotalElements(),
                 "totalPages", userPage.getTotalPages(),
                 "hasNext", userPage.hasNext(),

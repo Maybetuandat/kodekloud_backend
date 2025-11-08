@@ -34,7 +34,8 @@ public class LabSessionService {
 
     @Transactional
     public UserLabSession createAndStartSession(Integer labId, Integer userId) throws IOException, ApiException {
-        Lab lab = labRepository.findById(labId)
+         try {
+             Lab lab = labRepository.findById(labId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Lab với ID: " + labId));
 
         User user = userRepository.findById(userId)
@@ -70,11 +71,15 @@ public class LabSessionService {
         orchestrationService.provisionAndSetupLab(savedSession);
 
         return savedSession;
+         } catch (Exception e) {
+            throw new RuntimeException("Lỗi khi tạo và khởi động phiên lab: " + e.getMessage(), e);
+         }
     }
 
     @Transactional // (org.springframework...)
     public void submitSession(Integer labSessionId) {
-        log.info("Submitting session {}...", labSessionId);
+        try {
+            log.info("Submitting session {}...", labSessionId);
 
         UserLabSession session = userLabSessionRepository.findById(labSessionId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy UserLabSession với ID: " + labSessionId));
@@ -86,5 +91,8 @@ public class LabSessionService {
 
         // 2. Kích hoạt "nhạc trưởng" để dọn dẹp tài nguyên K8s chạy ngầm
         orchestrationService.cleanupLabResources(session);
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi khi gửi phiên lab: " + e.getMessage(), e);
+        }
     }
 }

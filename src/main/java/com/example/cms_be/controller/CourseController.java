@@ -16,8 +16,6 @@ import com.example.cms_be.service.UserService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -123,7 +121,7 @@ public class CourseController {
             Page<User> userPage = userService.getUsersByCourseId(courseId, search, isActive, pageable);
             Map<String, Object> response = new HashMap<>();
             response.put("data", userPage.getContent());
-            response.put("currentPage", userPage.getNumber());
+            response.put("currentPage", userPage.getNumber()  + 1);
             response.put("totalItems", userPage.getTotalElements());
             response.put("totalPages", userPage.getTotalPages());
             response.put("hasNext", userPage.hasNext());
@@ -154,7 +152,7 @@ public class CourseController {
 
             Map<String, Object> response = new HashMap<>();
             response.put("data", userPage.getContent());
-            response.put("currentPage", userPage.getNumber());
+            response.put("currentPage", userPage.getNumber() + 1);
             response.put("totalItems", userPage.getTotalElements());
             response.put("totalPages", userPage.getTotalPages());
             response.put("hasNext", userPage.hasNext());
@@ -183,7 +181,7 @@ public class CourseController {
 
             Map<String, Object> response = new HashMap<>();
             response.put("data", labPage.getContent());
-            response.put("currentPage", labPage.getNumber());
+            response.put("currentPage", labPage.getNumber() + 1);
             response.put("totalItems", labPage.getTotalElements());
             response.put("totalPages", labPage.getTotalPages());
             response.put("hasNext", labPage.hasNext());
@@ -213,7 +211,7 @@ public class CourseController {
 
             Map<String, Object> response = new HashMap<>();
             response.put("data", labPage.getContent());
-            response.put("currentPage", labPage.getNumber());
+            response.put("currentPage", labPage.getNumber() + 1);
             response.put("totalItems", labPage.getTotalElements());
             response.put("totalPages", labPage.getTotalPages());
             response.put("hasNext", labPage.hasNext());
@@ -302,6 +300,24 @@ public class CourseController {
                 .body(Map.of("error", e.getMessage()));
         }
     }
+    @DeleteMapping("/{courseId}/users/{userId}")
+    public ResponseEntity<?> removeUserFromCourse(
+            @PathVariable Integer courseId,
+            @PathVariable Integer userId
+    ) {
+        try {
+            courseUserService.removeUserFromCourse(courseId, userId);
 
+            return ResponseEntity.ok(Map.of(
+                "message", "User removed from course successfully",
+                "courseId", courseId,
+                "userId", userId
+            ));
+        } catch (Exception e) {
+            log.error("Error removing user from course: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
 
 }

@@ -1,20 +1,12 @@
 package com.example.cms_be.service;
-
-
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
 import org.springframework.stereotype.Service;
-
 import com.example.cms_be.model.Lab;
 import com.example.cms_be.model.SetupStep;
 import com.example.cms_be.repository.LabRepository;
 import com.example.cms_be.repository.SetupStepRepository;
-
-
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,15 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RequiredArgsConstructor
 public class SetupStepService {
-
     private final SetupStepRepository setupStepRepository;
-
     private final LabRepository labRepository;
-
-
-
-
-
     public List<SetupStep> getLabSetupSteps(Integer labId) {
         try {
             return setupStepRepository.findByLabIdOrderByStepOrder(labId);
@@ -38,12 +23,7 @@ public class SetupStepService {
             log.error("Error fetching setup steps for lab {}: {}", labId, e.getMessage());
             throw new RuntimeException("Failed to fetch setup steps", e);
         }
-    }
-
-
-
-
-    
+    }    
     public SetupStep createSetupStep(SetupStep setupStep, Integer labId) {
         try {
            if(labId == null ) {
@@ -93,21 +73,13 @@ public class SetupStepService {
         }
     }
     
-   
-    
     public SetupStep updateSetupStep( SetupStep setupStepUpdate, Integer setupStepId) {
         try {
             Optional<SetupStep> existingStepOpt = setupStepRepository.findById(setupStepId);
             if (existingStepOpt.isEmpty()) {
                 return null;
             }
-
             SetupStep existingStep = existingStepOpt.get();
-            
-            
-            
-
-
             // Update fields
             if (setupStepUpdate.getStepOrder() != null &&  !setupStepUpdate.getStepOrder().equals(existingStep.getStepOrder())) {
                 existingStep.setStepOrder(setupStepUpdate.getStepOrder());
@@ -148,7 +120,6 @@ public class SetupStepService {
             if (stepOpt.isEmpty()) {
                 return false;
             }
-
             SetupStep step = stepOpt.get();
             Integer labId = step.getLab().getId();
             int deletedOrder = step.getStepOrder();
@@ -167,7 +138,8 @@ public class SetupStepService {
         }
     }
      private void reorderStepsAfterDeletion(Integer labId, int deletedOrder) {
-        List<SetupStep> stepsToReorder = setupStepRepository.findByLabIdOrderByStepOrder(labId)
+       try {
+         List<SetupStep> stepsToReorder = setupStepRepository.findByLabIdOrderByStepOrder(labId)
             .stream()
             .filter(step -> step.getStepOrder() > deletedOrder)
             .collect(Collectors.toList());
@@ -180,13 +152,22 @@ public class SetupStepService {
             setupStepRepository.saveAll(stepsToReorder);
             log.info("Reordered {} steps after deletion in lab {}", stepsToReorder.size(), labId);
         }
+       } catch (Exception e) {
+        log.error("Error reordering steps after deletion in lab {}: {}", labId, e.getMessage());
+        throw new RuntimeException("Failed to reorder steps after deletion", e);
+       }
     }
 
    
     private Integer getNextStepOrder(Integer labId) {
-        List<SetupStep> existingSteps = setupStepRepository.findByLabIdOrderByStepOrder(labId);
+    try {
+            List<SetupStep> existingSteps = setupStepRepository.findByLabIdOrderByStepOrder(labId);
         return existingSteps.isEmpty() ? 1 : 
                existingSteps.get(existingSteps.size() - 1).getStepOrder() + 1;
+    } catch (Exception e) {
+        log.error("Error getting next step order for lab {}: {}", labId, e.getMessage());
+        throw new RuntimeException("Failed to get next step order", e);
+    }
     }
 
 

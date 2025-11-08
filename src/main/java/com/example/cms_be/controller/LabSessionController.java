@@ -29,8 +29,6 @@ import java.util.Optional;
 public class LabSessionController {
 
     private final LabSessionService labSessionService;
-    private final LabRepository labRepository;
-    private final UserLabSessionRepository userLabSessionRepository;
 
     @PostMapping()
     public ResponseEntity<?> createLabSession(@Valid @RequestBody CreateLabSessionRequest request) {

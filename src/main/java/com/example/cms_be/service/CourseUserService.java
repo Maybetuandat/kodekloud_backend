@@ -23,7 +23,8 @@ public class CourseUserService {
 
 
     public CourseUser createEnrollment(Integer courseId, Integer userId) {
-        var course = courseRepository.findById(courseId)
+       try {
+         var course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new RuntimeException("Course not found with id: " + courseId));
         var user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
@@ -33,16 +34,24 @@ public class CourseUserService {
         courseUser.setUser(user);
 
         return courseUserRepository.save(courseUser);
+       } catch (Exception e) {
+           throw new RuntimeException("Error creating enrollment: " + e.getMessage());
+       }
     }
     public void removeEnrollment(Integer courseId, Integer userId) {
-        var courseUser = courseUserRepository.findByCourseIdAndUserId(courseId, userId)
+       try {
+         var courseUser = courseUserRepository.findByCourseIdAndUserId(courseId, userId)
                 .orElseThrow(() -> new RuntimeException("Enrollment not found for course id: " + courseId + " and user id: " + userId));
 
         courseUserRepository.delete(courseUser);
+       } catch (Exception e) {
+           throw new RuntimeException("Error removing enrollment: " + e.getMessage());
+       }
         
     }
     public List<CourseUser> createListEnrollment(Integer courseId, List<Integer> userIds) {
-        var course = courseRepository.findById(courseId)
+       try {
+         var course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new RuntimeException("Course not found with id: " + courseId));
 
         List<CourseUser> enrollments = userIds.stream().map(userId -> {
@@ -57,5 +66,18 @@ public class CourseUserService {
         }).toList();
 
         return courseUserRepository.saveAll(enrollments);
+       } catch (Exception e) {
+            throw new RuntimeException("Error creating list of enrollments: " + e.getMessage());
+       }
+    }
+    public void removeUserFromCourse(Integer courseId, Integer userId) {
+       try {
+         var courseUser = courseUserRepository.findByCourseIdAndUserId(courseId, userId)
+                .orElseThrow(() -> new RuntimeException("Enrollment not found for course id: " + courseId + " and user id: " + userId));
+
+        courseUserRepository.delete(courseUser);
+       } catch (Exception e) {
+              throw new RuntimeException("Error removing user from course: " + e.getMessage());
+       }
     }
 }
