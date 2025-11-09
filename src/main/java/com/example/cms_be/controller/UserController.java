@@ -37,7 +37,7 @@ public class UserController {
     public ResponseEntity<?> getAllUserWithPagination(
             @RequestParam(name = "page", defaultValue = "1") int page,
             @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
-            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String search,
             @RequestParam(required = false) Boolean isActive
     ) {
         try {
@@ -45,7 +45,7 @@ public class UserController {
                 page = page - 1;
             }
             Pageable pageable = PageRequest.of(page, pageSize);
-            Page<User> userPage = userService.getAllUsersWithPagination(pageable, isActive, keyword);
+            Page<User> userPage = userService.getAllUsersWithPagination(pageable, isActive, search);
             Map<String, Object> response = Map.of(
                 "data", userPage.getContent(),
                 "currentPage", userPage.getNumber() + 1,
