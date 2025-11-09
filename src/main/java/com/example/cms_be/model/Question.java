@@ -52,6 +52,13 @@ public class Question {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "check_command", columnDefinition = "TEXT", nullable = true)
+    private String checkCommand;
+
+    @Column(name = "type_question", nullable = true)
+    private String typeQuestion;
+
+
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "lab_id", nullable = false)

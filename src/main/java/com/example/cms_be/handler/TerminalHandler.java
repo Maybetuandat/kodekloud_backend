@@ -80,6 +80,7 @@ public class TerminalHandler extends TextWebSocketHandler {
                     int bytesRead;
                     while (channel.isConnected() && (bytesRead = in.read(buffer)) != -1) {
                         session.sendMessage(new TextMessage(new String(buffer, 0, bytesRead, StandardCharsets.UTF_8)));
+                        System.out.println(new TextMessage(new String(buffer, 0, bytesRead, StandardCharsets.UTF_8)));
                     }
                 } catch (Exception e) {
                     log.warn("Error reading from SSH stream for session {}, closing connection.", wsSessionId, e);
