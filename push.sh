@@ -1,3 +1,3 @@
         git add .
-        git commit -m "feature(User): update logic for add user into a course"
+        git commit -m "feature(Question): add attribute to check questiion "
         git push origin main

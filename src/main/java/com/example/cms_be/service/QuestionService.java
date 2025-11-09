@@ -102,6 +102,12 @@ public class QuestionService {
             if (updatedQuestion.getSolution() != null) {
                 existingQuestion.setSolution(updatedQuestion.getSolution());
             }
+            if(updatedQuestion.getCheckCommand() != null) {
+                existingQuestion.setCheckCommand(updatedQuestion.getCheckCommand());
+            }
+            if(updatedQuestion.getTypeQuestion() != null) {
+                existingQuestion.setTypeQuestion(updatedQuestion.getTypeQuestion());
+            }
             if (updatedQuestion.getAnswers() != null) {
                 if (existingQuestion.getAnswers() != null) {
                     existingQuestion.getAnswers().clear();
