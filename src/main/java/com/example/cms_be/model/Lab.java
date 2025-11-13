@@ -3,6 +3,10 @@ package com.example.cms_be.model;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -16,6 +20,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
 public class Lab {
 
     @Id
@@ -39,19 +44,22 @@ public class Lab {
     @Column(name = "memory", nullable = true)
     private String memory;
 
-    
-    
-    
+    @Column(name="backing_image", nullable = false)
+    private String backingImage;
+
     @Column(name = "estimated_time", nullable = true)
     private Integer estimatedTime;
 
     @Column(name = "is_active", nullable = true)
     private Boolean isActive;
 
-    @Column(name = "created_at", nullable = true, updatable = false)
+    @Column(name = "created_at", updatable = false)
+    @CreatedDate
     private LocalDateTime createdAt;
 
-  
+    @LastModifiedDate
+    private LocalDateTime updatedAt;
+
     @JsonIgnore
     @OneToMany(mappedBy = "lab", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<CourseLab> courseLabs;
@@ -68,11 +76,15 @@ public class Lab {
     @JsonIgnore
     @OneToMany(mappedBy = "lab", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Question> labQuestions;
+
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id", nullable = false)
+    private Category category;
+
+
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
-        }
         if (isActive == null) {
             isActive = true;
         }

@@ -76,7 +76,7 @@ public class LabSessionService {
          }
     }
 
-    @Transactional // (org.springframework...)
+    @Transactional 
     public void submitSession(Integer labSessionId) {
         try {
             log.info("Submitting session {}...", labSessionId);

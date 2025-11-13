@@ -1,6 +1,12 @@
 package com.example.cms_be.model;
 
+import java.time.LocalDateTime;
+
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -10,8 +16,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
+@EntityListeners(AuditingEntityListener.class)
 
 @Entity
 @Table(
@@ -33,4 +38,8 @@ public class CourseUser {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id")
     private Course course;
+
+
+    @CreatedDate
+    private LocalDateTime createdAt;
 }

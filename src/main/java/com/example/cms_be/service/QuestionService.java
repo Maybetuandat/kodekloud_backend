@@ -117,7 +117,6 @@ public class QuestionService {
                     existingQuestion.getAnswers().add(answer);
                 }
             }
-            existingQuestion.setUpdatedAt(LocalDateTime.now());
             return questionRepository.save(existingQuestion);
         } catch (Exception e) {
             log.error("Error updating question: {}", e.getMessage());

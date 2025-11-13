@@ -1,31 +1,21 @@
 package com.example.cms_be.controller;
-
-
 import com.example.cms_be.dto.BackingImageDTO;
 import com.example.cms_be.service.StorageService;
 import io.kubernetes.client.openapi.ApiException;
 import org.springframework.web.bind.annotation.*;
-
-import com.example.cms_be.model.Answer;
 import com.example.cms_be.model.Lab;
 import com.example.cms_be.model.Question;
 import com.example.cms_be.model.SetupStep;
-import com.example.cms_be.service.AnswerService;
 import com.example.cms_be.service.LabService;
 import com.example.cms_be.service.QuestionService;
 import com.example.cms_be.service.SetupStepService;
-
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-
 import java.util.HashMap;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -49,7 +39,8 @@ public class LabController {
             @RequestParam(name = "page", defaultValue = "1") int page,
             @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) Boolean isActive
+            @RequestParam(required = false) Boolean isActive,
+            @RequestParam(required = false) Integer categorySlug
     ) {
         try {
             int pageNumber = page > 0 ? page - 1 : 0;
@@ -86,35 +77,35 @@ public class LabController {
     
 
     @GetMapping("/{labId}/questions")
-   public ResponseEntity<?> getAllQuestionWithPagination(
-            @RequestParam(name = "page", defaultValue = "1") int page,
-            @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
-            @RequestParam(required = false) String search,
-            @PathVariable Integer labId
-   ) {
-      
-    try {
-        int pageNumber = page > 0 ? page - 1 : 0;
-        if (search != null) {
-            search = search.trim(); 
-        }
-        Pageable pageable = PageRequest.of(pageNumber, pageSize);
+    public ResponseEntity<?> getAllQuestionWithPagination(
+                @RequestParam(name = "page", defaultValue = "1") int page,
+                @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
+                @RequestParam(required = false) String search,
+                @PathVariable Integer labId
+    ) {
         
-        Page<Question> questionPage = questionService.getAllQuestionsWithPaginations(search, labId, pageable);
-        Map<String, Object> response = Map.of(
-            "data", questionPage.getContent(),
-            "currentPage", questionPage.getNumber() + 1,
-            "totalItems", questionPage.getTotalElements(),
-            "totalPages", questionPage.getTotalPages(), 
-            "hasNext", questionPage.hasNext(),
-            "hasPrevious", questionPage.hasPrevious()
-        );
-        return ResponseEntity.ok(response); 
-    } catch (Exception e) {
-          log.error("Error occurred while fetching questions with search: {}", search, e);
-            return ResponseEntity.status(500).body("An error occurred while fetching questions.");
+        try {
+            int pageNumber = page > 0 ? page - 1 : 0;
+            if (search != null) {
+                search = search.trim(); 
+            }
+            Pageable pageable = PageRequest.of(pageNumber, pageSize);
+            
+            Page<Question> questionPage = questionService.getAllQuestionsWithPaginations(search, labId, pageable);
+            Map<String, Object> response = Map.of(
+                "data", questionPage.getContent(),
+                "currentPage", questionPage.getNumber() + 1,
+                "totalItems", questionPage.getTotalElements(),
+                "totalPages", questionPage.getTotalPages(), 
+                "hasNext", questionPage.hasNext(),
+                "hasPrevious", questionPage.hasPrevious()
+            );
+            return ResponseEntity.ok(response); 
+        } catch (Exception e) {
+            log.error("Error occurred while fetching questions with search: {}", search, e);
+                return ResponseEntity.status(500).body("An error occurred while fetching questions.");
+        }
     }
-   }
 
 
 
@@ -135,19 +126,25 @@ public class LabController {
 
    
 
-    @PostMapping("")
-    public ResponseEntity<?> createLab(@RequestBody Lab lab) {
+
+
+    @GetMapping("/backing-images")
+    public ResponseEntity<?> getAllBackingImages() {
         try {
-            Lab createdLab = labService.createLab(lab);
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdLab);
+            List<BackingImageDTO> backingImages = storageService.getAllBackingImages();
+            return ResponseEntity.ok(backingImages);
+        } catch (ApiException e) {
+            log.error("Failed to fetch Longhorn backing images due to Kubernetes API error.");
+            return ResponseEntity
+                    .status(e.getCode()) // Trả về mã lỗi thực tế từ K8s
+                    .body(Map.of("error", "Failed to communicate with Kubernetes API", "details", e.getResponseBody()));
         } catch (Exception e) {
-            log.error("Error creating lab: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            log.error("An unexpected error occurred while fetching Longhorn backing images.", e);
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "An internal server error occurred."));
         }
     }
-
-    
-
 
 
     @PostMapping("/{labId}/setup-steps")
@@ -232,22 +229,6 @@ public class LabController {
        }
     }
 
-    @GetMapping("/backing-images")
-    public ResponseEntity<?> getAllBackingImages() {
-        try {
-            List<BackingImageDTO> backingImages = storageService.getAllBackingImages();
-            return ResponseEntity.ok(backingImages);
-        } catch (ApiException e) {
-            log.error("Failed to fetch Longhorn backing images due to Kubernetes API error.");
-            return ResponseEntity
-                    .status(e.getCode()) // Trả về mã lỗi thực tế từ K8s
-                    .body(Map.of("error", "Failed to communicate with Kubernetes API", "details", e.getResponseBody()));
-        } catch (Exception e) {
-            log.error("An unexpected error occurred while fetching Longhorn backing images.", e);
-            return ResponseEntity
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "An internal server error occurred."));
-        }
-    }
+   
    
 }

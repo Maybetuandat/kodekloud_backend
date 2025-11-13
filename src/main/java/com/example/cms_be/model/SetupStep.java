@@ -10,7 +10,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -43,17 +42,17 @@ public class SetupStep {
 
 
     @Column(name = "expected_exit_code")
-    private Integer expectedExitCode = 0;
+    private Integer expectedExitCode ;
 
      @Column(name = "retry_count")
-    private Integer retryCount = 1;
+    private Integer retryCount ;
 
 
     @Column(name = "timeout_seconds")
-    private Integer timeoutSeconds = 300;
+    private Integer timeoutSeconds ;
 
     @Column(name = "continue_on_failure")
-    private Boolean continueOnFailure = false;
+    private Boolean continueOnFailure ;
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)

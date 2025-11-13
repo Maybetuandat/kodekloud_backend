@@ -60,7 +60,6 @@ public class SubjectService {
             existingSubject.setDescription(updatedSubject.getDescription());
             existingSubject.setIsActive(updatedSubject.getIsActive());
             existingSubject.setCode(updatedSubject.getCode());
-            existingSubject.setUpdatedAt(LocalDateTime.now());
 
             return subjectRepository.save(existingSubject);
         } catch (Exception e) {

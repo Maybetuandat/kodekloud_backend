@@ -2,6 +2,9 @@ package com.example.cms_be.model;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -21,12 +24,9 @@ public class SetupStepQuestion {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @NotNull(message = "Thứ tự bước không được null")
-    @Min(value = 1, message = "Thứ tự bước phải từ 1 trở lên")
     @Column(name = "step_order", nullable = false)
     private Integer stepOrder;
 
-    @NotBlank(message = "Lệnh setup không được để trống")
     @Column(name = "setup_command", nullable = false, columnDefinition = "TEXT")
     private String setupCommand;
 
@@ -39,14 +39,15 @@ public class SetupStepQuestion {
     @JoinColumn(name = "question_id", nullable = true)
     private Question question;
 
-    @Column(name = "created_at", nullable = true, updatable = false)
+    @Column(name = "created_at",updatable = false)
+    @CreatedDate
     private LocalDateTime createdAt;
 
-    @PrePersist
-    protected void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
-        }
-    }
+
+    @Column(name = "updated_at")
+    @LastModifiedDate
+    private LocalDateTime updatedAt;
+
+   
 }
 

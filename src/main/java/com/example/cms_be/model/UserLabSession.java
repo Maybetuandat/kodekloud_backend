@@ -1,10 +1,10 @@
 package com.example.cms_be.model;
-
 import java.time.LocalDateTime;
-import java.util.List;
+
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,6 +17,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
 public class UserLabSession {
 
     @Id
@@ -24,10 +25,10 @@ public class UserLabSession {
     @Column(name = "id", nullable = false, unique = true)
     private Integer id;
 
-    //private CourseUser courseUser;
-    //private SetupQuestionLog setupQuestionLog;
+   
 
     @Column(name = "created_at")
+    @CreatedDate
     private LocalDateTime createdAt;
 
     @Column(name = "setup_started_at")
@@ -56,11 +57,5 @@ public class UserLabSession {
     @JoinColumn(name = "course_user_id", nullable = true)
     private CourseUser courseUser;
 
-    @PrePersist
-    protected void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
-        }
-
-    }
+  
 }

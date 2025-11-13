@@ -5,7 +5,7 @@ import com.example.cms_be.model.*;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
-
+import com.example.cms_be.repository.CategoryRepository;
 import com.example.cms_be.repository.LabRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 public class LabService {
 
     private final LabRepository labRepository;
+    private final CategoryRepository categoryRepository;
    public Page<Lab> getAllLabs(Pageable pageable, Boolean isActive, String keyword) {
        try {
         return labRepository.findWithFilters(keyword, isActive, pageable );
@@ -45,8 +46,12 @@ public class LabService {
     }
 
 
-    public Lab createLab(Lab lab) {
+    public Lab createLab(Lab lab, Integer categoryId) {
         try{
+            Category category = categoryRepository.findById(categoryId)
+                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
+            lab.setCategory(category);
+
             return labRepository.save(lab);
         }
         catch (Exception e) {
