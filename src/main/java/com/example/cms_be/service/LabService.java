@@ -61,7 +61,7 @@ public class LabService {
     }
     public Optional<Lab> getLabById(Integer id) {
         try {
-            return labRepository.findById(id);
+              return labRepository.findByIdWithCategory(id);
         } catch (Exception e) {
             log.error("Error fetching lab by ID {}: {}", id, e.getMessage());
             throw new RuntimeException("Failed to fetch lab by ID", e);

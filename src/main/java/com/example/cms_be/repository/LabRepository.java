@@ -1,5 +1,7 @@
 package com.example.cms_be.repository;
 
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -49,5 +51,9 @@ public interface LabRepository extends JpaRepository<Lab, Integer> {
         @Param("keyword") String keyword,
         @Param("isActive") Boolean isActive,
         Pageable pageable);
+
+
+        @Query("SELECT l FROM Lab l JOIN FETCH l.category WHERE l.id = :id")
+        Optional<Lab> findByIdWithCategory(@Param("id") Integer id);
 
 }
