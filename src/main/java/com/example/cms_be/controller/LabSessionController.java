@@ -1,26 +1,18 @@
 package com.example.cms_be.controller;
-
 import com.example.cms_be.dto.CreateLabSessionRequest;
 import com.example.cms_be.dto.UserLabSessionResponse;
-import com.example.cms_be.model.Lab;
 import com.example.cms_be.model.UserLabSession;
-
-import com.example.cms_be.repository.LabRepository;
-import com.example.cms_be.repository.UserLabSessionRepository;
 import com.example.cms_be.service.LabSessionService;
-
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.nio.file.AccessDeniedException;
 import java.util.Map;
-import java.util.Optional;
+
 
 @RestController
 @RequestMapping("/api/lab-sessions")

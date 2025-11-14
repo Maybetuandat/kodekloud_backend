@@ -77,14 +77,34 @@ public class LabService {
             Lab existingLab = existingLabOpt.get();
 
             // Update fields
-            existingLab.setTitle(labUpdate.getTitle());
-            existingLab.setDescription(labUpdate.getDescription());
-            
-            existingLab.setEstimatedTime(labUpdate.getEstimatedTime());
+            if(labUpdate.getCategory() != null) {
+                Integer newCategoryId = labUpdate.getCategory().getId();
+                Category newCategory = categoryRepository.findById(newCategoryId).orElse(null);
+                if (newCategory != null) {
+                    existingLab.setCategory(newCategory);
+                } else {
+                    log.warn("Category with ID {} not found. Skipping category update.", newCategoryId);
+                }
 
+            }
+            if(labUpdate.getTitle() != null) {
+                existingLab.setTitle(labUpdate.getTitle());
+            }
+            if(labUpdate.getDescription() != null)
+            {
+                existingLab.setDescription(labUpdate.getDescription());
+            }
+
+            if(labUpdate.getEstimatedTime() != null) {
+                existingLab.setEstimatedTime(labUpdate.getEstimatedTime());
+            }
             if (labUpdate.getIsActive() != null) {
                 existingLab.setIsActive(labUpdate.getIsActive());
             }
+            if(labUpdate.getBackingImage() != null) {
+                existingLab.setBackingImage(labUpdate.getBackingImage());
+            }
+            
 
             Lab updatedLab = labRepository.save(existingLab);
             log.info("Lab updated successfully with ID: {}", updatedLab.getId());

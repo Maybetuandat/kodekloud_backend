@@ -1,7 +1,6 @@
 package com.example.cms_be.controller;
 import com.example.cms_be.dto.BackingImageDTO;
 import com.example.cms_be.service.StorageService;
-import io.kubernetes.client.openapi.ApiException;
 import org.springframework.web.bind.annotation.*;
 import com.example.cms_be.model.Lab;
 import com.example.cms_be.model.Question;
@@ -12,6 +11,8 @@ import com.example.cms_be.service.SetupStepService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,7 +32,6 @@ public class LabController {
     private final LabService labService;
     private final QuestionService questionService;
     private final SetupStepService setupStepService;
-    private final StorageService storageService;
 
     
     @GetMapping("")
@@ -130,20 +130,39 @@ public class LabController {
 
     @GetMapping("/backing-images")
     public ResponseEntity<?> getAllBackingImages() {
-        try {
-            List<BackingImageDTO> backingImages = storageService.getAllBackingImages();
-            return ResponseEntity.ok(backingImages);
-        } catch (ApiException e) {
-            log.error("Failed to fetch Longhorn backing images due to Kubernetes API error.");
-            return ResponseEntity
-                    .status(e.getCode()) // Trả về mã lỗi thực tế từ K8s
-                    .body(Map.of("error", "Failed to communicate with Kubernetes API", "details", e.getResponseBody()));
-        } catch (Exception e) {
-            log.error("An unexpected error occurred while fetching Longhorn backing images.", e);
-            return ResponseEntity
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "An internal server error occurred."));
-        }
+        // try {
+        //     List<BackingImageDTO> backingImages = storageService.getAllBackingImages();
+        //     return ResponseEntity.ok(backingImages);
+        // } catch (ApiException e) {
+        //     log.error("Failed to fetch Longhorn backing images due to Kubernetes API error.");
+        //     return ResponseEntity
+        //             .status(e.getCode()) // Trả về mã lỗi thực tế từ K8s
+        //             .body(Map.of("error", "Failed to communicate with Kubernetes API", "details", e.getResponseBody()));
+        // } catch (Exception e) {
+        //     log.error("An unexpected error occurred while fetching Longhornco backing images.", e);
+        //     return ResponseEntity
+        //             .status(HttpStatus.INTERNAL_SERVER_ERROR)
+        //             .body(Map.of("error", "An internal server error occurred."));
+        // }
+
+        List<BackingImageDTO> backingImages = new ArrayList<>();
+        BackingImageDTO backingImageDTO1 = new BackingImageDTO();
+        backingImageDTO1.setName("ubuntu-focal-golden");
+        backingImageDTO1.setUuid("ed576765-7c4b-4949-8fdf-062d7e0247cc");
+        backingImageDTO1.setSize(647992832L);
+        backingImageDTO1.setState(null);
+        backingImageDTO1.setDownloadProgress(0);
+        backingImageDTO1.setCreatedFrom("upload");
+        backingImages.add(backingImageDTO1);
+        BackingImageDTO backingImageDTO2 = new BackingImageDTO();
+        backingImageDTO2.setName("ubuntu-jammy-golden");
+        backingImageDTO2.setUuid("427a671f-8c4b-4b3b-b217-997cdcea5ed4");
+        backingImageDTO2.setSize(690565632L);
+        backingImageDTO2.setState(null);
+        backingImageDTO2.setDownloadProgress(0);
+        backingImageDTO2.setCreatedFrom("download");
+        backingImages.add(backingImageDTO2);
+        return ResponseEntity.ok(backingImages);
     }
 
 
