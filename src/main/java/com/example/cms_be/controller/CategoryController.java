@@ -1,5 +1,6 @@
 package com.example.cms_be.controller;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -39,6 +40,8 @@ public class CategoryController {
             return ResponseEntity.status(500).build();
         }
     }
+
+    @PreAuthorize("hasAnyRole('ROLE_SUBADMIN', 'ROLE_ADMIN')")
     @GetMapping("/{id}")
     public ResponseEntity<Category> getCategoryById(@PathVariable Integer id) {
         try {
@@ -49,6 +52,7 @@ public class CategoryController {
         }
     }
 
+    @PreAuthorize("hasAnyRole('ROLE_SUBADMIN', 'ROLE_ADMIN')")
     @PostMapping("")
     public ResponseEntity<Category> createCategory(@RequestBody Category category) {
         try {
