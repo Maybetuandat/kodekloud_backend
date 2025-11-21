@@ -47,7 +47,7 @@ public class Lab {
     @Column(name = "memory", nullable = true)
     private String memory;
 
-    @Column(name="backing_image", nullable = false)
+    @Column(name="backing_image", nullable = true)
     private String backingImage;
 
     @Column(name = "estimated_time", nullable = true)
@@ -82,7 +82,7 @@ public class Lab {
 
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id", nullable = false)
+    @JoinColumn(name = "category_id", nullable = true)
     private Category category;
 
 
