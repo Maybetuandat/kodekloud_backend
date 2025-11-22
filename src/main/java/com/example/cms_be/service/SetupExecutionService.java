@@ -58,19 +58,7 @@ public class SetupExecutionService {
     private final String defaultUsername = "ubuntu";
     private final String defaultPassword = "1234";
 
-    /**
-     * Thực thi setup steps cho Admin test - HOÀN TOÀN TUẦN TỰ với FULL BACKEND LOGGING
-     */
-    public boolean executeSetupStepsForAdminTest(Integer labId, String podName) {
-        try {
-            return executeSetupStepsSequentially(labId, podName);
-        } catch (Exception e) {
-            log.error("Error executing setup steps for lab {}: {}", labId, e.getMessage(), e);
-            webSocketHandler.broadcastLogToPod(podName, "error",
-                    "Failed to execute setup steps: " + e.getMessage(), null);
-            return false;
-        }
-    }
+   
 
     /**
      * Thực thi setup steps HOÀN TOÀN TUẦN TỰ với ENHANCED BACKEND LOGGING
@@ -522,4 +510,17 @@ public class SetupExecutionService {
         session.setStatus(status);
         userLabSessionRepository.save(session);
     }
+
+
+
+    public boolean executeSetupStepsForAdminTest(Integer labId, String podName) {
+    try {
+        return executeSetupStepsSequentially(labId, podName);
+    } catch (Exception e) {
+        log.error("Error executing setup steps for lab {}: {}", labId, e.getMessage(), e);
+        webSocketHandler.broadcastLogToPod(podName, "error",
+                "Failed to execute setup steps: " + e.getMessage(), null);
+        return false;
+    }
+}
 }

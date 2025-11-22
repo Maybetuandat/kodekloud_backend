@@ -1,6 +1,8 @@
 package com.example.cms_be.controller;
 import com.example.cms_be.dto.BackingImageDTO;
 import com.example.cms_be.dto.lab.CreateLabRequest;
+import com.example.cms_be.dto.lab.LabTestRequest;
+import com.example.cms_be.dto.lab.LabTestResponse;
 
 import org.springframework.web.bind.annotation.*;
 import com.example.cms_be.model.Lab;
@@ -10,8 +12,10 @@ import com.example.cms_be.service.LabService;
 import com.example.cms_be.service.QuestionService;
 import com.example.cms_be.service.SetupStepService;
 import com.example.cms_be.service.StorageService;
+import com.example.cms_be.service.VMTestService;
 
 import io.kubernetes.client.openapi.ApiException;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +41,7 @@ public class LabController {
     private final QuestionService questionService;
     private final SetupStepService setupStepService;
     private final StorageService    storageService;
+     private final VMTestService vmTestService;
 
     
     @GetMapping("")
@@ -141,7 +146,7 @@ public class LabController {
         } catch (ApiException e) {
             log.error("Failed to fetch Longhorn backing images due to Kubernetes API error.");
             return ResponseEntity
-                    .status(e.getCode()) // Trả về mã lỗi thực tế từ K8s
+                    .status(e.getCode()) 
                     .body(Map.of("error", "Failed to communicate with Kubernetes API", "details", e.getResponseBody()));
         } catch (Exception e) {
             log.error("An unexpected error occurred while fetching Longhornco backing images.", e);
@@ -149,26 +154,27 @@ public class LabController {
                     .status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "An internal server error occurred."));
         }
-
-        // List<BackingImageDTO> backingImages = new ArrayList<>();
-        // BackingImageDTO backingImageDTO1 = new BackingImageDTO();
-        // backingImageDTO1.setName("ubuntu-focal-golden");
-        // backingImageDTO1.setUuid("ed576765-7c4b-4949-8fdf-062d7e0247cc");
-        // backingImageDTO1.setSize(647992832L);
-        // backingImageDTO1.setState(null);
-        // backingImageDTO1.setDownloadProgress(0);
-        // backingImageDTO1.setCreatedFrom("upload");
-        // backingImages.add(backingImageDTO1);
-        // BackingImageDTO backingImageDTO2 = new BackingImageDTO();
-        // backingImageDTO2.setName("ubuntu-jammy-golden");
-        // backingImageDTO2.setUuid("427a671f-8c4b-4b3b-b217-997cdcea5ed4");
-        // backingImageDTO2.setSize(690565632L);
-        // backingImageDTO2.setState(null);
-        // backingImageDTO2.setDownloadProgress(0);
-        // backingImageDTO2.setCreatedFrom("download");
-        // backingImages.add(backingImageDTO2);
-        // return ResponseEntity.ok(backingImages);
     }
+
+
+
+    @GetMapping("/test/{testId}/status")
+    public ResponseEntity<?> getTestStatus(@PathVariable String testId) {
+        try {
+            LabTestResponse response = vmTestService.getTestStatus(testId);
+            return ResponseEntity.ok(response);
+
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Test not found: " + testId));
+
+        } catch (Exception e) {
+            log.error("Error getting test status: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to get test status"));
+        }
+    }
+
 
 
     @PostMapping("")
@@ -228,6 +234,36 @@ public class LabController {
        }
     }
 
+    
+    
+    
+    
+    
+    
+   @PostMapping("/test")
+    public ResponseEntity<?> testLabWithConfig(@Valid @RequestBody LabTestRequest request) {
+        try {
+            log.info("Received test request with config: {}", request);
+
+            LabTestResponse response = vmTestService.startLabTest(request);
+
+            return ResponseEntity.accepted().body(response);
+
+        } catch (EntityNotFoundException e) {
+            log.error("Lab not found: {}", request.getLabId());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
+
+        } catch (Exception e) {
+            log.error("Error starting lab test: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to start lab test: " + e.getMessage()));
+        }
+    }
+    
+    
+    
+    
     @PatchMapping("/{labId}")
     public ResponseEntity<Lab> updateLab(
             @PathVariable Integer labId,
@@ -266,5 +302,25 @@ public class LabController {
     }
 
    
+
+    @DeleteMapping("/test/{testId}")
+    public ResponseEntity<?> cancelTest(@PathVariable String testId) {
+        try {
+            vmTestService.cancelTest(testId);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Test cancelled successfully",
+                    "testId", testId
+            ));
+
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Test not found: " + testId));
+
+        } catch (Exception e) {
+            log.error("Error cancelling test: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to cancel test"));
+        }
+    }
    
 }

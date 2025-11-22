@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lab Test - WebSocket Logs</title>
+    <style>
+      body {
+        background: #1e1e1e;
+        color: #d4d4d4;
+        font-family: "Courier New", monospace;
+        margin: 0;
+        padding: 20px;
+      }
+      h1 {
+        color: #4ec9b0;
+      }
+      #logs {
+        background: #252526;
+        padding: 20px;
+        border-radius: 8px;
+        height: 70vh;
+        overflow-y: auto;
+        border: 1px solid #3e3e42;
+      }
+      .log-entry {
+        margin: 5px 0;
+        padding: 5px;
+        border-left: 3px solid transparent;
+      }
+      .log-success {
+        color: #0dbc79;
+        border-color: #0dbc79;
+      }
+      .log-error {
+        color: #cd3131;
+        border-color: #cd3131;
+      }
+      .log-warning {
+        color: #e5e510;
+        border-color: #e5e510;
+      }
+      .log-info {
+        color: #569cd6;
+      }
+      .log-stdout {
+        color: #4ec9b0;
+      }
+      .log-stderr {
+        color: #f48771;
+      }
+      .log-step {
+        color: white;
+        font-weight: bold;
+      }
+      .status {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 10px 20px;
+        border-radius: 5px;
+        background: #252526;
+        border: 2px solid #3e3e42;
+      }
+      .status.connected {
+        border-color: #0dbc79;
+      }
+      .status.disconnected {
+        border-color: #cd3131;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="status" id="status">⚫ Disconnected</div>
+    <h1>🧪 Lab Test - Real-time Logs</h1>
+    <div id="logs"></div>
+
+    <script>
+      // THAY ĐỔI URL NÀY
+      const WS_URL =
+        "ws://localhost:8080/ws/pod-logs?podName=test-vm-1-1763823927";
+
+      const logsContainer = document.getElementById("logs");
+      const statusEl = document.getElementById("status");
+      const logs = [];
+
+      const ws = new WebSocket(WS_URL);
+
+      ws.onopen = () => {
+        statusEl.textContent = "✅ Connected";
+        statusEl.className = "status connected";
+        addLog("system", "✅ WebSocket Connected!");
+        addLog("system", "Waiting for logs...");
+      };
+
+      ws.onmessage = (event) => {
+        const log = JSON.parse(event.data);
+        logs.push(log);
+
+        const icons = {
+          start: "🚀",
+          success: "✅",
+          error: "❌",
+          warning: "⚠️",
+          info: "ℹ️",
+          step: "🔄",
+          stdout: "📤",
+          stderr: "📥",
+          "pod-log": "📜",
+          "cloud-init": "☁️",
+          "event-info": "📢",
+          step_success: "✅",
+          step_error: "❌",
+        };
+
+        const icon = icons[log.type] || "📌";
+        const time = new Date(log.timestamp).toLocaleTimeString();
+        const message = `${icon} [${time}] ${log.message}`;
+
+        addLog(log.type, message);
+      };
+
+      ws.onerror = (error) => {
+        console.error("WebSocket Error:", error);
+        addLog("error", "❌ WebSocket Error");
+      };
+
+      ws.onclose = () => {
+        statusEl.textContent = "🔌 Disconnected";
+        statusEl.className = "status disconnected";
+        addLog("system", "🔌 WebSocket Closed");
+
+        // Summary
+        setTimeout(() => {
+          const summary = `
+                    <div style="margin-top: 20px; padding: 20px; background: #2d2d30; border-radius: 5px;">
+                        <h3>📊 Summary</h3>
+                        <p>Total logs: ${logs.length}</p>
+                        <p>Success: ${
+                          logs.filter((l) => l.type === "success").length
+                        }</p>
+                        <p>Errors: ${
+                          logs.filter((l) => l.type === "error").length
+                        }</p>
+                        <p>Warnings: ${
+                          logs.filter((l) => l.type === "warning").length
+                        }</p>
+                    </div>
+                `;
+          logsContainer.innerHTML += summary;
+        }, 1000);
+      };
+
+      function addLog(type, message) {
+        const div = document.createElement("div");
+        div.className = `log-entry log-${type}`;
+        div.textContent = message;
+        logsContainer.appendChild(div);
+        logsContainer.scrollTop = logsContainer.scrollHeight;
+      }
+    </script>
+  </body>
+</html>
