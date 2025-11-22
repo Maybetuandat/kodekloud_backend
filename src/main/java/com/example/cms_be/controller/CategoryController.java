@@ -61,16 +61,7 @@ public class CategoryController {
     }
     
 
-    @PostMapping("{categoryId}/labs")
-    public ResponseEntity<?> createLab(@PathVariable Integer categoryId, @RequestBody Lab lab) {
-        try {
-            Lab createdLab = labService.createLab(lab, categoryId);
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdLab);
-        } catch (Exception e) {
-            log.error("Error creating lab: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
+   
 
 
     @PatchMapping("/{id}")

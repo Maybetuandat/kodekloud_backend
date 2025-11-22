@@ -1,6 +1,7 @@
 package com.example.cms_be.controller;
 import com.example.cms_be.dto.BackingImageDTO;
-import com.example.cms_be.service.StorageService;
+import com.example.cms_be.dto.lab.CreateLabRequest;
+
 import org.springframework.web.bind.annotation.*;
 import com.example.cms_be.model.Lab;
 import com.example.cms_be.model.Question;
@@ -166,12 +167,24 @@ public class LabController {
     }
 
 
+    @PostMapping("")
+    public ResponseEntity<Lab> createLab(@RequestBody CreateLabRequest lab) {
+        try {
+            Lab createdLab = labService.createLab(lab);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdLab);
+        } catch (Exception e) {
+            log.error("Error creating lab: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+
+
+
     @PostMapping("/{labId}/setup-steps")
     public ResponseEntity<?> createSetupStep(
         @PathVariable Integer labId,
          @RequestBody SetupStep setupStep) {
-
-       
         try {
             SetupStep createdSetupStep = setupStepService.createSetupStep(setupStep,  labId);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdSetupStep);
@@ -211,10 +224,10 @@ public class LabController {
        }
     }
 
-    @PutMapping("/{labId}")
+    @PatchMapping("/{labId}")
     public ResponseEntity<Lab> updateLab(
             @PathVariable Integer labId,
-            @Valid @RequestBody Lab lab
+            @Valid @RequestBody CreateLabRequest lab
     ) {
        try {
          Lab updatedLab = labService.updateLab(labId, lab);

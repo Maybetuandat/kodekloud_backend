@@ -1,22 +1,12 @@
 package com.example.cms_be.service;
-
 import com.example.cms_be.model.Lab;
-
-
 import com.example.cms_be.model.UserLabSession;
-import com.example.cms_be.repository.UserLabSessionRepository;
-
-import io.kubernetes.client.Exec;
 import io.kubernetes.client.custom.IntOrString;
-import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
-
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.apis.CustomObjectsApi;
 import io.kubernetes.client.openapi.models.*;
-
 import io.kubernetes.client.util.Yaml;
-
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,29 +29,41 @@ import java.util.Map;
 @Slf4j
 @RequiredArgsConstructor
 public class VMService {
-    private static final String KUBEVIRT_GROUP = "kubevirt.io";
-    private static final String KUBEVIRT_VERSION = "v1";
-    private static final String KUBEVIRT_PLURAL_VM = "virtualmachines";
-
-    private static final String CDI_GROUP = "cdi.kubevirt.io";
-    private static final String CDI_VERSION = "v1beta1";
-    private static final String CDI_PLURAL_DV = "datavolumes";
-
     private final CustomObjectsApi customApi;
-    private final ApiClient client;
     private final CoreV1Api coreApi;
-    private Exec exec;
-
     private static final int defaultSshPort = 22;
 
-    private final UserLabSessionRepository userLabSessionRepository;
+    @Getter
+    @Value("${KUBEVIRT_GROUP}")
+    private String KUBEVIRT_GROUP;
 
-    private final SetupExecutionService setupExecutionService;
-    private final String IMAGE_URL = "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img";
 
     @Getter
-    @Value("${kubernetes.namespace:default}")
-    private String namespace;
+    @Value("${KUBEVIRT_PLURAL_VM}")
+    private String KUBEVIRT_PLURAL_VM;
+
+
+    @Getter
+    @Value("${KUBEVIRT_VERSION}")
+    private String KUBEVIRT_VERSION;
+
+
+    @Getter
+    @Value("${CDI_PLURAL_DV}")
+    private String CDI_PLURAL_DV;
+
+
+
+    @Getter
+    @Value("${CDI_GROUP}")
+    private String CDI_GROUP;
+     @Getter
+    @Value("${CDI_VERSION}")
+    private String CDI_VERSION;
+
+
+
+
 
     @Value("${app.execution-environment}")
     private String executionEnvironment;
@@ -70,10 +72,9 @@ public class VMService {
         String vmName = "vm-" + session.getId();
         String namespace = session.getLab().getNamespace();
         Lab lab = session.getLab();
-
-//        createDataVolumeFromTemplate(vmName, namespace, IMAGE_URL, lab.getStorage());
-        createPvcForSession(vmName, namespace, session.getLab().getStorage());
-        createVirtualMachineFromTemplate(vmName, namespace, lab.getMemory());
+        ensureNamespaceExists(namespace);
+        createPvcForSession(vmName, namespace, session.getLab().getInstanceType().getStorageGb().toString()); 
+        createVirtualMachineFromTemplate(vmName, namespace, lab.getInstanceType().getMemoryGb().toString());  
         createSshServiceForVM(vmName, namespace);
     }
 
@@ -88,28 +89,7 @@ public class VMService {
         return template;
     }
 
-    private void createDataVolumeFromTemplate(String vmName, String namespace, String imageUrl, String storage) throws IOException, ApiException {
-        Map<String, String> values = Map.of(
-                "NAME", vmName,
-                "NAMESPACE", namespace,
-                "IMAGE_URL", imageUrl,
-                "STORAGE", storage
-        );
-        String dataVolumeYaml = loadAndRenderTemplate("templates/datavolume-template.yaml", values);
-        @SuppressWarnings("rawtypes")
-        Map dataVolumeBody = Yaml.loadAs(dataVolumeYaml, Map.class);
-
-        log.info("Creating DataVolume '{}'...", vmName);
-
-        try {
-            log.info("Creating DataVolume '{}'...", vmName);
-            customApi.createNamespacedCustomObject(CDI_GROUP, CDI_VERSION, namespace, CDI_PLURAL_DV, dataVolumeBody, null, null, null);
-            log.info("DataVolume '{}' created. Image import is in progress.", vmName);
-        } catch (ApiException e) {
-            log.error("K8S API Exception when creating DataVolume. Status code: {}. Response body: {}", e.getCode(), e.getResponseBody());
-            throw e;
-        }
-    }
+    
 
     private void createPvcForSession(String vmName, String namespace, String storage) throws IOException, ApiException {
         Map<String, String> values = Map.of(
@@ -132,13 +112,38 @@ public class VMService {
         }
     }
 
+
+
+
+    //  private void createDataVolumeFromTemplate(String vmName, String namespace, String imageUrl, String storage) throws IOException, ApiException {
+    //     Map<String, String> values = Map.of(
+    //             "NAME", vmName,
+    //             "NAMESPACE", namespace,
+    //             "IMAGE_URL", imageUrl,
+    //             "STORAGE", storage
+    //     );
+    //     String dataVolumeYaml = loadAndRenderTemplate("templates/datavolume-template.yaml", values);
+    //     @SuppressWarnings("rawtypes")
+    //     Map dataVolumeBody = Yaml.loadAs(dataVolumeYaml, Map.class);
+
+    //     log.info("Creating DataVolume '{}'...", vmName);
+
+    //     try {
+    //         log.info("Creating DataVolume '{}'...", vmName);
+    //         customApi.createNamespacedCustomObject(CDI_GROUP, CDI_VERSION, namespace, CDI_PLURAL_DV, dataVolumeBody, null, null, null);
+    //         log.info("DataVolume '{}' created. Image import is in progress.", vmName);
+    //     } catch (ApiException e) {
+    //         log.error("K8S API Exception when creating DataVolume. Status code: {}. Response body: {}", e.getCode(), e.getResponseBody());
+    //         throw e;
+    //     }
+    // }
     private void createVirtualMachineFromTemplate(String vmName, String namespace, String memory) throws IOException, ApiException {
         Map<String, String> values = Map.of(
                 "NAME", vmName,
                 "NAMESPACE", namespace,
                 "MEMORY", memory
         );
-        String virtualMachineYaml = loadAndRenderTemplate("templates/vm-template.yaml", values);
+        String virtualMachineYaml = loadAndRenderTemplate("VmS/vm-template.yaml", values);
         @SuppressWarnings("rawtypes")
         Map vmBody = Yaml.loadAs(virtualMachineYaml, Map.class);
 
@@ -210,9 +215,27 @@ public class VMService {
         }
     }
 
-    private void updateSessionStatus(UserLabSession session, String status) {
-        log.info("Updating session {} status from '{}' to '{}'.", session.getId(), session.getStatus(), status);
-        session.setStatus(status);
-        userLabSessionRepository.save(session);
+
+    // Thực hiện kiểm tra xem namespace đã được tạo chưa, nếu chưa thực hiện tạo
+    private void ensureNamespaceExists(String namespace) throws ApiException {
+    try {
+        coreApi.readNamespace(namespace, null);
+        log.info("Namespace '{}' already exists.", namespace);
+    } catch (ApiException e) {
+        if (e.getCode() == 404) {
+            log.info("Namespace '{}' not found. Creating...", namespace);
+            V1Namespace namespaceBody = new V1Namespace()
+                    .apiVersion("v1")
+                    .kind("Namespace")
+                    .metadata(new V1ObjectMeta().name(namespace));
+            coreApi.createNamespace(namespaceBody, null, null, null, null);
+            log.info("Namespace '{}' created successfully.", namespace);
+        } else {
+            log.error("Error checking namespace '{}'. Status code: {}. Response body: {}", 
+                    namespace, e.getCode(), e.getResponseBody());
+            throw e;
+        }
     }
+}
+
 }

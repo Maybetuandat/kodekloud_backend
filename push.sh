@@ -1,3 +1,3 @@
         git add .
-        git commit -m "feature(Model): refractor model relationships"
-        git push origin main
+        git commit -m "refractor(Model): clean code and fix bug in Course model"
+        git push origin refractorcode

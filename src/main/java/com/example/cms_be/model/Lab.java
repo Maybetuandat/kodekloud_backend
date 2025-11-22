@@ -41,14 +41,9 @@ public class Lab {
     @Column(name = "namespace", nullable = true)
     private String namespace;
 
-    @Column(name = "storage", nullable = true)
-    private String storage;
+  
 
-    @Column(name = "memory", nullable = true)
-    private String memory;
-
-    @Column(name="backing_image", nullable = false)
-    private String backingImage;
+  
 
     @Column(name = "estimated_time", nullable = true)
     private Integer estimatedTime;
@@ -80,6 +75,10 @@ public class Lab {
     @OneToMany(mappedBy = "lab", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Question> labQuestions;
 
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "instance_type_id", nullable = false)
+    private InstanceType instanceType;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)

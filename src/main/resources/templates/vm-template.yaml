@@ -24,7 +24,7 @@ spec:
               masquerade: {}
         resources:
           requests:
-            memory: "{{MEMORY}}"
+            memory: "{{MEMORY}}Gi"
       networks:
         - name: default
           pod: {}

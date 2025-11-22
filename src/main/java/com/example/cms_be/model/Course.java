@@ -30,6 +30,10 @@ public class Course {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+
+    @Column(name="short_description", columnDefinition = "TEXT")
+    private String shortDescription;
+
     @Column(name = "level")
     private String level;
 
@@ -37,8 +41,7 @@ public class Course {
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
-    @Column(name = "short_description")
-    private String shortDescription;
+  
 
     @Column(name = "is_active")
     private Boolean isActive;
