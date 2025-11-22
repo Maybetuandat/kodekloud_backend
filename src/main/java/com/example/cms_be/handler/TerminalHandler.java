@@ -55,6 +55,7 @@ public class TerminalHandler extends TextWebSocketHandler {
             String vmName = "vm-" + userLabSession.getId();
             String namespace = userLabSession.getLab().getNamespace();
 
+            log.info("Found VM details - Name: {}, Namespace: {}", vmName, namespace);
             // 3. Dùng Discovery Service để lấy thông tin kết nối SSH từ bên ngoài
             KubernetesDiscoveryService.SshConnectionDetails details = discoveryService.getExternalSshDetails(vmName, namespace);
 

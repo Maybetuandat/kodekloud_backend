@@ -96,6 +96,7 @@ public class VMService {
                 "NAME", vmName,
                 "NAMESPACE", namespace,
                 "STORAGE", storage
+
         );
         String pvcYaml = loadAndRenderTemplate("templates/pvc.yaml", values);
 
@@ -115,35 +116,15 @@ public class VMService {
 
 
 
-    //  private void createDataVolumeFromTemplate(String vmName, String namespace, String imageUrl, String storage) throws IOException, ApiException {
-    //     Map<String, String> values = Map.of(
-    //             "NAME", vmName,
-    //             "NAMESPACE", namespace,
-    //             "IMAGE_URL", imageUrl,
-    //             "STORAGE", storage
-    //     );
-    //     String dataVolumeYaml = loadAndRenderTemplate("templates/datavolume-template.yaml", values);
-    //     @SuppressWarnings("rawtypes")
-    //     Map dataVolumeBody = Yaml.loadAs(dataVolumeYaml, Map.class);
-
-    //     log.info("Creating DataVolume '{}'...", vmName);
-
-    //     try {
-    //         log.info("Creating DataVolume '{}'...", vmName);
-    //         customApi.createNamespacedCustomObject(CDI_GROUP, CDI_VERSION, namespace, CDI_PLURAL_DV, dataVolumeBody, null, null, null);
-    //         log.info("DataVolume '{}' created. Image import is in progress.", vmName);
-    //     } catch (ApiException e) {
-    //         log.error("K8S API Exception when creating DataVolume. Status code: {}. Response body: {}", e.getCode(), e.getResponseBody());
-    //         throw e;
-    //     }
-    // }
+  
     private void createVirtualMachineFromTemplate(String vmName, String namespace, String memory) throws IOException, ApiException {
         Map<String, String> values = Map.of(
                 "NAME", vmName,
                 "NAMESPACE", namespace,
-                "MEMORY", memory
+                "MEMORY", memory, 
+                "CPU", "1"
         );
-        String virtualMachineYaml = loadAndRenderTemplate("VmS/vm-template.yaml", values);
+        String virtualMachineYaml = loadAndRenderTemplate("templates/vm-template.yaml", values);
         @SuppressWarnings("rawtypes")
         Map vmBody = Yaml.loadAs(virtualMachineYaml, Map.class);
 
