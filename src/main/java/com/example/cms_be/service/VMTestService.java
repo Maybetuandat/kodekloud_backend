@@ -44,10 +44,12 @@ public class VMTestService {
         
     }
 
-    String testId = UUID.randomUUID().toString();
-    String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
-    String testVmName = String.format("test-vm-%d-%s", lab.getId(), timestamp);
+    // String testId = UUID.randomUUID().toString();
+    // String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
+    // String testVmName = String.format("test-vm-%d-%s", lab.getId(), timestamp);
 
+    String testId = "1";
+    String testVmName = "test-vm-1";
     log.info("Test ID: {}, Test VM Name: {}", testId, testVmName);
 
     Map<String, Object> connectionInfo = socketConnectionInfo.createWebSocketConnectionInfo(testVmName);

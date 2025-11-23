@@ -92,7 +92,7 @@ public class VMService {
         return template;
     }
 
-    private void createPvcForSession(String vmName, String namespace, String storage) throws IOException, ApiException {
+    public void createPvcForSession(String vmName, String namespace, String storage) throws IOException, ApiException {
         Map<String, String> values = Map.of(
                 "NAME", vmName,
                 "NAMESPACE", namespace,
@@ -118,7 +118,7 @@ public class VMService {
 
 
   
-    private void createVirtualMachineFromTemplate(String vmName, String namespace, String memory, String cpu) throws IOException, ApiException {
+    public void createVirtualMachineFromTemplate(String vmName, String namespace, String memory, String cpu) throws IOException, ApiException {
         Map<String, String> values = Map.of(
                 "NAME", vmName,
                 "NAMESPACE", namespace,
@@ -142,7 +142,7 @@ public class VMService {
         }
     }
 
-    private void createSshServiceForVM(String name, String namespace) throws ApiException {
+    public void createSshServiceForVM(String name, String namespace) throws ApiException {
         String serviceName = "ssh-" + name;
         V1Service serviceBody = new V1Service()
                 .apiVersion("v1")
@@ -167,15 +167,40 @@ public class VMService {
         String serviceName = "ssh-" + vmName;
 
         // Xóa Service
+        deleteKubernetesService(serviceName, namespace);
+        
+
+        //Xóa vm
+        deleteKubernetestVmObject(vmName, namespace);
+
+        // Xóa PVC
+        deleteKubernetesPvc(vmName, namespace);
+        log.info("Deleted Kubernetes resources for session ID: {}", session.getId());
+      
+      
+    }
+
+    public void deleteKubernetesPvc(String pvcName, String namespace) {
+        try {
+            log.info("Deleting PersistentVolumeClaim: {} in namespace {}", pvcName, namespace);
+            coreApi.deleteNamespacedPersistentVolumeClaim(pvcName, namespace, null, null, null, null, null, null);
+        } catch (ApiException e) {
+            log.warn("Failed to delete PersistentVolumeClaim {}: {} (May already be deleted)", pvcName, e.getResponseBody());
+        }
+    }
+
+    public void deleteKubernetesService(String serviceName, String namespace) {
         try {
             log.info("Deleting Service: {} in namespace {}", serviceName, namespace);
             coreApi.deleteNamespacedService(serviceName, namespace, null, null, null, null, null, null);
         } catch (ApiException e) {
             log.warn("Failed to delete Service {}: {} (May already be deleted)", serviceName, e.getResponseBody());
         }
+    }
 
-        
-        try {
+    public void deleteKubernetestVmObject(String vmName, String namespace)
+    {
+          try {
             log.info("Deleting VirtualMachine: {} in namespace {}", vmName, namespace);
             customApi.deleteNamespacedCustomObject(
                     KUBEVIRT_GROUP,
@@ -189,15 +214,7 @@ public class VMService {
             log.warn("Failed to delete VirtualMachine {}: {} (May already be deleted)", vmName, e.getResponseBody());
         }
 
-        try {
-            log.info("Deleting PersistentVolumeClaim: {} in namespace {}", vmName, namespace);
-            coreApi.deleteNamespacedPersistentVolumeClaim(vmName, namespace, null, null, null, null, null, null);
-        } catch (ApiException e) {
-            log.warn("Failed to delete PVC {}: {} (May already be deleted)", vmName, e.getResponseBody());
-        }
     }
-
-
 
     private void createNetworkPolicyForNamespace(String namespace ) throws IOException, ApiException
     {
@@ -229,7 +246,7 @@ public class VMService {
         }
     }
     // Thực hiện kiểm tra xem namespace đã được tạo chưa, nếu chưa thực hiện tạo
-    private void ensureNamespaceExists(String namespace) throws ApiException {
+    public void ensureNamespaceExists(String namespace) throws ApiException {
         try {
             coreApi.readNamespace(namespace, null);
             log.info("Namespace '{}' already exists.", namespace);
