@@ -164,10 +164,10 @@ public class VMService {
     public void deleteKubernetesResourcesForSession(UserLabSession session) {
         String vmName = "vm-" + session.getId();
         String namespace = session.getLab().getNamespace();
-        String serviceName = "ssh-" + vmName;
+        
 
         // Xóa Service
-        deleteKubernetesService(serviceName, namespace);
+        deleteKubernetesService(vmName, namespace);
         
 
         //Xóa vm
@@ -189,7 +189,8 @@ public class VMService {
         }
     }
 
-    public void deleteKubernetesService(String serviceName, String namespace) {
+    public void deleteKubernetesService(String vmName, String namespace) {
+        String serviceName = "ssh-" + vmName;
         try {
             log.info("Deleting Service: {} in namespace {}", serviceName, namespace);
             coreApi.deleteNamespacedService(serviceName, namespace, null, null, null, null, null, null);

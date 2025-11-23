@@ -154,7 +154,7 @@ public class VMTestLogStreamerService {
     /**
      * Stream cloud-init logs from VM via SSH
      */
-    @Async
+    
     public void streamCloudInitLogs(SshConnectionDetails sshDetails, String vmName) {
         String streamKey = vmName + "-cloud-init";
         AtomicBoolean shouldContinue = new AtomicBoolean(true);
