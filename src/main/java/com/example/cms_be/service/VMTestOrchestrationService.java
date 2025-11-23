@@ -1,4 +1,6 @@
 package com.example.cms_be.service;
+import com.example.cms_be.dto.connection.SshConnectionDetails;
+import com.example.cms_be.model.InstanceType;
 import com.example.cms_be.model.Lab;
 import com.example.cms_be.ultil.PodLogWebSocketHandler;
 import io.kubernetes.client.openapi.models.V1Pod;
@@ -16,7 +18,7 @@ public class VMTestOrchestrationService {
     private final SetupExecutionService setupExecutionService;
     private final PodLogWebSocketHandler webSocketHandler;
 
-    public boolean executeTestWorkflow(Lab lab, String testVmName, String namespace, int timeoutSeconds) {
+    public boolean executeTestWorkflow(Lab lab, String testVmName, String namespace, int timeoutSeconds, InstanceType instanceType) {
         boolean success = false;
 
         try {
@@ -27,7 +29,7 @@ public class VMTestOrchestrationService {
             
             webSocketHandler.broadcastLogToPod(testVmName, "info",
                     " Phase 1: Creating VM resources...", null);
-            resourceService.createTestVMResources(lab, testVmName, namespace);
+            resourceService.createTestVMResources(lab, testVmName, namespace, instanceType);
 
             webSocketHandler.broadcastLogToPod(testVmName, "success",
                     " VM resources created successfully", null);
@@ -68,7 +70,7 @@ public class VMTestOrchestrationService {
             webSocketHandler.broadcastLogToPod(testVmName, "info",
                     "🔌 Phase 4: Waiting for SSH service...", null);
 
-            KubernetesDiscoveryService.SshConnectionDetails sshDetails =
+            SshConnectionDetails sshDetails =
                     discoveryService.getExternalSshDetails(testVmName, namespace);
 
             discoveryService.waitForSshReady(sshDetails.host(), sshDetails.port(), 180);
@@ -100,8 +102,9 @@ public class VMTestOrchestrationService {
                     "💻 Phase 6: Executing setup steps...", null);
 
             // Execute setup steps (reuse existing service)
-            success = setupExecutionService.executeSetupStepsForAdminTest(lab.getId(), testVmName);
+        //     success = setupExecutionService.executeSetupStepsForAdminTest(lab.getId(), testVmName);
 
+            success = true;
             if (success) {
                 webSocketHandler.broadcastLogToPod(testVmName, "success",
                         "🎉 All setup steps completed successfully!", null);

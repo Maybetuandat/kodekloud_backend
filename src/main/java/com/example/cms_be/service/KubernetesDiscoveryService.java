@@ -5,8 +5,9 @@ import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.models.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
+
+import com.example.cms_be.dto.connection.SshConnectionDetails;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -46,6 +47,8 @@ public class KubernetesDiscoveryService {
         throw new RuntimeException("Timeout: Pod with label '" + labelSelector + "' did not enter Running state within " + timeoutSeconds + " seconds.");
     }
 
+
+    // thhực hiện tại kết nôi tcp để kiểm tra xem ssh đã sẵn sàng hay chưa
     public void waitForSshReady(String host, int port, int timeoutSeconds) throws InterruptedException {
         log.info("Waiting for SSH service to be ready at {}:{}...", host, port);
         long startTime = System.currentTimeMillis();
@@ -109,5 +112,5 @@ public class KubernetesDiscoveryService {
         return externalIp != null ? externalIp : internalIp;
     }
 
-    public record SshConnectionDetails(String host, int port) {}
+  
 }

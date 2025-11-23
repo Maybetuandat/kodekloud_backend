@@ -1,7 +1,10 @@
 package com.example.cms_be.service;
 
+import com.example.cms_be.dto.connection.SshConnectionDetails;
 import com.example.cms_be.model.UserLabSession;
 import com.example.cms_be.repository.UserLabSessionRepository;
+
+
 import io.kubernetes.client.openapi.models.V1Pod;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +37,7 @@ public class LabOrchestrationService {
             log.info("Phase 2: Waiting for VM to be ready for session {}...", session.getId());
             V1Pod pod = discoveryService.waitForPodRunning(vmName, namespace, 1200);
 
-            KubernetesDiscoveryService.SshConnectionDetails connectionDetails;
+            SshConnectionDetails connectionDetails;
             if ("outside-cluster".equalsIgnoreCase(executionEnvironment)) {
                 connectionDetails = discoveryService.getExternalSshDetails(vmName, namespace);
             } else {

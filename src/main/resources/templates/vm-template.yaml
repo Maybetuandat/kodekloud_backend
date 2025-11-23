@@ -9,7 +9,7 @@ spec:
     metadata:
       labels:
         kubevirt.io/vm: "{{NAME}}"
-        app: "{{NAME}}" # ← THÊM DÒNG NÀY
+        app: "{{NAME}}"
     spec:
       volumes:
         - name: bootdisk

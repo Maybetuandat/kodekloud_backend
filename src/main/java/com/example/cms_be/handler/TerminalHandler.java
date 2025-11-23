@@ -1,5 +1,6 @@
 package com.example.cms_be.handler;
 
+import com.example.cms_be.dto.connection.SshConnectionDetails;
 import com.example.cms_be.model.UserLabSession;
 import com.example.cms_be.repository.UserLabSessionRepository;
 import com.example.cms_be.service.KubernetesDiscoveryService;
@@ -57,7 +58,7 @@ public class TerminalHandler extends TextWebSocketHandler {
 
             log.info("Found VM details - Name: {}, Namespace: {}", vmName, namespace);
             // 3. Dùng Discovery Service để lấy thông tin kết nối SSH từ bên ngoài
-            KubernetesDiscoveryService.SshConnectionDetails details = discoveryService.getExternalSshDetails(vmName, namespace);
+            SshConnectionDetails details = discoveryService.getExternalSshDetails(vmName, namespace);
 
             // 4. Mở kết nối SSH và một 'shell' channel
             JSch jsch = new JSch();

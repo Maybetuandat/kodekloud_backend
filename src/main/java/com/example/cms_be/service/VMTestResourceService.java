@@ -1,5 +1,6 @@
 package com.example.cms_be.service;
 
+import com.example.cms_be.model.InstanceType;
 import com.example.cms_be.model.Lab;
 import com.example.cms_be.ultil.PodLogWebSocketHandler;
 import io.kubernetes.client.openapi.ApiException;
@@ -40,7 +41,7 @@ public class VMTestResourceService {
     /**
      * Tạo toàn bộ resources cho test VM
      */
-    public void createTestVMResources(Lab lab, String testVmName, String namespace) throws IOException, ApiException {
+    public void createTestVMResources(Lab lab, String testVmName, String namespace, InstanceType instanceType) throws IOException, ApiException {
         log.info("Creating test VM resources: {}", testVmName);
 
         // Ensure namespace exists
@@ -51,7 +52,7 @@ public class VMTestResourceService {
         // Create PVC
         webSocketHandler.broadcastLogToPod(testVmName, "info",
                 "⏳ Creating PersistentVolumeClaim...", null);
-        createPvcForTest(testVmName, namespace, lab.getInstanceType().getStorageGb().toString());
+        createPvcForTest(testVmName, namespace,  instanceType.getStorageGb().toString());
         webSocketHandler.broadcastLogToPod(testVmName, "success",
                 "✅ PVC created successfully", null);
 
@@ -59,8 +60,8 @@ public class VMTestResourceService {
         webSocketHandler.broadcastLogToPod(testVmName, "info",
                 "⏳ Creating VirtualMachine...", null);
         createVirtualMachineForTest(testVmName, namespace,
-                lab.getInstanceType().getMemoryGb().toString(),
-                lab.getInstanceType().getCpuCores().toString());
+                instanceType.getMemoryGb().toString(),
+                instanceType.getCpuCores().toString());
         webSocketHandler.broadcastLogToPod(testVmName, "success",
                 "✅ VirtualMachine created successfully", null);
 

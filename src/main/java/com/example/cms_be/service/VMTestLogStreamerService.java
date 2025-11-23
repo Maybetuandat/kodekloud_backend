@@ -1,5 +1,6 @@
 package com.example.cms_be.service;
 
+import com.example.cms_be.dto.connection.SshConnectionDetails;
 import com.example.cms_be.ultil.PodLogWebSocketHandler;
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
@@ -154,7 +155,7 @@ public class VMTestLogStreamerService {
      * Stream cloud-init logs from VM via SSH
      */
     @Async
-    public void streamCloudInitLogs(KubernetesDiscoveryService.SshConnectionDetails sshDetails, String vmName) {
+    public void streamCloudInitLogs(SshConnectionDetails sshDetails, String vmName) {
         String streamKey = vmName + "-cloud-init";
         AtomicBoolean shouldContinue = new AtomicBoolean(true);
         activeStreamings.put(streamKey, shouldContinue);
@@ -163,7 +164,6 @@ public class VMTestLogStreamerService {
 
         JSch jsch = new JSch();
         Session session = null;
-        ChannelExec channel = null;
 
         try {
             // Create SSH session
@@ -174,53 +174,80 @@ public class VMTestLogStreamerService {
 
             log.info("SSH connected for cloud-init log streaming");
 
-            // First check if cloud-init is complete
-            channel = (ChannelExec) session.openChannel("exec");
-            channel.setCommand("cloud-init status --wait");
-            
-            InputStream in = channel.getInputStream();
-            channel.connect();
-
-            BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-            String line;
-
+            // ===== STEP 1: Wait for cloud-init to complete =====
             webSocketHandler.broadcastLogToPod(vmName, "info",
                     "⏳ Waiting for cloud-init to complete...", null);
 
-            while ((line = reader.readLine()) != null) {
-                webSocketHandler.broadcastLogToPod(vmName, "cloud-init",
-                        "[Cloud-Init] " + line, null);
-            }
-
-            channel.disconnect();
-
-            // Now stream the cloud-init output log
-            channel = (ChannelExec) session.openChannel("exec");
-            channel.setCommand("cat /var/log/cloud-init-output.log");
+            ChannelExec waitChannel = (ChannelExec) session.openChannel("exec");
+            waitChannel.setCommand("cloud-init status --wait");
             
-            in = channel.getInputStream();
-            channel.connect();
+            InputStream waitStream = waitChannel.getInputStream();
+            waitChannel.connect();
 
-            reader = new BufferedReader(new InputStreamReader(in));
+            BufferedReader waitReader = new BufferedReader(new InputStreamReader(waitStream));
+            String line;
 
-            webSocketHandler.broadcastLogToPod(vmName, "info",
-                    "📜 Streaming cloud-init output log...", null);
-
-            while ((line = reader.readLine()) != null && shouldContinue.get()) {
-                webSocketHandler.broadcastLogToPod(vmName, "cloud-init-log",
-                        "[Cloud-Init-Output] " + line, null);
+            while ((line = waitReader.readLine()) != null) {
+                webSocketHandler.broadcastLogToPod(vmName, "cloud-init-status",
+                        "[Status] " + line, null);
             }
 
-            log.info("Cloud-init log streaming completed for: {}", vmName);
+            waitChannel.disconnect();
+            
+            webSocketHandler.broadcastLogToPod(vmName, "success",
+                    "✅ Cloud-init finished", null);
+
+            // Small delay to ensure log file is written
+            Thread.sleep(2000);
+
+            // ===== STEP 2: Stream cloud-init-output.log =====
+            webSocketHandler.broadcastLogToPod(vmName, "info",
+                    "📜 Fetching cloud-init output log...", null);
+
+            ChannelExec logChannel = (ChannelExec) session.openChannel("exec");
+            logChannel.setCommand("cat /var/log/cloud-init-output.log");
+            
+            InputStream logStream = logChannel.getInputStream();
+            InputStream errStream = logChannel.getErrStream();
+            logChannel.connect();
+
+            BufferedReader logReader = new BufferedReader(new InputStreamReader(logStream));
+            BufferedReader errReader = new BufferedReader(new InputStreamReader(errStream));
+
+            int lineCount = 0;
+            
+            // Read stdout
+            while ((line = logReader.readLine()) != null && shouldContinue.get()) {
+                lineCount++;
+                webSocketHandler.broadcastLogToPod(vmName, "cloud-init-log",
+                        line, // ✅ Gửi từng dòng log gốc không có prefix
+                        null);
+                
+                // Small delay to avoid overwhelming websocket
+                if (lineCount % 50 == 0) {
+                    Thread.sleep(10);
+                }
+            }
+            
+            // Check for errors
+            String errLine;
+            while ((errLine = errReader.readLine()) != null) {
+                webSocketHandler.broadcastLogToPod(vmName, "error",
+                        "[ERROR] " + errLine, null);
+            }
+
+            logChannel.disconnect();
+
+            webSocketHandler.broadcastLogToPod(vmName, "success",
+                    String.format("✅ Cloud-init log complete (%d lines)", lineCount), null);
+
+            log.info("Cloud-init log streaming completed for: {} ({} lines)", vmName, lineCount);
 
         } catch (Exception e) {
-            log.error("Error streaming cloud-init logs for {}: {}", vmName, e.getMessage());
-            webSocketHandler.broadcastLogToPod(vmName, "warning",
-                    "⚠️ Cloud-init log streaming error: " + e.getMessage(), null);
+            log.error("Error streaming cloud-init logs for {}: {}", vmName, e.getMessage(), e);
+            webSocketHandler.broadcastLogToPod(vmName, "error",
+                    "❌ Cloud-init log error: " + e.getMessage(), null);
         } finally {
-            if (channel != null && channel.isConnected()) {
-                channel.disconnect();
-            }
             if (session != null && session.isConnected()) {
                 session.disconnect();
             }

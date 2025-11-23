@@ -3,6 +3,7 @@ package com.example.cms_be.config;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.apis.CustomObjectsApi;
+import io.kubernetes.client.openapi.apis.NetworkingV1Api;
 import io.kubernetes.client.util.ClientBuilder;
 import io.kubernetes.client.util.Config;
 import io.kubernetes.client.util.KubeConfig;
@@ -12,9 +13,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.util.StringUtils;
-
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 
@@ -73,5 +72,9 @@ public class KubernetesClientConfig {
         }
         client.setReadTimeout(0);
         return client;
+    }
+    @Bean
+    public NetworkingV1Api networkingV1Api(ApiClient apiClient) {
+        return new NetworkingV1Api(apiClient);
     }
 }

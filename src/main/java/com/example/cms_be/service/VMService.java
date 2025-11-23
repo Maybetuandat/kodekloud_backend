@@ -5,6 +5,7 @@ import io.kubernetes.client.custom.IntOrString;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.openapi.apis.CustomObjectsApi;
+import io.kubernetes.client.openapi.apis.NetworkingV1Api;
 import io.kubernetes.client.openapi.models.*;
 import io.kubernetes.client.util.Yaml;
 import lombok.Getter;
@@ -60,6 +61,7 @@ public class VMService {
      @Getter
     @Value("${CDI_VERSION}")
     private String CDI_VERSION;
+    private final NetworkingV1Api networkingApi;
 
 
 
@@ -72,10 +74,11 @@ public class VMService {
         String vmName = "vm-" + session.getId();
         String namespace = session.getLab().getNamespace();
         Lab lab = session.getLab();
-        ensureNamespaceExists(namespace);
-        createPvcForSession(vmName, namespace, session.getLab().getInstanceType().getStorageGb().toString()); 
-        createVirtualMachineFromTemplate(vmName, namespace, lab.getInstanceType().getMemoryGb().toString());  
-        createSshServiceForVM(vmName, namespace);
+        ensureNamespaceExists(namespace);  //  đảm bảo namespace đã tồn tài
+        createNetworkPolicyForNamespace(namespace); // tạo network policy
+        createPvcForSession(vmName, namespace, session.getLab().getInstanceType().getStorageGb().toString());   // tạo pvc
+        createVirtualMachineFromTemplate(vmName, namespace, lab.getInstanceType().getMemoryGb().toString(), lab.getInstanceType().getCpuCores().toString());  // tạo vm 
+        createSshServiceForVM(vmName, namespace);  // tạo ssh service qua nodePort để map vào ssh trong vm 
     }
 
     private String loadAndRenderTemplate(String templatePath, Map<String, String> values) throws IOException {
@@ -88,8 +91,6 @@ public class VMService {
         }
         return template;
     }
-
-    
 
     private void createPvcForSession(String vmName, String namespace, String storage) throws IOException, ApiException {
         Map<String, String> values = Map.of(
@@ -117,12 +118,12 @@ public class VMService {
 
 
   
-    private void createVirtualMachineFromTemplate(String vmName, String namespace, String memory) throws IOException, ApiException {
+    private void createVirtualMachineFromTemplate(String vmName, String namespace, String memory, String cpu) throws IOException, ApiException {
         Map<String, String> values = Map.of(
                 "NAME", vmName,
                 "NAMESPACE", namespace,
                 "MEMORY", memory, 
-                "CPU", "1"
+                "CPU", cpu
         );
         String virtualMachineYaml = loadAndRenderTemplate("templates/vm-template.yaml", values);
         @SuppressWarnings("rawtypes")
@@ -197,26 +198,60 @@ public class VMService {
     }
 
 
-    // Thực hiện kiểm tra xem namespace đã được tạo chưa, nếu chưa thực hiện tạo
-    private void ensureNamespaceExists(String namespace) throws ApiException {
-    try {
-        coreApi.readNamespace(namespace, null);
-        log.info("Namespace '{}' already exists.", namespace);
-    } catch (ApiException e) {
-        if (e.getCode() == 404) {
-            log.info("Namespace '{}' not found. Creating...", namespace);
-            V1Namespace namespaceBody = new V1Namespace()
-                    .apiVersion("v1")
-                    .kind("Namespace")
-                    .metadata(new V1ObjectMeta().name(namespace));
-            coreApi.createNamespace(namespaceBody, null, null, null, null);
-            log.info("Namespace '{}' created successfully.", namespace);
-        } else {
-            log.error("Error checking namespace '{}'. Status code: {}. Response body: {}", 
+
+    private void createNetworkPolicyForNamespace(String namespace ) throws IOException, ApiException
+    {
+          try {
+            networkingApi.readNamespacedNetworkPolicy("lab-vm-secure-policy", namespace, null);
+            log.info("NetworkPolicy 'lab-vm-secure-policy' already exists in namespace '{}'", namespace);
+            return;
+        } catch (ApiException e) {
+            if (e.getCode() != 404) {
+                throw e; 
+            }
+            
+        }
+
+        Map<String, String> values = Map.of("NAMESPACE", namespace);
+        String networkPolicyYaml = loadAndRenderTemplate("templates/network-policy.yaml", values);
+        
+        V1NetworkPolicy networkPolicy = Yaml.loadAs(networkPolicyYaml, V1NetworkPolicy.class);
+
+        log.info("Creating NetworkPolicy 'lab-vm-secure-policy' in namespace '{}'...", namespace);
+        
+        try {
+            networkingApi.createNamespacedNetworkPolicy(namespace, networkPolicy, null, null, null, null);
+            log.info("NetworkPolicy 'lab-vm-secure-policy' created successfully in namespace '{}'", namespace);
+        } catch (ApiException e) {
+            log.error("Failed to create NetworkPolicy in namespace '{}'. Status code: {}. Response body: {}", 
                     namespace, e.getCode(), e.getResponseBody());
             throw e;
         }
     }
-}
+    // Thực hiện kiểm tra xem namespace đã được tạo chưa, nếu chưa thực hiện tạo
+    private void ensureNamespaceExists(String namespace) throws ApiException {
+        try {
+            coreApi.readNamespace(namespace, null);
+            log.info("Namespace '{}' already exists.", namespace);
+        } catch (ApiException e) {
+            if (e.getCode() == 404) {
+                log.info("Namespace '{}' not found. Creating...", namespace);
+                V1Namespace namespaceBody = new V1Namespace()
+                        .apiVersion("v1")
+                        .kind("Namespace")
+                        .metadata(new V1ObjectMeta().name(namespace));
+                coreApi.createNamespace(namespaceBody, null, null, null, null);
+                
 
+
+                log.info("Namespace '{}' created successfully.", namespace);
+            } else {
+                log.error("Error checking namespace '{}'. Status code: {}. Response body: {}", 
+                        namespace, e.getCode(), e.getResponseBody());
+                throw e;
+            }
+        }
+    }
+
+    
 }

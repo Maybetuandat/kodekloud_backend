@@ -30,7 +30,7 @@ public class VMTestService {
     private final ConcurrentHashMap<String, LabTestResponse> activeTests = new ConcurrentHashMap<>();
 
    public LabTestResponse startLabTest(Integer labId) {
-    log.info("▶️ [SYNC] Starting lab test for labId: {}", labId);
+    log.info("[SYNC] Starting lab test for labId: {}", labId);
 
     Lab lab = labRepository.findById(labId)
             .orElseThrow(() -> new EntityNotFoundException("Lab not found with ID: " + labId));
@@ -38,6 +38,9 @@ public class VMTestService {
     // use for force loading instancetype 
     if (lab.getInstanceType() != null) {
         lab.getInstanceType().getId(); 
+        lab.getInstanceType().getStorageGb(); 
+        lab.getInstanceType().getMemoryGb();
+        lab.getInstanceType().getCpuCores();
         
     }
 
@@ -61,7 +64,7 @@ public class VMTestService {
     activeTests.put(testId, response);
 
     log.info(" Calling asyncExecutor.executeTestAsync()");
-    asyncExecutor.executeTestAsync(testId, lab, testVmName, lab.getNamespace(), 1800, activeTests);
+    asyncExecutor.executeTestAsync(testId, lab, lab.getInstanceType(), testVmName, lab.getNamespace(), 1800, activeTests);
     
 
     return response;

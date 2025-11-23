@@ -1,6 +1,7 @@
 package com.example.cms_be.ultil;
 
 import com.example.cms_be.dto.lab.LabTestResponse;
+import com.example.cms_be.model.InstanceType;
 import com.example.cms_be.model.Lab;
 import com.example.cms_be.service.VMTestOrchestrationService;
 
@@ -21,7 +22,7 @@ public class VMTestAsyncExecutor {
     private final PodLogWebSocketHandler webSocketHandler;
 
     @Async("taskExecutor")
-    public void executeTestAsync(String testId, Lab lab, String testVmName, String namespace, Integer timeoutSeconds,
+    public void executeTestAsync(String testId, Lab lab, InstanceType instanceType, String testVmName, String namespace, Integer timeoutSeconds,
                                   ConcurrentHashMap<String, LabTestResponse> activeTests) {
         try {
             log.info("===========================================");
@@ -45,7 +46,8 @@ public class VMTestAsyncExecutor {
                     lab,
                     testVmName,
                     namespace != null ? namespace : lab.getNamespace(),
-                    timeoutSeconds != null ? timeoutSeconds : 1800
+                    timeoutSeconds != null ? timeoutSeconds : 1800, 
+                    instanceType
             );
 
             // Update final status
