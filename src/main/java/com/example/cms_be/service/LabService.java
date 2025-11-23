@@ -49,6 +49,13 @@ public class LabService {
     }
 
 
+        private String generatedNameSpace(String labTitle) {
+        return labTitle
+                .trim()
+                .replaceAll("\\s+", "-")
+                .toLowerCase();
+    }
+
     public Lab createLab(CreateLabRequest createLabRequest) {
         try{
             if(createLabRequest.getCategoryId() == null || createLabRequest.getInstanceTypeId() == null) {
@@ -59,6 +66,10 @@ public class LabService {
             Lab lab = new Lab();
             lab.setCategory(category);
 
+
+
+
+            lab.setNamespace(generatedNameSpace(createLabRequest.getTitle()));
             InstanceType instanceType = instanceTypeRepository.findById(createLabRequest.getInstanceTypeId())
                     .orElseThrow(() -> new RuntimeException("InstanceType not found with id: " + createLabRequest.getInstanceTypeId()));
             lab.setInstanceType(instanceType);

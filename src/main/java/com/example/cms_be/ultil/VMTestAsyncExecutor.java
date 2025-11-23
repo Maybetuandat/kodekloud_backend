@@ -1,8 +1,9 @@
-package com.example.cms_be.service;
+package com.example.cms_be.ultil;
 
 import com.example.cms_be.dto.lab.LabTestResponse;
 import com.example.cms_be.model.Lab;
-import com.example.cms_be.ultil.PodLogWebSocketHandler;
+import com.example.cms_be.service.VMTestOrchestrationService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -24,11 +25,11 @@ public class VMTestAsyncExecutor {
                                   ConcurrentHashMap<String, LabTestResponse> activeTests) {
         try {
             log.info("===========================================");
-            log.info("🧪 [ASYNC] STARTING LAB TEST EXECUTION");
-            log.info("🧵 Thread: {}", Thread.currentThread().getName());
-            log.info("📋 Test ID: {}", testId);
-            log.info("🏷️ Lab ID: {}", lab.getId());
-            log.info("🚀 Test VM Name: {}", testVmName);
+            log.info(" [ASYNC] STARTING LAB TEST EXECUTION");
+            log.info(" Thread: {}", Thread.currentThread().getName());
+            log.info(" Test ID: {}", testId);
+            log.info(" Lab ID: {}", lab.getId());
+            log.info(" Test VM Name: {}", testVmName);
             log.info("===========================================");
 
             // Update status
@@ -36,7 +37,7 @@ public class VMTestAsyncExecutor {
 
             // Send start message
             webSocketHandler.broadcastLogToPod(testVmName, "start",
-                    String.format("🧪 Starting test for lab: %s (ID: %d)", lab.getTitle(), lab.getId()),
+                    String.format(" Starting test for lab: %s (ID: %d)", lab.getTitle(), lab.getId()),
                     Map.of("testId", testId, "labId", lab.getId(), "labTitle", lab.getTitle()));
 
             // Execute test workflow
@@ -51,22 +52,21 @@ public class VMTestAsyncExecutor {
             if (success) {
                 updateTestStatus(testId, "COMPLETED", activeTests);
                 webSocketHandler.broadcastLogToPod(testVmName, "success",
-                        "✅ Test completed successfully!",
+                        " Test completed successfully!",
                         Map.of("testId", testId, "status", "COMPLETED"));
             } else {
                 updateTestStatus(testId, "FAILED", activeTests);
                 webSocketHandler.broadcastLogToPod(testVmName, "error",
-                        "❌ Test failed!",
+                        " Test failed!",
                         Map.of("testId", testId, "status", "FAILED"));
             }
 
-            log.info("🏁 LAB TEST EXECUTION FINISHED - Success: {}", success);
-
+            log.info(" LAB TEST EXECUTION FINISHED - Success: {}", success);
         } catch (Exception e) {
-            log.error("💥 Error executing test {}: {}", testId, e.getMessage(), e);
+            log.error(" Error executing test {}: {}", testId, e.getMessage(), e);
             updateTestStatus(testId, "FAILED", activeTests);
             webSocketHandler.broadcastLogToPod(testVmName, "error",
-                    "💥 Test execution error: " + e.getMessage(),
+                    " Test execution error: " + e.getMessage(),
                     Map.of("testId", testId, "error", e.getMessage()));
         } finally {
             try {

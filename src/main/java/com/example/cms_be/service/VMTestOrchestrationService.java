@@ -1,15 +1,10 @@
 package com.example.cms_be.service;
-
-
 import com.example.cms_be.model.Lab;
 import com.example.cms_be.ultil.PodLogWebSocketHandler;
 import io.kubernetes.client.openapi.models.V1Pod;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import java.util.Map;
-
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -21,26 +16,21 @@ public class VMTestOrchestrationService {
     private final SetupExecutionService setupExecutionService;
     private final PodLogWebSocketHandler webSocketHandler;
 
-    /**
-     * Execute complete test workflow với real-time log streaming
-     */
     public boolean executeTestWorkflow(Lab lab, String testVmName, String namespace, int timeoutSeconds) {
         boolean success = false;
 
         try {
             // ===== PHASE 1: CREATE VM RESOURCES =====
             log.info("========================================");
-            log.info("📦 PHASE 1: CREATING VM RESOURCES");
+            log.info(" PHASE 1: CREATING VM RESOURCES");
             log.info("========================================");
             
             webSocketHandler.broadcastLogToPod(testVmName, "info",
-                    "📦 Phase 1: Creating VM resources...", null);
-
+                    " Phase 1: Creating VM resources...", null);
             resourceService.createTestVMResources(lab, testVmName, namespace);
 
             webSocketHandler.broadcastLogToPod(testVmName, "success",
-                    "✅ VM resources created successfully", null);
-
+                    " VM resources created successfully", null);
             // ===== PHASE 2: WAIT FOR VM POD & STREAM LOGS =====
             log.info("========================================");
             log.info("⏳ PHASE 2: WAITING FOR VM POD");

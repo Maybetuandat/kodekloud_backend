@@ -1,13 +1,11 @@
 package com.example.cms_be.service;
-
-
-
-import com.example.cms_be.dto.lab.LabTestRequest;
 import com.example.cms_be.dto.lab.LabTestResponse;
 import com.example.cms_be.model.Lab;
 import com.example.cms_be.repository.LabRepository;
 import com.example.cms_be.ultil.PodLogWebSocketHandler;
 import com.example.cms_be.ultil.SocketConnectionInfo;
+import com.example.cms_be.ultil.VMTestAsyncExecutor;
+
 import io.kubernetes.client.openapi.models.V1Pod;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,16 +29,16 @@ public class VMTestService {
 
     private final ConcurrentHashMap<String, LabTestResponse> activeTests = new ConcurrentHashMap<>();
 
-   public LabTestResponse startLabTest(LabTestRequest request) {
-    log.info("▶️ [SYNC] Starting lab test for labId: {}", request.getLabId());
+   public LabTestResponse startLabTest(Integer labId) {
+    log.info("▶️ [SYNC] Starting lab test for labId: {}", labId);
 
-    Lab lab = labRepository.findById(request.getLabId())
-            .orElseThrow(() -> new EntityNotFoundException("Lab not found with ID: " + request.getLabId()));
+    Lab lab = labRepository.findById(labId)
+            .orElseThrow(() -> new EntityNotFoundException("Lab not found with ID: " + labId));
 
-    // ===== CRITICAL: Force load lazy associations =====
+    // use for force loading instancetype 
     if (lab.getInstanceType() != null) {
-        lab.getInstanceType().getId(); // Touch to initialize
-        log.info("Loaded InstanceType: {}", lab.getInstanceType().getName());
+        lab.getInstanceType().getId(); 
+        
     }
 
     String testId = UUID.randomUUID().toString();
@@ -62,14 +60,14 @@ public class VMTestService {
 
     activeTests.put(testId, response);
 
-    log.info("🚀 Calling asyncExecutor.executeTestAsync()");
-    asyncExecutor.executeTestAsync(testId, lab, testVmName, request.getNamespace(), request.getTimeoutSeconds(), activeTests);
-    log.info("✅ [SYNC] Response returned immediately!");
+    log.info(" Calling asyncExecutor.executeTestAsync()");
+    asyncExecutor.executeTestAsync(testId, lab, testVmName, lab.getNamespace(), 1800, activeTests);
+    
 
     return response;
 }
 
-    // XÓA method executeTestAsync() cũ đi - không cần nữa!
+    
 
     public LabTestResponse getTestStatus(String testId) {
         LabTestResponse response = activeTests.get(testId);

@@ -1,7 +1,7 @@
 package com.example.cms_be.controller;
 import com.example.cms_be.dto.BackingImageDTO;
 import com.example.cms_be.dto.lab.CreateLabRequest;
-import com.example.cms_be.dto.lab.LabTestRequest;
+
 import com.example.cms_be.dto.lab.LabTestResponse;
 
 import org.springframework.web.bind.annotation.*;
@@ -240,17 +240,17 @@ public class LabController {
     
     
     
-   @PostMapping("/test")
-    public ResponseEntity<?> testLabWithConfig(@Valid @RequestBody LabTestRequest request) {
+   @PostMapping("{labId}/test")
+    public ResponseEntity<?> testLabWithConfig(@PathVariable Integer labId) {
         try {
-            log.info("Received test request with config: {}", request);
+            log.info("Received test request with config: {}", labId);
 
-            LabTestResponse response = vmTestService.startLabTest(request);
+            LabTestResponse response = vmTestService.startLabTest(labId);
 
             return ResponseEntity.accepted().body(response);
 
         } catch (EntityNotFoundException e) {
-            log.error("Lab not found: {}", request.getLabId());
+            log.error("Lab not found: {}", labId);
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", e.getMessage()));
 

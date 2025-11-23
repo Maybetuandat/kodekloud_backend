@@ -31,24 +31,24 @@ public class Lab {
     @Column(name = "id", nullable = false, unique = true)
     private Integer id;
 
-    @Column(name = "title", nullable = true)
+    @Column(name = "title", nullable = false, unique = true)
     private String title;
 
     private String description;
 
    
 
-    @Column(name = "namespace", nullable = true)
+    @Column(name = "namespace", nullable = false, unique = true)
     private String namespace;
 
   
 
   
 
-    @Column(name = "estimated_time", nullable = true)
+    @Column(name = "estimated_time", nullable = false)
     private Integer estimatedTime;
 
-    @Column(name = "is_active", nullable = true)
+    @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 
     @Column(name = "created_at", updatable = false)
