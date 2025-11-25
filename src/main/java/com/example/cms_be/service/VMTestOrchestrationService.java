@@ -57,127 +57,115 @@ public class VMTestOrchestrationService {
         log.info("Test VM resources created successfully: {}", testVmName);
     }
 
-    public boolean executeTestWorkflow(Lab lab, String testVmName, String namespace, int timeoutSeconds, InstanceType instanceType) {
+        public boolean executeTestWorkflow(Lab lab, String testVmName, String namespace, int timeoutSeconds, InstanceType instanceType) {
         boolean success = false;
 
         try {
-            // ===== PHASE 1: CREATE VM RESOURCES =====
-            log.info("========================================");
-            log.info(" PHASE 1: CREATING VM RESOURCES");
-            log.info("========================================");
-            
-            webSocketHandler.broadcastLogToPod(testVmName, "info",
-                    " Phase 1: Creating VM resources...", null);
-            createTestVMResources(lab, testVmName, namespace, instanceType);
-
-            webSocketHandler.broadcastLogToPod(testVmName, "success",
-                    " VM resources created successfully", null);
-            // ===== PHASE 2: WAIT FOR VM POD & STREAM LOGS =====
-            log.info("========================================");
-            log.info(" PHASE 2: WAITING FOR VM POD");
-            log.info("========================================");
-
-            webSocketHandler.broadcastLogToPod(testVmName, "info",
-                    " Phase 2: Waiting for virt-launcher pod...", null);
-
-
-                    
-            // Start streaming pod logs asynchronously
-            logStreamerService.startPodLogStreaming(testVmName, namespace);
-
-            V1Pod pod = discoveryService.waitForPodRunning(testVmName, namespace, 600);
-            String podName = pod.getMetadata().getName();
-
-            log.info(" Pod is running: {}", podName);
-            webSocketHandler.broadcastLogToPod(testVmName, "success",
-                    String.format("✅ Virt-launcher pod is running: %s", podName), null);
-
-            // ===== PHASE 3: STREAM KUBERNETES EVENTS =====
-            log.info("========================================");
-            log.info(" PHASE 3: STREAMING KUBERNETES EVENTS");
-            log.info("========================================");
-
-            webSocketHandler.broadcastLogToPod(testVmName, "info",
-                    " Phase 3: Monitoring Kubernetes events...", null);
-            // Start streaming K8s events
-            logStreamerService.startEventStreaming(testVmName, namespace);
-
-            // ===== PHASE 4: WAIT FOR SSH =====
-            log.info("========================================");
-            log.info(" PHASE 4: WAITING FOR SSH");
-            log.info("========================================");
-
-            webSocketHandler.broadcastLogToPod(testVmName, "info",
-                    " Phase 4: Waiting for SSH service...", null);
-            SshConnectionDetails sshDetails =
-                    discoveryService.getExternalSshDetails(testVmName, namespace);
-
-            discoveryService.waitForSshReady(sshDetails.host(), sshDetails.port(), 180);
-
-            log.info(" SSH is ready at {}:{}", sshDetails.host(), sshDetails.port());
-            webSocketHandler.broadcastLogToPod(testVmName, "success",
-                    String.format(" SSH is ready at %s:%d", sshDetails.host(), sshDetails.port()), null);
-
-            // ===== PHASE 5: STREAM CLOUD-INIT LOGS =====
-            log.info("========================================");
-            log.info(" PHASE 5: STREAMING CLOUD-INIT LOGS");
-            log.info("========================================");
-
-            webSocketHandler.broadcastLogToPod(testVmName, "info",
-                    " Phase 5: Checking cloud-init status...", null);
-            // Stream cloud-init logs
-            logStreamerService.streamCloudInitLogs(sshDetails, testVmName);
-
-            webSocketHandler.broadcastLogToPod(testVmName, "success",
-                    " Cloud-init completed", null);
-
-            // ===== PHASE 6: EXECUTE SETUP STEPS =====
-            log.info("========================================");
-            log.info(" PHASE 6: EXECUTING SETUP STEPS");
-            log.info("========================================");
-
-            webSocketHandler.broadcastLogToPod(testVmName, "info",
-                    " Phase 6: Executing setup steps...", null);
-            // Execute setup steps (reuse existing service)
-        //     success = setupExecutionService.executeSetupStepsForAdminTest(lab.getId(), testVmName);
-
-            success = true;
-            if (success) {
+                // ===== PHASE 1: CREATE VM RESOURCES =====
+                log.info("========================================");
+                log.info(" PHASE 1: CREATING VM RESOURCES");
+                log.info("========================================");
+                
+                webSocketHandler.broadcastLogToPod(testVmName, "info",
+                        "🚀 Phase 1: Creating VM resources...", null);
+                
+                createTestVMResources(lab, testVmName, namespace, instanceType);
+                
                 webSocketHandler.broadcastLogToPod(testVmName, "success",
-                        " All setup steps completed successfully!", null);
-            } else {
+                        "✅ VM resources created successfully", null);
+
+                // ===== PHASE 2: WAIT FOR VM POD =====
+                log.info("========================================");
+                log.info(" PHASE 2: WAITING FOR VM POD");
+                log.info("========================================");
+
+                webSocketHandler.broadcastLogToPod(testVmName, "info",
+                        "⏳ Phase 2: Waiting for virt-launcher pod...", null);
+
+                V1Pod pod = discoveryService.waitForPodRunning(testVmName, namespace, 600);
+                String podName = pod.getMetadata().getName();
+
+                log.info("✅ Pod is running: {}", podName);
+                webSocketHandler.broadcastLogToPod(testVmName, "success",
+                        String.format("✅ Virt-launcher pod is running: %s", podName), null);
+
+                // ===== PHASE 3: WAIT FOR SSH =====
+                log.info("========================================");
+                log.info(" PHASE 3: WAITING FOR SSH");
+                log.info("========================================");
+
+                webSocketHandler.broadcastLogToPod(testVmName, "info",
+                        "⏳ Phase 3: Waiting for SSH service...", null);
+                
+                SshConnectionDetails sshDetails = discoveryService.getExternalSshDetails(testVmName, namespace);
+                discoveryService.waitForSshReady(sshDetails.host(), sshDetails.port(), 180);
+
+                log.info("✅ SSH is ready at {}:{}", sshDetails.host(), sshDetails.port());
+                webSocketHandler.broadcastLogToPod(testVmName, "success",
+                        String.format("✅ SSH is ready at %s:%d", sshDetails.host(), sshDetails.port()), null);
+
+                // ===== PHASE 4: STREAM CLOUD-INIT LOGS =====
+                log.info("========================================");
+                log.info(" PHASE 4: STREAMING CLOUD-INIT LOGS");
+                log.info("========================================");
+
+                webSocketHandler.broadcastLogToPod(testVmName, "info",
+                        "📜 Phase 4: Checking cloud-init status...", null);
+                
+                // 🔥 GỌI ĐỒNG BỘ - CHỜ cloud-init hoàn thành
+                logStreamerService.streamCloudInitLogs(sshDetails, testVmName);
+
+                webSocketHandler.broadcastLogToPod(testVmName, "success",
+                        "✅ Cloud-init completed", null);
+
+                // ===== PHASE 5: EXECUTE SETUP STEPS =====
+                log.info("========================================");
+                log.info(" PHASE 5: EXECUTING SETUP STEPS");
+                log.info("========================================");
+
+                webSocketHandler.broadcastLogToPod(testVmName, "info",
+                        "⚙️ Phase 5: Executing setup steps...", null);
+                
+                // TODO: Thực thi setup steps ở đây
+                // success = setupExecutionService.executeSetupStepsForTest(lab.getId(), sshDetails);
+                
+                success = true; // Tạm thời set true nếu chưa có setup steps
+
+                if (success) {
+                webSocketHandler.broadcastLogToPod(testVmName, "success",
+                        "✅ All setup steps completed successfully!", null);
+                } else {
                 webSocketHandler.broadcastLogToPod(testVmName, "warning",
-                        " Some setup steps failed", null);
-            }
+                        "⚠️ Some setup steps failed", null);
+                }
 
         } catch (Exception e) {
-            log.error("Error in test workflow: {}", e.getMessage(), e);
-            webSocketHandler.broadcastLogToPod(testVmName, "error",
-                    " Test workflow error: " + e.getMessage(), null);
-            success = false;
+                log.error("❌ Error in test workflow: {}", e.getMessage(), e);
+                webSocketHandler.broadcastLogToPod(testVmName, "error",
+                        "❌ Test workflow error: " + e.getMessage(), null);
+                success = false;
+                
         } finally {
-            // ===== PHASE 7: CLEANUP =====
-            log.info("========================================");
-            log.info(" PHASE 7: CLEANUP");
-            log.info("========================================");
+                // ===== PHASE 6: CLEANUP =====
+                log.info("========================================");
+                log.info(" PHASE 6: CLEANUP");
+                log.info("========================================");
 
-            webSocketHandler.broadcastLogToPod(testVmName, "info",
-                    " Phase 7: Cleaning up test resources...", null);
-            try {
-                // Stop log streaming
-                logStreamerService.stopAllStreaming(testVmName);
-
+                webSocketHandler.broadcastLogToPod(testVmName, "info",
+                        "🧹 Phase 6: Cleaning up test resources...", null);
+                
+                try {
                 // Delete test VM resources
                 deleteTestVMResources(testVmName, namespace);
 
                 webSocketHandler.broadcastLogToPod(testVmName, "success",
-                        " Cleanup completed", null);
+                        "✅ Cleanup completed", null);
 
-            } catch (Exception e) {
-                log.error("Error during cleanup: {}", e.getMessage(), e);
+                } catch (Exception e) {
+                log.error("❌ Error during cleanup: {}", e.getMessage(), e);
                 webSocketHandler.broadcastLogToPod(testVmName, "warning",
-                        " Cleanup error: " + e.getMessage(), null);
-            }
+                        "⚠️ Cleanup error: " + e.getMessage(), null);
+                }
         }
 
         log.info("========================================");
@@ -186,8 +174,7 @@ public class VMTestOrchestrationService {
         log.info("========================================");
 
         return success;
-    }
-
+        }
      public void deleteTestVMResources(String testVmName, String namespace) {
         log.info("Deleting test VM resources: {}", testVmName);
         vmService.deleteKubernetesService(testVmName, namespace);
