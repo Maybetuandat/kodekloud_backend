@@ -2,6 +2,8 @@ package com.example.cms_be.ultil;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
@@ -26,6 +28,9 @@ public class PodLogWebSocketHandler extends TextWebSocketHandler {
     
     // Lưu trữ mapping giữa sessionId và podName để filter messages
     private final ConcurrentHashMap<String, String> sessionPodMapping = new ConcurrentHashMap<>();
+    
+    // ✅ Lưu trữ các CountDownLatch đang đợi WebSocket connection
+    private final ConcurrentHashMap<String, CountDownLatch> connectionLatches = new ConcurrentHashMap<>();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -38,11 +43,18 @@ public class PodLogWebSocketHandler extends TextWebSocketHandler {
         
         if (podName != null) {
             sessionPodMapping.put(sessionId, podName);
-            log.info("WebSocket connection established for session {} with podName {}", sessionId, podName);
+            log.info("✅ WebSocket connection established for session {} with podName {}", sessionId, podName);
             
-            // Gửi message confirmation
+            // ✅ Gửi message confirmation
             sendMessage(session, new WebSocketMessage("connection", 
                 "Connected to pod logs stream for: " + podName, null));
+            
+            // ✅ Thông báo cho các thread đang đợi connection này
+            CountDownLatch latch = connectionLatches.get(podName);
+            if (latch != null) {
+                log.info("🔔 Notifying waiting threads that WebSocket is ready for: {}", podName);
+                latch.countDown();
+            }
         } else {
             log.warn("WebSocket connection established but no podName provided for session {}", sessionId);
             session.close(CloseStatus.BAD_DATA.withReason("podName parameter is required"));
@@ -52,14 +64,22 @@ public class PodLogWebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         String sessionId = session.getId();
+        String podName = sessionPodMapping.get(sessionId);
+        
         sessions.remove(sessionId);
         sessionPodMapping.remove(sessionId);
+        
+        if (podName != null) {
+            connectionLatches.remove(podName);
+        }
+        
         log.info("WebSocket connection closed for session {}: {}", sessionId, status.toString());
     }
 
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {
         String sessionId = session.getId();
+        String podName = sessionPodMapping.get(sessionId);
         
         // ✅ Chỉ log warning cho Broken Pipe và Connection Reset (không phải error)
         if (exception.getMessage() != null && 
@@ -73,6 +93,9 @@ public class PodLogWebSocketHandler extends TextWebSocketHandler {
         // Clean up
         sessions.remove(sessionId);
         sessionPodMapping.remove(sessionId);
+        if (podName != null) {
+            connectionLatches.remove(podName);
+        }
         
         // ✅ Close session safely
         try {
@@ -86,8 +109,46 @@ public class PodLogWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        // Có thể handle các message từ client nếu cần (như pause/resume logs)
         log.debug("Received message from client {}: {}", session.getId(), message.getPayload());
+    }
+
+    /**
+     * ✅ Đợi cho đến khi có ít nhất một WebSocket client kết nối đến podName này
+     * @param podName tên của pod cần đợi connection
+     * @param timeoutSeconds thời gian đợi tối đa (giây)
+     * @return true nếu connection được thiết lập, false nếu timeout
+     */
+    public boolean waitForConnection(String podName, int timeoutSeconds) {
+        // Kiểm tra xem đã có connection chưa
+        if (hasActiveSessionsForPod(podName)) {
+            log.info("✅ WebSocket already connected for pod: {}", podName);
+            return true;
+        }
+        
+        log.info("⏳ Waiting for WebSocket connection for pod: {} (timeout: {}s)", podName, timeoutSeconds);
+        
+        // Tạo latch để đợi
+        CountDownLatch latch = new CountDownLatch(1);
+        connectionLatches.put(podName, latch);
+        
+        try {
+            // Đợi connection hoặc timeout
+            boolean connected = latch.await(timeoutSeconds, TimeUnit.SECONDS);
+            
+            if (connected) {
+                log.info("✅ WebSocket connection established for pod: {}", podName);
+                return true;
+            } else {
+                log.warn("⏰ Timeout waiting for WebSocket connection for pod: {}", podName);
+                return false;
+            }
+        } catch (InterruptedException e) {
+            log.error("❌ Interrupted while waiting for WebSocket connection for pod: {}", podName);
+            Thread.currentThread().interrupt();
+            return false;
+        } finally {
+            connectionLatches.remove(podName);
+        }
     }
 
     /**

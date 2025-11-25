@@ -3,160 +3,498 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Lab Test - WebSocket Logs</title>
+    <title>Lab Test WebSocket Client</title>
     <style>
-      body {
-        background: #1e1e1e;
-        color: #d4d4d4;
-        font-family: "Courier New", monospace;
+      * {
         margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
         padding: 20px;
       }
-      h1 {
-        color: #4ec9b0;
+
+      .container {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 900px;
+        width: 100%;
+        overflow: hidden;
       }
-      #logs {
-        background: #252526;
-        padding: 20px;
-        border-radius: 8px;
-        height: 70vh;
-        overflow-y: auto;
-        border: 1px solid #3e3e42;
-      }
-      .log-entry {
-        margin: 5px 0;
-        padding: 5px;
-        border-left: 3px solid transparent;
-      }
-      .log-success {
-        color: #0dbc79;
-        border-color: #0dbc79;
-      }
-      .log-error {
-        color: #cd3131;
-        border-color: #cd3131;
-      }
-      .log-warning {
-        color: #e5e510;
-        border-color: #e5e510;
-      }
-      .log-info {
-        color: #569cd6;
-      }
-      .log-stdout {
-        color: #4ec9b0;
-      }
-      .log-stderr {
-        color: #f48771;
-      }
-      .log-step {
+
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
+        padding: 30px;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 28px;
+        margin-bottom: 10px;
+      }
+
+      .status-badge {
+        display: inline-block;
+        padding: 8px 20px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: bold;
+        margin-top: 10px;
+      }
+
+      .status-waiting {
+        background: #fbbf24;
+        color: #78350f;
+      }
+      .status-running {
+        background: #3b82f6;
+        color: white;
+      }
+      .status-completed {
+        background: #10b981;
+        color: white;
+      }
+      .status-failed {
+        background: #ef4444;
+        color: white;
+      }
+
+      .content {
+        padding: 30px;
+      }
+
+      .control-panel {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      input {
+        flex: 1;
+        padding: 12px;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 14px;
+      }
+
+      button {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-size: 14px;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn-danger {
+        background: #ef4444;
+        color: white;
+      }
+
+      .btn-danger:hover {
+        background: #dc2626;
+      }
+
+      .btn-secondary {
+        background: #6b7280;
+        color: white;
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .terminal {
+        background: #1e293b;
+        border-radius: 8px;
+        padding: 20px;
+        height: 400px;
+        overflow-y: auto;
+        font-family: "Courier New", monospace;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .terminal::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      .terminal::-webkit-scrollbar-track {
+        background: #0f172a;
+      }
+
+      .terminal::-webkit-scrollbar-thumb {
+        background: #475569;
+        border-radius: 4px;
+      }
+
+      .log-line {
+        margin-bottom: 8px;
+        padding: 4px 0;
+      }
+
+      .log-timestamp {
+        color: #64748b;
+        margin-right: 8px;
+      }
+
+      .log-connection {
+        color: #06b6d4;
+      }
+      .log-start {
+        color: #8b5cf6;
         font-weight: bold;
       }
-      .status {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 10px 20px;
-        border-radius: 5px;
-        background: #252526;
-        border: 2px solid #3e3e42;
+      .log-info {
+        color: #60a5fa;
       }
-      .status.connected {
-        border-color: #0dbc79;
+      .log-success {
+        color: #34d399;
       }
-      .status.disconnected {
-        border-color: #cd3131;
+      .log-warning {
+        color: #fbbf24;
+      }
+      .log-error {
+        color: #f87171;
+      }
+      .log-step {
+        color: #a78bfa;
+      }
+      .log-cloud-init-log {
+        color: #9ca3af;
+      }
+      .log-cloud-init-status {
+        color: #fcd34d;
+      }
+
+      .info-panel {
+        background: #f3f4f6;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+      }
+
+      .info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .info-row:last-child {
+        border-bottom: none;
+      }
+
+      .info-label {
+        font-weight: bold;
+        color: #6b7280;
+      }
+
+      .info-value {
+        color: #1f2937;
+        font-family: monospace;
       }
     </style>
   </head>
   <body>
-    <div class="status" id="status">⚫ Disconnected</div>
-    <h1>🧪 Lab Test - Real-time Logs</h1>
-    <div id="logs"></div>
+    <div class="container">
+      <div class="header">
+        <h1>🧪 Lab Test WebSocket Client</h1>
+        <div class="status-badge status-waiting" id="statusBadge">
+          DISCONNECTED
+        </div>
+      </div>
+
+      <div class="content">
+        <!-- Control Panel -->
+        <div class="control-panel">
+          <input
+            type="number"
+            id="labIdInput"
+            placeholder="Lab ID"
+            value="1"
+            min="1"
+          />
+          <button class="btn-primary" id="startBtn" onclick="startTest()">
+            🚀 Start Test
+          </button>
+          <button class="btn-danger" id="stopBtn" onclick="stopTest()" disabled>
+            ⏹️ Stop Test
+          </button>
+          <button class="btn-secondary" onclick="clearLogs()">
+            🗑️ Clear Logs
+          </button>
+        </div>
+
+        <!-- Info Panel -->
+        <div class="info-panel" id="infoPanel" style="display: none">
+          <div class="info-row">
+            <span class="info-label">Test ID:</span>
+            <span class="info-value" id="testIdValue">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">VM Name:</span>
+            <span class="info-value" id="vmNameValue">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">WebSocket URL:</span>
+            <span class="info-value" id="wsUrlValue">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Status:</span>
+            <span class="info-value" id="statusValue">-</span>
+          </div>
+        </div>
+
+        <!-- Terminal -->
+        <div class="terminal" id="terminal">
+          <div class="log-line log-info">
+            <span class="log-timestamp">[READY]</span>
+            <span>💡 Enter Lab ID and click "Start Test" to begin</span>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <script>
-      // THAY ĐỔI URL NÀY
-      const WS_URL = "ws://localhost:8080/ws/pod-logs?podName=test-vm-1";
+      let ws = null;
+      let testData = null;
+      let statusInterval = null;
 
-      const logsContainer = document.getElementById("logs");
-      const statusEl = document.getElementById("status");
-      const logs = [];
+      // Utility function: format timestamp
+      function formatTime() {
+        const now = new Date();
+        return now.toLocaleTimeString("en-US", { hour12: false });
+      }
 
-      const ws = new WebSocket(WS_URL);
+      // Utility function: append log to terminal
+      function appendLog(type, message) {
+        const terminal = document.getElementById("terminal");
+        const logLine = document.createElement("div");
+        logLine.className = `log-line log-${type}`;
+        logLine.innerHTML = `
+                <span class="log-timestamp">[${formatTime()}]</span>
+                <span>${message}</span>
+            `;
+        terminal.appendChild(logLine);
+        terminal.scrollTop = terminal.scrollHeight;
+      }
 
-      ws.onopen = () => {
-        statusEl.textContent = "✅ Connected";
-        statusEl.className = "status connected";
-        addLog("system", "✅ WebSocket Connected!");
-        addLog("system", "Waiting for logs...");
-      };
+      // Clear logs
+      function clearLogs() {
+        document.getElementById("terminal").innerHTML = "";
+        appendLog("info", "🗑️ Logs cleared");
+      }
 
-      ws.onmessage = (event) => {
-        const log = JSON.parse(event.data);
-        logs.push(log);
+      // Update status badge
+      function updateStatus(status) {
+        const badge = document.getElementById("statusBadge");
+        badge.className = "status-badge";
 
-        const icons = {
-          start: "🚀",
-          success: "✅",
-          error: "❌",
-          warning: "⚠️",
-          info: "ℹ️",
-          step: "🔄",
-          stdout: "📤",
-          stderr: "📥",
-          "pod-log": "📜",
-          "cloud-init": "☁️",
-          "event-info": "📢",
-          step_success: "✅",
-          step_error: "❌",
+        switch (status) {
+          case "WAITING_CONNECTION":
+            badge.classList.add("status-waiting");
+            badge.textContent = "⏳ WAITING FOR CONNECTION";
+            break;
+          case "RUNNING":
+            badge.classList.add("status-running");
+            badge.textContent = "🏃 RUNNING";
+            break;
+          case "COMPLETED":
+            badge.classList.add("status-completed");
+            badge.textContent = "✅ COMPLETED";
+            break;
+          case "FAILED":
+            badge.classList.add("status-failed");
+            badge.textContent = "❌ FAILED";
+            break;
+          default:
+            badge.classList.add("status-waiting");
+            badge.textContent = status;
+        }
+      }
+
+      // Start test
+      async function startTest() {
+        const labId = document.getElementById("labIdInput").value;
+
+        if (!labId) {
+          alert("Please enter a Lab ID");
+          return;
+        }
+
+        try {
+          // Disable start button
+          document.getElementById("startBtn").disabled = true;
+          appendLog("info", `📋 Starting test for Lab ID: ${labId}`);
+
+          // Call API
+          const response = await fetch(
+            `http://localhost:8080/api/labs/${labId}/test`,
+            {
+              method: "POST",
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          testData = await response.json();
+
+          // Update UI
+          document.getElementById("infoPanel").style.display = "block";
+          document.getElementById("testIdValue").textContent = testData.testId;
+          document.getElementById("vmNameValue").textContent =
+            testData.testVmName;
+          document.getElementById("wsUrlValue").textContent =
+            testData.websocketUrl;
+          document.getElementById("statusValue").textContent = testData.status;
+
+          updateStatus(testData.status);
+          appendLog("success", `✅ Test created: ${testData.testId}`);
+          appendLog(
+            "warning",
+            `⚠️ Backend is waiting for WebSocket connection (30s timeout)`
+          );
+          appendLog("info", `🔌 Connecting to WebSocket...`);
+
+          // Connect WebSocket IMMEDIATELY
+          connectWebSocket(testData.websocketUrl);
+
+          // Enable stop button
+          document.getElementById("stopBtn").disabled = false;
+
+          // Start polling status
+          startStatusPolling();
+        } catch (error) {
+          appendLog("error", `❌ Error starting test: ${error.message}`);
+          document.getElementById("startBtn").disabled = false;
+        }
+      }
+
+      // Connect WebSocket
+      function connectWebSocket(url) {
+        ws = new WebSocket(url);
+
+        ws.onopen = () => {
+          appendLog("connection", "🔗 WebSocket connected successfully!");
+          appendLog("info", "✅ Backend will now start creating resources...");
         };
 
-        const icon = icons[log.type] || "📌";
-        const time = new Date(log.timestamp).toLocaleTimeString();
-        const message = `${icon} [${time}] ${log.message}`;
+        ws.onmessage = (event) => {
+          const message = JSON.parse(event.data);
+          const logType = message.type || "info";
+          const logMessage = message.message || JSON.stringify(message);
 
-        addLog(log.type, message);
-      };
+          appendLog(logType, logMessage);
 
-      ws.onerror = (error) => {
-        console.error("WebSocket Error:", error);
-        addLog("error", "❌ WebSocket Error");
-      };
+          // Update status if included in message
+          if (message.data && message.data.status) {
+            updateStatus(message.data.status);
+          }
+        };
 
-      ws.onclose = () => {
-        statusEl.textContent = "🔌 Disconnected";
-        statusEl.className = "status disconnected";
-        addLog("system", "🔌 WebSocket Closed");
+        ws.onerror = (error) => {
+          appendLog(
+            "error",
+            `❌ WebSocket error: ${error.message || "Connection failed"}`
+          );
+        };
 
-        // Summary
-        setTimeout(() => {
-          const summary = `
-                    <div style="margin-top: 20px; padding: 20px; background: #2d2d30; border-radius: 5px;">
-                        <h3>📊 Summary</h3>
-                        <p>Total logs: ${logs.length}</p>
-                        <p>Success: ${
-                          logs.filter((l) => l.type === "success").length
-                        }</p>
-                        <p>Errors: ${
-                          logs.filter((l) => l.type === "error").length
-                        }</p>
-                        <p>Warnings: ${
-                          logs.filter((l) => l.type === "warning").length
-                        }</p>
-                    </div>
-                `;
-          logsContainer.innerHTML += summary;
-        }, 1000);
-      };
-
-      function addLog(type, message) {
-        const div = document.createElement("div");
-        div.className = `log-entry log-${type}`;
-        div.textContent = message;
-        logsContainer.appendChild(div);
-        logsContainer.scrollTop = logsContainer.scrollHeight;
+        ws.onclose = () => {
+          appendLog("warning", "🔌 WebSocket connection closed");
+        };
       }
+
+      // Poll test status
+      function startStatusPolling() {
+        statusInterval = setInterval(async () => {
+          if (!testData) return;
+
+          try {
+            const response = await fetch(
+              `http://localhost:8080/api/labs/test/${testData.testId}/status`
+            );
+            const status = await response.json();
+
+            document.getElementById("statusValue").textContent = status.status;
+            updateStatus(status.status);
+
+            // Stop polling if test is finished
+            if (status.status === "COMPLETED" || status.status === "FAILED") {
+              clearInterval(statusInterval);
+              document.getElementById("stopBtn").disabled = true;
+              document.getElementById("startBtn").disabled = false;
+            }
+          } catch (error) {
+            console.error("Error polling status:", error);
+          }
+        }, 2000);
+      }
+
+      // Stop test
+      async function stopTest() {
+        if (!testData) return;
+
+        try {
+          appendLog("warning", "⚠️ Cancelling test...");
+
+          const response = await fetch(
+            `http://localhost:8080/api/labs/test/${testData.testId}`,
+            {
+              method: "DELETE",
+            }
+          );
+
+          if (response.ok) {
+            appendLog("success", "✅ Test cancelled");
+            updateStatus("CANCELLED");
+          }
+
+          // Cleanup
+          if (ws) {
+            ws.close();
+            ws = null;
+          }
+
+          if (statusInterval) {
+            clearInterval(statusInterval);
+          }
+
+          document.getElementById("stopBtn").disabled = true;
+          document.getElementById("startBtn").disabled = false;
+        } catch (error) {
+          appendLog("error", `❌ Error cancelling test: ${error.message}`);
+        }
+      }
+
+      // Cleanup on page unload
+      window.addEventListener("beforeunload", () => {
+        if (ws) ws.close();
+        if (statusInterval) clearInterval(statusInterval);
+      });
     </script>
   </body>
 </html>

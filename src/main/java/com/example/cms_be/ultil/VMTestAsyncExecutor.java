@@ -22,7 +22,8 @@ public class VMTestAsyncExecutor {
     private final PodLogWebSocketHandler webSocketHandler;
 
     @Async("taskExecutor")
-    public void executeTestAsync(String testId, Lab lab, InstanceType instanceType, String testVmName, String namespace, Integer timeoutSeconds,
+    public void executeTestAsync(String testId, Lab lab, InstanceType instanceType, String testVmName, 
+                                  String namespace, Integer timeoutSeconds,
                                   ConcurrentHashMap<String, LabTestResponse> activeTests) {
         try {
             log.info("===========================================");
@@ -33,15 +34,37 @@ public class VMTestAsyncExecutor {
             log.info(" Test VM Name: {}", testVmName);
             log.info("===========================================");
 
-            // Update status
+            // ✅ BƯỚC 1: ĐỢI WEBSOCKET CONNECTION (30 giây)
+            log.info("⏳ Step 1: Waiting for WebSocket client to connect...");
+            updateTestStatus(testId, "WAITING_CONNECTION", activeTests);
+            
+            boolean wsConnected = webSocketHandler.waitForConnection(testVmName, 30);
+            
+            if (!wsConnected) {
+                log.error("❌ WebSocket connection timeout for VM: {}", testVmName);
+                updateTestStatus(testId, "FAILED", activeTests);
+                return;
+            }
+            
+            log.info("✅ WebSocket client connected successfully!");
+            
+            // ✅ Gửi message xác nhận đã kết nối
+            webSocketHandler.broadcastLogToPod(testVmName, "connection",
+                    "🔗 WebSocket connected successfully. Starting test...", 
+                    Map.of("testId", testId));
+
+            // Small delay để đảm bảo message được gửi
+            Thread.sleep(500);
+
+            // ✅ BƯỚC 2: CẬP NHẬT STATUS VÀ BẮT ĐẦU TEST
             updateTestStatus(testId, "RUNNING", activeTests);
 
-            // Send start message
+            // Gửi start message
             webSocketHandler.broadcastLogToPod(testVmName, "start",
-                    String.format(" Starting test for lab: %s (ID: %d)", lab.getTitle(), lab.getId()),
+                    String.format("🚀 Starting test for lab: %s (ID: %d)", lab.getTitle(), lab.getId()),
                     Map.of("testId", testId, "labId", lab.getId(), "labTitle", lab.getTitle()));
 
-            // Execute test workflow
+            // ✅ BƯỚC 3: THỰC THI TEST WORKFLOW
             boolean success = orchestrationService.executeTestWorkflow(
                     lab,
                     testVmName,
@@ -50,30 +73,43 @@ public class VMTestAsyncExecutor {
                     instanceType
             );
 
-            // Update final status
+            // ✅ BƯỚC 4: CẬP NHẬT KẾT QUẢ CUỐI CÙNG
             if (success) {
                 updateTestStatus(testId, "COMPLETED", activeTests);
                 webSocketHandler.broadcastLogToPod(testVmName, "success",
-                        " Test completed successfully!",
+                        "✅ Test completed successfully!",
                         Map.of("testId", testId, "status", "COMPLETED"));
             } else {
                 updateTestStatus(testId, "FAILED", activeTests);
                 webSocketHandler.broadcastLogToPod(testVmName, "error",
-                        " Test failed!",
+                        "❌ Test failed!",
                         Map.of("testId", testId, "status", "FAILED"));
             }
 
-            log.info(" LAB TEST EXECUTION FINISHED - Success: {}", success);
-        } catch (Exception e) {
-            log.error(" Error executing test {}: {}", testId, e.getMessage(), e);
+            log.info("✅ LAB TEST EXECUTION FINISHED - Success: {}", success);
+            
+        } catch (InterruptedException e) {
+            log.error("❌ Test execution interrupted for {}: {}", testId, e.getMessage());
+            Thread.currentThread().interrupt();
             updateTestStatus(testId, "FAILED", activeTests);
             webSocketHandler.broadcastLogToPod(testVmName, "error",
-                    " Test execution error: " + e.getMessage(),
+                    "❌ Test interrupted: " + e.getMessage(),
+                    Map.of("testId", testId, "error", "Interrupted"));
+                    
+        } catch (Exception e) {
+            log.error("❌ Error executing test {}: {}", testId, e.getMessage(), e);
+            updateTestStatus(testId, "FAILED", activeTests);
+            webSocketHandler.broadcastLogToPod(testVmName, "error",
+                    "❌ Test execution error: " + e.getMessage(),
                     Map.of("testId", testId, "error", e.getMessage()));
+                    
         } finally {
+            // ✅ BƯỚC 5: DỌN DẸP SAU 60 GIÂY
             try {
+                log.info("⏳ Keeping test {} in memory for 60 seconds before cleanup...", testId);
                 Thread.sleep(60000);
                 activeTests.remove(testId);
+                log.info("🧹 Test {} removed from active tests", testId);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -84,7 +120,7 @@ public class VMTestAsyncExecutor {
         LabTestResponse response = activeTests.get(testId);
         if (response != null) {
             response.setStatus(status);
-            log.info("Test {} status updated to: {}", testId, status);
+            log.info("📊 Test {} status updated to: {}", testId, status);
         }
     }
 }
