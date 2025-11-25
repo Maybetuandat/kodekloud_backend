@@ -29,12 +29,12 @@ public class VMTestService {
     private final ConcurrentHashMap<String, LabTestResponse> activeTests = new ConcurrentHashMap<>();
 
     public LabTestResponse startLabTest(Integer labId) {
-        log.info("📋 [SYNC] Starting lab test for labId: {}", labId);
+        log.info(" [SYNC] Starting lab test for labId: {}", labId);
 
         Lab lab = labRepository.findById(labId)
                 .orElseThrow(() -> new EntityNotFoundException("Lab not found with ID: " + labId));
 
-        // Force loading instancetype 
+        // Force loading instancetype for hibernate lazy loading
         if (lab.getInstanceType() != null) {
             lab.getInstanceType().getId(); 
             lab.getInstanceType().getStorageGb(); 
@@ -47,7 +47,7 @@ public class VMTestService {
         String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
         String testVmName = String.format("test-vm-%d-%s", lab.getId(), timestamp);
 
-        log.info("🆔 Test ID: {}, Test VM Name: {}", testId, testVmName);
+        log.info(" Test ID: {}, Test VM Name: {}", testId, testVmName);
 
         
         Map<String, Object> connectionInfo = socketConnectionInfo.createWebSocketConnectionInfo(testVmName);
@@ -65,8 +65,8 @@ public class VMTestService {
 
         activeTests.put(testId, response);
 
-        // ✅ Gọi async executor (sẽ đợi WebSocket connect trước khi tiếp tục)
-        log.info("🔄 Calling asyncExecutor.executeTestAsync()");
+        
+        log.info(" Calling asyncExecutor.executeTestAsync()");
         asyncExecutor.executeTestAsync(
                 testId, 
                 lab, 
@@ -77,7 +77,7 @@ public class VMTestService {
                 activeTests
         );
 
-        log.info("✅ Test request accepted. Client should connect to WebSocket: {}", wsUrl);
+        log.info(" Test request accepted. Client should connect to WebSocket: {}", wsUrl);
         return response;
     }
 

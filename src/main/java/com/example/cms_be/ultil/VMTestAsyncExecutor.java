@@ -34,8 +34,8 @@ public class VMTestAsyncExecutor {
             log.info(" Test VM Name: {}", testVmName);
             log.info("===========================================");
 
-            // ✅ BƯỚC 1: ĐỢI WEBSOCKET CONNECTION (30 giây)
-            log.info("⏳ Step 1: Waiting for WebSocket client to connect...");
+            // BƯỚC 1: ĐỢI WEBSOCKET CONNECTION 
+            log.info(" Step 1: Waiting for WebSocket client to connect...");
             updateTestStatus(testId, "WAITING_CONNECTION", activeTests);
             
             boolean wsConnected = webSocketHandler.waitForConnection(testVmName, 30);
