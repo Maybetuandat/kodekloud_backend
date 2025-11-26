@@ -8,6 +8,7 @@ import com.example.cms_be.security.jwt.JwtUtils;
 import com.example.cms_be.security.service.UserDetailsImpl;
 import com.example.cms_be.security.service.UserDetailsServiceImpl; // Cần import
 
+import com.example.cms_be.service.RoleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -36,6 +37,7 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
     private final UserDetailsServiceImpl userDetailsService;
+    private final RoleService roleService;
 
     @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
@@ -74,7 +76,7 @@ public class AuthController {
 
         user.setPassword(passwordEncoder.encode(signUpRequest.getPassword()));
 
-        user.setRole("ROLE_USER");
+        user.setRole(roleService.getRoleByName("ROLE_USER"));
 
         userRepository.save(user);
 
