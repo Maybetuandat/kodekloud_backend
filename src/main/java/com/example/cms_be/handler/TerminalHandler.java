@@ -21,6 +21,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CompletableFuture;
 
 @Component
 @Slf4j
@@ -53,47 +54,36 @@ public class TerminalHandler extends TextWebSocketHandler {
             // 2. Tìm thông tin máy ảo từ database
             UserLabSession userLabSession = userLabSessionRepository.findById(labSessionId)
                     .orElseThrow(() -> new RuntimeException("UserLabSession not found for ID: " + labSessionId));
+
+            // *** THÊM KIỂM TRA TRẠNG THÁI LAB ***
+            String status = userLabSession.getStatus();
+            if (!"READY".equals(status)) {
+                log.warn("Lab session {} is not ready yet (status: {}). Sending status message to client.", labSessionId, status);
+                String statusMessage = getStatusMessage(status);
+                session.sendMessage(new TextMessage(statusMessage));
+                
+                // Nếu là FAILED, đóng kết nối
+                if ("FAILED".equals(status) || "SETUP_FAILED".equals(status)) {
+                    session.close(CloseStatus.NORMAL.withReason("Lab setup failed"));
+                    return;
+                }
+                
+                // Ngược lại, giữ kết nối và thông báo cho client chờ
+                // Client có thể retry kết nối sau hoặc hiển thị trạng thái chờ
+                return;
+            }
+
             String vmName = "vm-" + userLabSession.getId();
             String namespace = userLabSession.getLab().getNamespace();
 
             log.info("Found VM details - Name: {}, Namespace: {}", vmName, namespace);
+            
             // 3. Dùng Discovery Service để lấy thông tin kết nối SSH từ bên ngoài
-            SshConnectionDetails details = discoveryService.getExternalSshDetails(vmName, namespace);
+            // *** THÊM RETRY LOGIC ***
+            SshConnectionDetails details = getSSHDetailsWithRetry(vmName, namespace, 5, 2000);
 
             // 4. Mở kết nối SSH và một 'shell' channel
-            JSch jsch = new JSch();
-            Session jschSession = jsch.getSession("ubuntu", details.host(), details.port());
-            jschSession.setPassword("1234");
-            jschSession.setConfig("StrictHostKeyChecking", "no");
-            jschSession.connect(20000); // 20s connection timeout
-
-            ChannelShell channel = (ChannelShell) jschSession.openChannel("shell");
-            InputStream in = channel.getInputStream();
-            OutputStream out = channel.getOutputStream();
-            channel.connect(10000); // 10s channel connection timeout
-
-            log.info("✅ SSH shell channel created for WebSocket session: {}", wsSessionId);
-
-            // 5. Nối kết luồng output từ SSH đến WebSocket client
-            // Tạo một luồng riêng để đọc dữ liệu từ máy ảo và gửi cho client
-            new Thread(() -> {
-                try {
-                    byte[] buffer = new byte[4096];
-                    int bytesRead;
-                    while (channel.isConnected() && (bytesRead = in.read(buffer)) != -1) {
-                        session.sendMessage(new TextMessage(new String(buffer, 0, bytesRead, StandardCharsets.UTF_8)));
-                        System.out.println(new TextMessage(new String(buffer, 0, bytesRead, StandardCharsets.UTF_8)));
-                    }
-                } catch (Exception e) {
-                    log.warn("Error reading from SSH stream for session {}, closing connection.", wsSessionId, e);
-                } finally {
-                    cleanup(wsSessionId);
-                }
-            }).start();
-            // 6. Lưu lại các đối tượng cần thiết để quản lý phiên
-            sshSessions.put(wsSessionId, jschSession);
-            sshChannels.put(wsSessionId, channel);
-            sshOutputStreams.put(wsSessionId, out);
+            establishSSHConnection(session, details, wsSessionId);
 
         } catch (Exception e) {
             log.error("🚨 Failed to establish terminal connection for session {}: {}", wsSessionId, e.getMessage(), e);
@@ -101,10 +91,89 @@ public class TerminalHandler extends TextWebSocketHandler {
                 session.sendMessage(new TextMessage("\r\n🚨 Error: Could not connect to the lab environment. Details: " + e.getMessage()));
                 session.close(CloseStatus.SERVER_ERROR);
             } catch (IOException ioEx) {
-                // Ignore
+                log.warn("Could not send error message to client: {}", ioEx.getMessage());
             }
             cleanup(wsSessionId);
         }
+    }
+
+    /**
+     * Retry logic để đợi SSH service sẵn sàng
+     */
+    private SshConnectionDetails getSSHDetailsWithRetry(String vmName, String namespace, int maxRetries, long delayMs) throws Exception {
+        Exception lastException = null;
+        
+        for (int i = 0; i < maxRetries; i++) {
+            try {
+                log.info("Attempt {} to get SSH details for VM: {}", i + 1, vmName);
+                return discoveryService.getExternalSshDetails(vmName, namespace);
+            } catch (Exception e) {
+                lastException = e;
+                log.warn("Attempt {} failed: {}. Retrying in {} ms...", i + 1, e.getMessage(), delayMs);
+                
+                if (i < maxRetries - 1) { // Không sleep ở lần thử cuối
+                    try {
+                        Thread.sleep(delayMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException("Interrupted while waiting for SSH service", ie);
+                    }
+                }
+            }
+        }
+        
+        throw new RuntimeException("SSH service not available after " + maxRetries + " attempts", lastException);
+    }
+
+    /**
+     * Thiết lập kết nối SSH
+     */
+    private void establishSSHConnection(WebSocketSession session, SshConnectionDetails details, String wsSessionId) throws Exception {
+        JSch jsch = new JSch();
+        Session jschSession = jsch.getSession("ubuntu", details.host(), details.port());
+        jschSession.setPassword("1234");
+        jschSession.setConfig("StrictHostKeyChecking", "no");
+        jschSession.connect(20000); // 20s connection timeout
+
+        ChannelShell channel = (ChannelShell) jschSession.openChannel("shell");
+        InputStream in = channel.getInputStream();
+        OutputStream out = channel.getOutputStream();
+        channel.connect(10000); // 10s channel connection timeout
+
+        log.info("✅ SSH shell channel created for WebSocket session: {}", wsSessionId);
+
+        // 5. Nối kết luồng output từ SSH đến WebSocket client
+        // Tạo một luồng riêng để đọc dữ liệu từ máy ảo và gửi cho client
+        CompletableFuture.runAsync(() -> {
+            try {
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while (channel.isConnected() && (bytesRead = in.read(buffer)) != -1) {
+                    session.sendMessage(new TextMessage(new String(buffer, 0, bytesRead, StandardCharsets.UTF_8)));
+                }
+            } catch (Exception e) {
+                log.warn("Error reading from SSH stream for session {}, closing connection.", wsSessionId, e);
+            } finally {
+                cleanup(wsSessionId);
+            }
+        });
+        
+        // 6. Lưu lại các đối tượng cần thiết để quản lý phiên
+        sshSessions.put(wsSessionId, jschSession);
+        sshChannels.put(wsSessionId, channel);
+        sshOutputStreams.put(wsSessionId, out);
+    }
+
+    /**
+     * Tạo thông điệp trạng thái dựa trên status của lab
+     */
+    private String getStatusMessage(String status) {
+        return switch (status) {
+            case "PENDING" -> "\r\n🔄 Lab is being created... Please wait.\r\n";
+            case "SETTING_UP" -> "\r\n⚙️ Lab is being set up... This may take a few minutes.\r\n";
+            case "FAILED", "SETUP_FAILED" -> "\r\n❌ Lab setup failed. Please try again.\r\n";
+            default -> "\r\n⏳ Lab is not ready yet (status: " + status + "). Please wait...\r\n";
+        };
     }
 
     @Override

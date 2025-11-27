@@ -47,8 +47,7 @@ public class KubernetesDiscoveryService {
         throw new RuntimeException("Timeout: Pod with label '" + labelSelector + "' did not enter Running state within " + timeoutSeconds + " seconds.");
     }
 
-
-    // thhực hiện tại kết nôi tcp để kiểm tra xem ssh đã sẵn sàng hay chưa
+    // Thực hiện tại kết nối TCP để kiểm tra xem ssh đã sẵn sàng hay chưa
     public void waitForSshReady(String host, int port, int timeoutSeconds) throws InterruptedException {
         log.info("Waiting for SSH service to be ready at {}:{}...", host, port);
         long startTime = System.currentTimeMillis();
@@ -73,15 +72,49 @@ public class KubernetesDiscoveryService {
 
     public SshConnectionDetails getExternalSshDetails(String vmName, String namespace) throws ApiException {
         log.info("Fetching external SSH details for VM '{}'", vmName);
-        V1Service service = coreApi.readNamespacedService("ssh-" + vmName, namespace, null);
-        Integer nodePort = service.getSpec().getPorts().get(0).getNodePort();
-
-        V1NodeList nodeList = coreApi.listNode(null, null, null, null, null, 1, null, null, null, null);
-        String nodeIp = findNodeIp(nodeList.getItems().get(0));
-
-        if (nodePort == null || nodeIp == null) {
-            throw new IllegalStateException("Could not determine NodeIP and NodePort for external connection.");
+        
+        String serviceName = "ssh-" + vmName;
+        V1Service service;
+        
+        try {
+            service = coreApi.readNamespacedService(serviceName, namespace, null);
+        } catch (ApiException e) {
+            if (e.getCode() == 404) {
+                log.error("SSH Service '{}' not found in namespace '{}'. The VM may not be ready yet.", serviceName, namespace);
+                throw new RuntimeException("SSH service not found. VM is still being created or failed to start. Service: " + serviceName);
+            } else {
+                log.error("Failed to read SSH service '{}': HTTP {}", serviceName, e.getCode());
+                throw new RuntimeException("Failed to access SSH service due to Kubernetes API error: " + e.getMessage());
+            }
         }
+        
+        // Kiểm tra service có port không
+        if (service.getSpec() == null || service.getSpec().getPorts() == null || service.getSpec().getPorts().isEmpty()) {
+            throw new RuntimeException("SSH service exists but has no ports configured: " + serviceName);
+        }
+        
+        Integer nodePort = service.getSpec().getPorts().get(0).getNodePort();
+        if (nodePort == null) {
+            throw new RuntimeException("SSH service exists but NodePort is not assigned: " + serviceName);
+        }
+
+        V1NodeList nodeList;
+        try {
+            nodeList = coreApi.listNode(null, null, null, null, null, 1, null, null, null, null);
+        } catch (ApiException e) {
+            log.error("Failed to list Kubernetes nodes: HTTP {}", e.getCode());
+            throw new RuntimeException("Failed to get Kubernetes nodes: " + e.getMessage());
+        }
+        
+        if (nodeList.getItems().isEmpty()) {
+            throw new RuntimeException("No Kubernetes nodes found in the cluster");
+        }
+        
+        String nodeIp = findNodeIp(nodeList.getItems().get(0));
+        if (nodeIp == null) {
+            throw new RuntimeException("Could not determine IP address for Kubernetes node");
+        }
+
         log.info("Found external connection details: {}:{}", nodeIp, nodePort);
         return new SshConnectionDetails(nodeIp, nodePort);
     }
@@ -97,6 +130,10 @@ public class KubernetesDiscoveryService {
     }
 
     public String findNodeIp(V1Node node) {
+        if (node.getStatus() == null || node.getStatus().getAddresses() == null) {
+            return null;
+        }
+        
         String externalIp = null;
         String internalIp = null;
 
@@ -111,6 +148,4 @@ public class KubernetesDiscoveryService {
 
         return externalIp != null ? externalIp : internalIp;
     }
-
-  
 }

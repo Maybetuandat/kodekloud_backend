@@ -1,3 +1,3 @@
         git add .
-        git commit -m "refractor(Model): before add logic setup step run"
+        git commit -m "fix(Model): before fix logic at terminal"
         git push origin refractorcode
