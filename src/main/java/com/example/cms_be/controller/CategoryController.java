@@ -1,4 +1,6 @@
 package com.example.cms_be.controller;
+
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.example.cms_be.model.Category;
@@ -22,6 +24,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 @Slf4j
 public class CategoryController {
     private final CategoryService categoryService;
+    private final LabService labService;
+
+    @PreAuthorize("hasAuthority('CATEGORY_READ') or hasAuthority('CATEGORY_ALL')")
     @GetMapping("")
     public ResponseEntity<List<Category>> getCategories() {
         try {
@@ -30,6 +35,8 @@ public class CategoryController {
             return ResponseEntity.status(500).build();
         }
     }
+
+    @PreAuthorize("hasAuthority('CATEGORY_READ') or hasAuthority('CATEGORY_ALL')")
     @GetMapping("/{id}")
     public ResponseEntity<Category> getCategoryById(@PathVariable Integer id) {
         try {
@@ -40,6 +47,7 @@ public class CategoryController {
         }
     }
 
+    @PreAuthorize("hasAuthority('CATEGORY_CREATE') or hasAuthority('CATEGORY_ALL')")
     @PostMapping("")
     public ResponseEntity<Category> createCategory(@RequestBody Category category) {
         try {

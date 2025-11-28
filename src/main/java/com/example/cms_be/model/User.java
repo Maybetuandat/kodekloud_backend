@@ -48,8 +48,11 @@ public class User {
     @Column(name = "is_active")
     private Boolean isActive ;
 
-    @Column(name = "role")
-    private String role;
+//    @Column(name = "role")
+//    private String role;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "role_id")
+    private Role role;
 
     @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
