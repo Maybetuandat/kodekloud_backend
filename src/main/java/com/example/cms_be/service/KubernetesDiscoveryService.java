@@ -71,13 +71,77 @@ public class KubernetesDiscoveryService {
     }
 
     public SshConnectionDetails getExternalSshDetails(String vmName, String namespace) throws ApiException {
-        log.info("Fetching external SSH details for VM '{}'", vmName);
+        log.info("Fetching external SSH details for VM '{}' in namespace '{}'", vmName, namespace);
         
-        String serviceName = "ssh-" + vmName;
-        V1Service service;
+        // Bước 1: Tìm pod VM và worker node chứa nó
+        String workerNodeName = findWorkerNodeForVM(vmName, namespace);
+        log.info("VM '{}' is running on worker node: {}", vmName, workerNodeName);
+        
+        // Bước 2: Lấy thông tin NodePort từ SSH service
+        Integer nodePort = getNodePortFromService(vmName, namespace);
+        log.info("SSH NodePort for VM '{}': {}", vmName, nodePort);
+        
+        // Bước 3: Lấy IP của worker node cụ thể
+        String workerNodeIp = getWorkerNodeIp(workerNodeName);
+        if (workerNodeIp == null) {
+            throw new RuntimeException("Could not determine IP address for worker node: " + workerNodeName);
+        }
+
+        log.info("Found SSH connection details: {}:{} (worker: {})", workerNodeIp, nodePort, workerNodeName);
+        return new SshConnectionDetails(workerNodeIp, nodePort);
+    }
+    
+    /**
+     * Tìm worker node đang chạy VM pod
+     */
+    private String findWorkerNodeForVM(String vmName, String namespace) throws ApiException {
+        String labelSelector = "app=" + vmName;
         
         try {
-            service = coreApi.readNamespacedService(serviceName, namespace, null);
+            V1PodList podList = coreApi.listNamespacedPod(namespace, null, null, null, null, labelSelector, null, null, null, null, null);
+            
+            if (podList.getItems().isEmpty()) {
+                throw new RuntimeException("No pods found for VM: " + vmName + " with label selector: " + labelSelector);
+            }
+            
+            // Lấy pod đầu tiên (virt-launcher pod)
+            V1Pod vmPod = podList.getItems().get(0);
+            String nodeName = vmPod.getSpec().getNodeName();
+            
+            if (nodeName == null || nodeName.isEmpty()) {
+                throw new RuntimeException("Pod for VM '" + vmName + "' is not scheduled to any node yet");
+            }
+            
+            log.info("Found VM pod '{}' running on node: {}", vmPod.getMetadata().getName(), nodeName);
+            return nodeName;
+            
+        } catch (ApiException e) {
+            log.error("Failed to find pod for VM '{}': HTTP {}", vmName, e.getCode());
+            throw new RuntimeException("Failed to locate VM pod: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Lấy NodePort từ SSH service
+     */
+    private Integer getNodePortFromService(String vmName, String namespace) throws ApiException {
+        String serviceName = "ssh-" + vmName;
+        
+        try {
+            V1Service service = coreApi.readNamespacedService(serviceName, namespace, null);
+            
+            // Kiểm tra service có port không
+            if (service.getSpec() == null || service.getSpec().getPorts() == null || service.getSpec().getPorts().isEmpty()) {
+                throw new RuntimeException("SSH service exists but has no ports configured: " + serviceName);
+            }
+            
+            Integer nodePort = service.getSpec().getPorts().get(0).getNodePort();
+            if (nodePort == null) {
+                throw new RuntimeException("SSH service exists but NodePort is not assigned: " + serviceName);
+            }
+            
+            return nodePort;
+            
         } catch (ApiException e) {
             if (e.getCode() == 404) {
                 log.error("SSH Service '{}' not found in namespace '{}'. The VM may not be ready yet.", serviceName, namespace);
@@ -87,36 +151,20 @@ public class KubernetesDiscoveryService {
                 throw new RuntimeException("Failed to access SSH service due to Kubernetes API error: " + e.getMessage());
             }
         }
-        
-        // Kiểm tra service có port không
-        if (service.getSpec() == null || service.getSpec().getPorts() == null || service.getSpec().getPorts().isEmpty()) {
-            throw new RuntimeException("SSH service exists but has no ports configured: " + serviceName);
-        }
-        
-        Integer nodePort = service.getSpec().getPorts().get(0).getNodePort();
-        if (nodePort == null) {
-            throw new RuntimeException("SSH service exists but NodePort is not assigned: " + serviceName);
-        }
-
-        V1NodeList nodeList;
+    }
+    
+    /**
+     * Lấy IP của worker node cụ thể theo tên
+     */
+    private String getWorkerNodeIp(String nodeName) throws ApiException {
         try {
-            nodeList = coreApi.listNode(null, null, null, null, null, 1, null, null, null, null);
+            V1Node node = coreApi.readNode(nodeName, null);
+            return findNodeIp(node);
+            
         } catch (ApiException e) {
-            log.error("Failed to list Kubernetes nodes: HTTP {}", e.getCode());
-            throw new RuntimeException("Failed to get Kubernetes nodes: " + e.getMessage());
+            log.error("Failed to get node '{}': HTTP {}", nodeName, e.getCode());
+            throw new RuntimeException("Failed to get worker node information: " + e.getMessage());
         }
-        
-        if (nodeList.getItems().isEmpty()) {
-            throw new RuntimeException("No Kubernetes nodes found in the cluster");
-        }
-        
-        String nodeIp = findNodeIp(nodeList.getItems().get(0));
-        if (nodeIp == null) {
-            throw new RuntimeException("Could not determine IP address for Kubernetes node");
-        }
-
-        log.info("Found external connection details: {}:{}", nodeIp, nodePort);
-        return new SshConnectionDetails(nodeIp, nodePort);
     }
 
     public SshConnectionDetails getInternalSshDetails(V1Pod pod) {

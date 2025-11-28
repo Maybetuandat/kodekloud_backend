@@ -309,24 +309,25 @@ public class VMService {
         }
     }
 
-    public void createSshServiceForVM(String name, String namespace) throws ApiException {
-        String serviceName = "ssh-" + name;
-        V1Service serviceBody = new V1Service()
-                .apiVersion("v1")
-                .kind("Service")
-                .metadata(new V1ObjectMeta().name(serviceName).namespace(namespace))
-                .spec(new V1ServiceSpec()
-                        .type("NodePort")
-                        .putSelectorItem("app", name)
-                        .addPortsItem(new V1ServicePort()
-                                .protocol("TCP")
-                                .port(defaultSshPort)
-                                .targetPort(new IntOrString(defaultSshPort))));
+   public void createSshServiceForVM(String name, String namespace) throws ApiException {
+    String serviceName = "ssh-" + name;
+    V1Service serviceBody = new V1Service()
+            .apiVersion("v1")
+            .kind("Service")
+            .metadata(new V1ObjectMeta().name(serviceName).namespace(namespace))
+            .spec(new V1ServiceSpec()
+                    .type("NodePort")
+                    .putSelectorItem("app", name)
+                    .addPortsItem(new V1ServicePort()
+                            .protocol("TCP")
+                            .port(defaultSshPort)
+                            .targetPort(new IntOrString(defaultSshPort)))
+                    .externalTrafficPolicy("Cluster")); 
 
-        log.info("Creating Service '{}'...", serviceName);
-        coreApi.createNamespacedService(namespace, serviceBody, null, null, null, null);
-        log.info("Service '{}' created successfully.", serviceName);
-    }
+    log.info("Creating Service '{}'...", serviceName);
+    coreApi.createNamespacedService(namespace, serviceBody, null, null, null, null);
+    log.info("Service '{}' created successfully.", serviceName);
+}
 
     public void deleteKubernetesResourcesForSession(UserLabSession session) {
         String vmName = "vm-" + session.getId();

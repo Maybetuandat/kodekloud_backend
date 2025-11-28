@@ -46,8 +46,8 @@ public class LabOrchestrationService {
             discoveryService.waitForSshReady(connectionDetails.host(), connectionDetails.port(), 120);
 
             log.info("Phase 3: VM is ready. Starting setup execution for session {}.", session.getId());
-            updateSessionStatus(session.getId(), "SETTING_UP");
-            setupExecutionService.executeSteps(session, connectionDetails);
+            updateSessionStatus(session.getId(), "SUCCESS");
+          //  setupExecutionService.executeSteps(session, connectionDetails);
 
         } catch (Exception e) {
             log.error("A critical error occurred during lab orchestration for session {}: {}", session.getId(), e.getMessage(), e);
