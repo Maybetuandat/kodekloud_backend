@@ -54,8 +54,6 @@ public class LabSessionService {
             return existingSession.get();
         }
 
-
-        
         UserLabSession session = new UserLabSession();
         session.setLab(lab);
         session.setSetupStartedAt(LocalDateTime.now());
@@ -67,7 +65,8 @@ public class LabSessionService {
         UserLabSession savedSession = userLabSessionRepository.save(session);
         log.info("Created UserLabSession {} for user {}", savedSession.getId(), userId);
 
-        orchestrationService.provisionAndSetupLab(savedSession);
+        // 🔥 FIX: Use new eager loading method instead of direct async call
+        orchestrationService.provisionAndSetupLabWithEagerLoading(savedSession);
 
         return savedSession;
          } catch (Exception e) {

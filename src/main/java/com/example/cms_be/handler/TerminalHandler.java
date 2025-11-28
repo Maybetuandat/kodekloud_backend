@@ -55,40 +55,131 @@ public class TerminalHandler extends TextWebSocketHandler {
             UserLabSession userLabSession = userLabSessionRepository.findById(labSessionId)
                     .orElseThrow(() -> new RuntimeException("UserLabSession not found for ID: " + labSessionId));
 
-            // *** THÊM KIỂM TRA TRẠNG THÁI LAB ***
+            // *** ENHANCED STATUS CHECKING ***
             String status = userLabSession.getStatus();
+            log.info("Lab session {} current status: {}", labSessionId, status);
+            
             if (!"READY".equals(status)) {
                 log.warn("Lab session {} is not ready yet (status: {}). Sending status message to client.", labSessionId, status);
                 String statusMessage = getStatusMessage(status);
                 session.sendMessage(new TextMessage(statusMessage));
                 
-                // Nếu là FAILED, đóng kết nối
-                if ("FAILED".equals(status) || "SETUP_FAILED".equals(status)) {
+                // 🔥 KEY FIX: Wait for lab to be ready instead of closing immediately
+                if ("SETUP_FAILED".equals(status) || "FAILED".equals(status)) {
                     session.close(CloseStatus.NORMAL.withReason("Lab setup failed"));
                     return;
                 }
                 
-                // Ngược lại, giữ kết nối và thông báo cho client chờ
-                // Client có thể retry kết nối sau hoặc hiển thị trạng thái chờ
+                // For PENDING, STARTING, SETTING_UP - keep connection and periodically check
+                startStatusPolling(session, labSessionId);
                 return;
             }
 
-            String vmName = "vm-" + userLabSession.getId();
-            String namespace = userLabSession.getLab().getNamespace();
-
-            log.info("Found VM details - Name: {}, Namespace: {}", vmName, namespace);
-            
-            // 3. Dùng Discovery Service để lấy thông tin kết nối SSH từ bên ngoài
-            // *** THÊM RETRY LOGIC ***
-            SshConnectionDetails details = getSSHDetailsWithRetry(vmName, namespace, 5, 2000);
-
-            // 4. Mở kết nối SSH và một 'shell' channel
-            establishSSHConnection(session, details, wsSessionId);
+            // Status is READY, proceed with SSH connection
+            establishSSHConnectionForReadyLab(session, userLabSession, wsSessionId);
 
         } catch (Exception e) {
             log.error("🚨 Failed to establish terminal connection for session {}: {}", wsSessionId, e.getMessage(), e);
             try {
                 session.sendMessage(new TextMessage("\r\n🚨 Error: Could not connect to the lab environment. Details: " + e.getMessage()));
+                session.close(CloseStatus.SERVER_ERROR);
+            } catch (IOException ioEx) {
+                log.warn("Could not send error message to client: {}", ioEx.getMessage());
+            }
+            cleanup(wsSessionId);
+        }
+    }
+
+    /**
+     * 🔥 NEW: Poll session status periodically for labs that are not ready yet
+     */
+    private void startStatusPolling(WebSocketSession session, int labSessionId) {
+        CompletableFuture.runAsync(() -> {
+            int maxPolls = 60; // 5 minutes maximum
+            int pollInterval = 5000; // 5 seconds
+            
+            for (int i = 0; i < maxPolls; i++) {
+                try {
+                    Thread.sleep(pollInterval);
+                    
+                    if (!session.isOpen()) {
+                        log.info("WebSocket session closed during polling for lab session {}", labSessionId);
+                        break;
+                    }
+                    
+                    UserLabSession userLabSession = userLabSessionRepository.findById(labSessionId)
+                            .orElse(null);
+                    
+                    if (userLabSession == null) {
+                        session.sendMessage(new TextMessage("\r\n❌ Lab session not found."));
+                        session.close(CloseStatus.NORMAL);
+                        break;
+                    }
+                    
+                    String currentStatus = userLabSession.getStatus();
+                    log.debug("Polling lab session {} - current status: {}", labSessionId, currentStatus);
+                    
+                    if ("READY".equals(currentStatus)) {
+                        log.info("Lab session {} is now READY! Establishing SSH connection...", labSessionId);
+                        session.sendMessage(new TextMessage("\r\n✅ Lab is ready! Connecting to terminal...\r\n"));
+                        establishSSHConnectionForReadyLab(session, userLabSession, session.getId());
+                        break;
+                    } else if ("SETUP_FAILED".equals(currentStatus) || "FAILED".equals(currentStatus)) {
+                        session.sendMessage(new TextMessage("\r\n❌ Lab setup failed. Please try again.\r\n"));
+                        session.close(CloseStatus.NORMAL.withReason("Lab setup failed"));
+                        break;
+                    }
+                    
+                    // Send periodic status updates
+                    if (i % 2 == 0) { // Every 10 seconds
+                        String statusMessage = getStatusMessage(currentStatus);
+                        session.sendMessage(new TextMessage(statusMessage));
+                    }
+                    
+                } catch (Exception e) {
+                    log.error("Error during status polling for lab session {}: {}", labSessionId, e.getMessage());
+                    try {
+                        session.sendMessage(new TextMessage("\r\n❌ Error checking lab status.\r\n"));
+                        session.close(CloseStatus.SERVER_ERROR);
+                    } catch (IOException ioEx) {
+                        log.warn("Could not send error message: {}", ioEx.getMessage());
+                    }
+                    break;
+                }
+            }
+            
+            // Timeout after max polls
+            if (session.isOpen()) {
+                try {
+                    session.sendMessage(new TextMessage("\r\n⏰ Timeout waiting for lab to be ready. Please refresh and try again.\r\n"));
+                    session.close(CloseStatus.NORMAL.withReason("Timeout"));
+                } catch (IOException e) {
+                    log.warn("Could not send timeout message: {}", e.getMessage());
+                }
+            }
+        });
+    }
+
+    /**
+     * Establish SSH connection for a lab that is confirmed to be READY
+     */
+    private void establishSSHConnectionForReadyLab(WebSocketSession session, UserLabSession userLabSession, String wsSessionId) {
+        try {
+            String vmName = "vm-" + userLabSession.getId();
+            String namespace = userLabSession.getLab().getNamespace();
+
+            log.info("Found VM details - Name: {}, Namespace: {}", vmName, namespace);
+            
+            // Get SSH connection details with retry
+            SshConnectionDetails details = getSSHDetailsWithRetry(vmName, namespace, 5, 2000);
+
+            // Establish SSH connection
+            establishSSHConnection(session, details, wsSessionId);
+
+        } catch (Exception e) {
+            log.error("🚨 Failed to establish SSH connection for ready lab session {}: {}", userLabSession.getId(), e.getMessage(), e);
+            try {
+                session.sendMessage(new TextMessage("\r\n🚨 Error: Could not connect to the lab terminal. Details: " + e.getMessage()));
                 session.close(CloseStatus.SERVER_ERROR);
             } catch (IOException ioEx) {
                 log.warn("Could not send error message to client: {}", ioEx.getMessage());
@@ -142,6 +233,9 @@ public class TerminalHandler extends TextWebSocketHandler {
 
         log.info("✅ SSH shell channel created for WebSocket session: {}", wsSessionId);
 
+        // Send welcome message
+        session.sendMessage(new TextMessage("\r\n🚀 Terminal connected successfully! Welcome to your lab environment.\r\n"));
+
         // 5. Nối kết luồng output từ SSH đến WebSocket client
         // Tạo một luồng riêng để đọc dữ liệu từ máy ảo và gửi cho client
         CompletableFuture.runAsync(() -> {
@@ -170,7 +264,8 @@ public class TerminalHandler extends TextWebSocketHandler {
     private String getStatusMessage(String status) {
         return switch (status) {
             case "PENDING" -> "\r\n🔄 Lab is being created... Please wait.\r\n";
-            case "SETTING_UP" -> "\r\n⚙️ Lab is being set up... This may take a few minutes.\r\n";
+            case "STARTING" -> "\r\n⚙️ Lab virtual machine is starting up...\r\n";
+            case "SETTING_UP" -> "\r\n🛠️ Lab environment is being set up... This may take a few minutes.\r\n";
             case "FAILED", "SETUP_FAILED" -> "\r\n❌ Lab setup failed. Please try again.\r\n";
             default -> "\r\n⏳ Lab is not ready yet (status: " + status + "). Please wait...\r\n";
         };
