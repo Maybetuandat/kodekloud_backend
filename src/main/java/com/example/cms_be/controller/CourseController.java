@@ -1,6 +1,7 @@
 package com.example.cms_be.controller;
 
 import com.example.cms_be.dto.CourseDetailResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.cms_be.model.Course;
@@ -45,7 +46,7 @@ public class CourseController {
     private final CourseLabService courseLabService;
     private final CourseUserService courseUserService;
     private final UserService userService;
-    
+
     @GetMapping("")
     public ResponseEntity<?> getAllCourses(
             @RequestParam(name = "page", defaultValue = "1") int page,
