@@ -1,5 +1,7 @@
 package com.example.cms_be.service;
 
+import com.example.cms_be.dto.connection.ExecuteCommandResult;
+import com.example.cms_be.dto.connection.SshConnectionDetails;
 import com.example.cms_be.model.Question;
 import com.example.cms_be.model.UserLabSession;
 import com.example.cms_be.repository.LabRepository;
@@ -39,9 +41,9 @@ public class LabValidationService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy UserLabSession với ID: " + labSessionId));
         String vmName = "vm-" + session.getId();
         String namespace = session.getLab().getNamespace();
-        KubernetesDiscoveryService.SshConnectionDetails details = discoveryService.getExternalSshDetails(vmName, namespace);
+        SshConnectionDetails details = discoveryService.getExternalSshDetails(vmName, namespace);
         try {
-            KubernetesService.CommandResult result = executeCommandViaSsh(details, checkCommand, 60);
+            ExecuteCommandResult result = executeCommandViaSsh(details, checkCommand, 60);
             log.info("Check command for question {} resulted in exit code: {}", question.getQuestion(), result.getExitCode());
 
             return result.getExitCode() == 0;
@@ -52,7 +54,7 @@ public class LabValidationService {
         }
     }
 
-    private KubernetesService.CommandResult executeCommandViaSsh(KubernetesDiscoveryService.SshConnectionDetails details, String command, int timeoutSecond) throws Exception {
+    private ExecuteCommandResult executeCommandViaSsh(SshConnectionDetails details, String command, int timeoutSecond) throws Exception {
         JSch jsch = new JSch();
         Session session = null;
         ChannelExec channel = null;
@@ -88,6 +90,6 @@ public class LabValidationService {
             if (channel != null) channel.disconnect();
             if (session != null) session.disconnect();
         }
-        return new KubernetesService.CommandResult(exitCode, outputBuffer.toString().trim(), "");
+        return new ExecuteCommandResult(exitCode, outputBuffer.toString().trim(), "");
     }
 }

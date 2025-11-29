@@ -37,11 +37,8 @@ public class LabSessionService {
          try {
              Lab lab = labRepository.findById(labId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Lab với ID: " + labId));
-
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy User với ID: " + userId));
-
-
         CourseLab courseLab = courseLabRepository.findByLabId(labId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy CourseLab với Lab ID: " + labId));
         boolean isEnrolled = courseUserRepository.existsByUserAndCourseId(user, courseLab.getCourse());
@@ -49,7 +46,7 @@ public class LabSessionService {
             throw new AccessDeniedException("Người dùng chưa đăng ký khóa học này.");
         }
 
-        // check exist session
+        // check exist session  if user has session for the lab then continue 
         List<String> activeStatuses = List.of("PENDING", "RUNNING");
         Optional<UserLabSession> existingSession = userLabSessionRepository.findActiveSessionByUserAndLab(userId, labId, activeStatuses);
         if (existingSession.isPresent()) {
@@ -68,7 +65,8 @@ public class LabSessionService {
         UserLabSession savedSession = userLabSessionRepository.save(session);
         log.info("Created UserLabSession {} for user {}", savedSession.getId(), userId);
 
-        orchestrationService.provisionAndSetupLab(savedSession);
+        
+        orchestrationService.provisionAndSetupLabWithEagerLoading(savedSession);
 
         return savedSession;
          } catch (Exception e) {

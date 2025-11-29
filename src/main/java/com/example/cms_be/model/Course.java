@@ -24,11 +24,15 @@ public class Course {
     @Column(name = "id", nullable = false, unique = true)
     private Integer id;
 
-    @Column(name = "title")
+    @Column(name = "title", unique =  true)
     private String title;
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
+
+
+    @Column(name="short_description", columnDefinition = "TEXT")
+    private String shortDescription;
 
     @Column(name = "level")
     private String level;
@@ -37,8 +41,7 @@ public class Course {
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
-    @Column(name = "short_description")
-    private String shortDescription;
+  
 
     @Column(name = "is_active")
     private Boolean isActive;

@@ -1,11 +1,13 @@
 package com.example.cms_be.service;
 import java.util.Optional;
 
+import com.example.cms_be.dto.lab.CreateLabRequest;
 import com.example.cms_be.model.*;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
 import com.example.cms_be.repository.CategoryRepository;
+import com.example.cms_be.repository.InstanceTypeRepository;
 import com.example.cms_be.repository.LabRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +19,7 @@ public class LabService {
 
     private final LabRepository labRepository;
     private final CategoryRepository categoryRepository;
+    private final InstanceTypeRepository instanceTypeRepository;
    public Page<Lab> getAllLabs(Pageable pageable, Boolean isActive, String keyword) {
        try {
         return labRepository.findWithFilters(keyword, isActive, pageable );
@@ -46,11 +49,40 @@ public class LabService {
     }
 
 
-    public Lab createLab(Lab lab, Integer categoryId) {
+        private String generatedNameSpace(String labTitle) {
+        return labTitle
+                .trim()
+                .replaceAll("\\s+", "-")
+                .toLowerCase();
+    }
+
+    public Lab createLab(CreateLabRequest createLabRequest) {
         try{
-            Category category = categoryRepository.findById(categoryId)
-                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
+            if(createLabRequest.getCategoryId() == null || createLabRequest.getInstanceTypeId() == null) {
+                throw new RuntimeException("CategoryId and InstanceTypeId cannot be null");
+            }
+            Category category = categoryRepository.findById(createLabRequest.getCategoryId())
+                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + createLabRequest.getCategoryId()));
+            Lab lab = new Lab();
             lab.setCategory(category);
+
+
+
+
+            lab.setNamespace(generatedNameSpace(createLabRequest.getTitle()));
+            InstanceType instanceType = instanceTypeRepository.findById(createLabRequest.getInstanceTypeId())
+                    .orElseThrow(() -> new RuntimeException("InstanceType not found with id: " + createLabRequest.getInstanceTypeId()));
+            lab.setInstanceType(instanceType);
+            if(createLabRequest.getTitle() != null) {
+                lab.setTitle(createLabRequest.getTitle());
+            }
+            if(createLabRequest.getDescription() != null) {
+                lab.setDescription(createLabRequest.getDescription());
+            }
+            if(createLabRequest.getEstimatedTime() != null) {
+                lab.setEstimatedTime(createLabRequest.getEstimatedTime());
+            }
+          
 
             return labRepository.save(lab);
         }
@@ -67,7 +99,7 @@ public class LabService {
             throw new RuntimeException("Failed to fetch lab by ID", e);
         }
     }
-    public Lab updateLab(Integer id, Lab labUpdate) {
+    public Lab updateLab(Integer id, CreateLabRequest labUpdate) {
         try {
             Optional<Lab> existingLabOpt = labRepository.findById(id);
             if (existingLabOpt.isEmpty()) {
@@ -77,8 +109,8 @@ public class LabService {
             Lab existingLab = existingLabOpt.get();
 
             // Update fields
-            if(labUpdate.getCategory() != null) {
-                Integer newCategoryId = labUpdate.getCategory().getId();
+            if(labUpdate.getCategoryId() != null && labUpdate.getCategoryId() != existingLab.getCategory().getId()) {
+                Integer newCategoryId = labUpdate.getCategoryId();
                 Category newCategory = categoryRepository.findById(newCategoryId).orElse(null);
                 if (newCategory != null) {
                     existingLab.setCategory(newCategory);
@@ -86,6 +118,16 @@ public class LabService {
                     log.warn("Category with ID {} not found. Skipping category update.", newCategoryId);
                 }
 
+            }
+
+            if(labUpdate.getInstanceTypeId() != null && labUpdate.getInstanceTypeId() != existingLab.getInstanceType().getId()) {
+                Integer newInstanceTypeId = labUpdate.getInstanceTypeId();
+                InstanceType newInstanceType = instanceTypeRepository.findById(newInstanceTypeId).orElse(null);
+                if (newInstanceType != null) {
+                    existingLab.setInstanceType(newInstanceType);
+                } else {
+                    log.warn("InstanceType with ID {} not found. Skipping instance type update.", newInstanceTypeId);
+                }
             }
             if(labUpdate.getTitle() != null) {
                 existingLab.setTitle(labUpdate.getTitle());
@@ -101,9 +143,7 @@ public class LabService {
             if (labUpdate.getIsActive() != null) {
                 existingLab.setIsActive(labUpdate.getIsActive());
             }
-            if(labUpdate.getBackingImage() != null) {
-                existingLab.setBackingImage(labUpdate.getBackingImage());
-            }
+          
             
 
             Lab updatedLab = labRepository.save(existingLab);

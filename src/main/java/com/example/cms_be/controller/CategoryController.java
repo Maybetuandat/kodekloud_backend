@@ -3,18 +3,13 @@ package com.example.cms_be.controller;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
 import com.example.cms_be.model.Category;
-import com.example.cms_be.model.Lab;
 import com.example.cms_be.service.CategoryService;
 import com.example.cms_be.service.LabService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
 import java.util.List;
-
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -67,16 +62,7 @@ public class CategoryController {
     }
     
 
-    @PostMapping("{categoryId}/labs")
-    public ResponseEntity<?> createLab(@PathVariable Integer categoryId, @RequestBody Lab lab) {
-        try {
-            Lab createdLab = labService.createLab(lab, categoryId);
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdLab);
-        } catch (Exception e) {
-            log.error("Error creating lab: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
+   
 
 
     @PatchMapping("/{id}")

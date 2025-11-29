@@ -29,7 +29,7 @@ spec:
       domain:
         resources:
           requests:
-            memory: "{{MEMORY}}"
+            memory: "{{MEMORY}}Gi"
             cpu: "1"
         devices:
           disks:

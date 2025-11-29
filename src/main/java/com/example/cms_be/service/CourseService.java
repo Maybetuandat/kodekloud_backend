@@ -4,6 +4,8 @@ package com.example.cms_be.service;
 
 import com.example.cms_be.dto.CourseDetailResponse;
 import com.example.cms_be.dto.LabInfo;
+import com.example.cms_be.dto.course.CreateCourseRequest;
+
 import jakarta.persistence.EntityNotFoundException;
 
 import org.springframework.data.domain.*;
@@ -39,11 +41,17 @@ public class CourseService {
     }
 
    
-    public Course createCourse(Course course, Integer subjectId) {
+    public Course createCourse(CreateCourseRequest courseRequest) {
 
         try {
-            Subject subject = subjectRepository.findById(subjectId)
-                    .orElseThrow(() -> new RuntimeException("Subject not found with id: " + subjectId));
+            Subject subject = subjectRepository.findById(courseRequest.getSubjectId())
+                    .orElseThrow(() -> new RuntimeException("Subject not found with id: " + courseRequest.getSubjectId()));
+            Course course = new Course();
+            course.setTitle(courseRequest.getTitle());
+            course.setDescription(courseRequest.getDescription());
+            course.setShortDescription(courseRequest.getShortDescription());
+            course.setLevel(courseRequest.getLevel());
+            course.setIsActive(courseRequest.getIsActive());
             course.setSubject(subject);    
             return courseRepository.save(course);
         } catch (Exception e) {

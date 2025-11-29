@@ -8,28 +8,11 @@ spec:
   template:
     metadata:
       labels:
+        kubevirt.io/vm: "{{NAME}}"
         app: "{{NAME}}"
     spec:
-      domain:
-        devices:
-          disks:
-            - name: rootdisk
-              disk:
-                bus: virtio
-            - name: cloudinitdisk
-              cdrom:
-                bus: sata
-          interfaces:
-            - name: default
-              masquerade: {}
-        resources:
-          requests:
-            memory: "{{MEMORY}}"
-      networks:
-        - name: default
-          pod: {}
       volumes:
-        - name: rootdisk
+        - name: bootdisk
           persistentVolumeClaim:
             claimName: "{{NAME}}"
         - name: cloudinitdisk
@@ -44,3 +27,23 @@ spec:
                   sudo: ['ALL=(ALL) NOPASSWD:ALL']
                   plain_text_passwd: '1234'
                   lock_passwd: false
+      domain:
+        resources:
+          requests:
+            memory: "{{MEMORY}}Gi"
+            cpu: "{{CPU}}"
+        devices:
+          disks:
+            - name: bootdisk
+              lun:
+                bus: scsi
+              bootOrder: 1
+            - name: cloudinitdisk
+              cdrom:
+                bus: sata
+          interfaces:
+            - name: default
+              masquerade: {}
+      networks:
+        - name: default
+          pod: {}

@@ -31,29 +31,24 @@ public class Lab {
     @Column(name = "id", nullable = false, unique = true)
     private Integer id;
 
-    @Column(name = "title", nullable = true)
+    @Column(name = "title", nullable = false, unique = true)
     private String title;
 
     private String description;
 
    
 
-    @Column(name = "namespace", nullable = true)
+    @Column(name = "namespace", nullable = false, unique = true)
     private String namespace;
 
-    @Column(name = "storage", nullable = true)
-    private String storage;
+  
 
-    @Column(name = "memory", nullable = true)
-    private String memory;
+  
 
-    @Column(name="backing_image", nullable = true)
-    private String backingImage;
-
-    @Column(name = "estimated_time", nullable = true)
+    @Column(name = "estimated_time", nullable = false)
     private Integer estimatedTime;
 
-    @Column(name = "is_active", nullable = true)
+    @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 
     @Column(name = "created_at", updatable = false)
@@ -80,9 +75,13 @@ public class Lab {
     @OneToMany(mappedBy = "lab", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Question> labQuestions;
 
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "instance_type_id", nullable = false)
+    private InstanceType instanceType;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id", nullable = true)
+    @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
 
