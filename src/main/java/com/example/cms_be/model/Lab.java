@@ -38,7 +38,7 @@ public class Lab {
 
    
 
-    @Column(name = "namespace", nullable = false, unique = true)
+    @Column(name = "namespace", nullable = false)   
     private String namespace;
 
   
