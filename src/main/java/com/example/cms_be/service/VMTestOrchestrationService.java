@@ -30,7 +30,7 @@ public class VMTestOrchestrationService {
                 "✓ Namespace verified: " + namespace, null);
 
         webSocketHandler.broadcastLogToPod(testVmName, "info",
-                "⏳ Creating PersistentVolumeClaim with resources ....  + " + instanceType.getStorageGb() + " GB" + instanceType.getMemoryGb() + " GB " + instanceType.getCpuCores() + " CPU cores", null);
+                "⏳ Creating PersistentVolumeClaim with resources ....  + " + instanceType.getStorageGb() + "GB " + instanceType.getMemoryGb() + "GB " + instanceType.getCpuCores() + "CPU cores ", null);
         
         vmService.createPvcForSession(testVmName, namespace, instanceType.getStorageGb().toString());
 

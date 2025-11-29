@@ -117,7 +117,7 @@ public class VMService {
                 .addPolicyTypesItem("Ingress")
                 .addPolicyTypesItem("Egress")
                 
-                //  INGRESS: Chỉ cho phép backend IPs SSH vào
+               
                 .ingress(createBackendSshIngressRules(backendIps))
                 
                 //  EGRESS: DNS + Internet (mặc định)
