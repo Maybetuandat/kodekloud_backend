@@ -28,7 +28,7 @@ public class CategoryController {
     private final CategoryService categoryService;
     private final LabService labService;
 
-    @PreAuthorize("hasAuthority('CATEGORY_READ') or hasAuthority('CATEGORY_ALL')")
+//    @PreAuthorize("hasAuthority('CATEGORY_READ') or hasAuthority('CATEGORY_ALL')")
     @GetMapping("")
     public ResponseEntity<List<Category>> getCategories() {
         try {
@@ -38,7 +38,7 @@ public class CategoryController {
         }
     }
 
-    @PreAuthorize("hasAuthority('CATEGORY_READ') or hasAuthority('CATEGORY_ALL')")
+//    @PreAuthorize("hasAuthority('CATEGORY_READ') or hasAuthority('CATEGORY_ALL')")
     @GetMapping("/{id}")
     public ResponseEntity<Category> getCategoryById(@PathVariable Integer id) {
         try {
@@ -49,7 +49,7 @@ public class CategoryController {
         }
     }
 
-    @PreAuthorize("hasAuthority('CATEGORY_CREATE') or hasAuthority('CATEGORY_ALL')")
+//    @PreAuthorize("hasAuthority('CATEGORY_CREATE') or hasAuthority('CATEGORY_ALL')")
     @PostMapping("")
     public ResponseEntity<Category> createCategory(@RequestBody Category category) {
         try {
