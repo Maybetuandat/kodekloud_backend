@@ -93,4 +93,8 @@ public class LabSessionService {
             throw new RuntimeException("Lỗi khi gửi phiên lab: " + e.getMessage(), e);
         }
     }
+
+    public Optional<UserLabSession> findById(Integer labSessionId) {
+        return userLabSessionRepository.findById(labSessionId);
+    }
 }

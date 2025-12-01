@@ -1,5 +1,6 @@
 package com.example.cms_be.config;
 
+import com.example.cms_be.config.intercepter.JwtHandshakeInterceptor;
 import com.example.cms_be.handler.LabTimerHandler;
 import com.example.cms_be.handler.TerminalHandler;
 import org.springframework.context.annotation.Configuration;
@@ -27,6 +28,8 @@ public class WebSocketConfig implements WebSocketConfigurer, WebMvcConfigurer {
     private final TerminalHandler terminalHandler;
     private final LabTimerHandler labTimerHandler;
 
+    private final JwtHandshakeInterceptor jwtHandshakeInterceptor;
+
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(podLogHandler, "/ws/pod-logs")
@@ -34,10 +37,12 @@ public class WebSocketConfig implements WebSocketConfigurer, WebMvcConfigurer {
 
         registry.addHandler(terminalHandler, "/api/terminal/{labSessionId}")
                 .addInterceptors(new SessionIdInterceptor())
+                .addInterceptors(jwtHandshakeInterceptor)
                 .setAllowedOrigins("*");
 
         registry.addHandler(labTimerHandler, "ws/lab-timer/{labSessionId}")
                 .addInterceptors(new SessionIdInterceptor())
+                .addInterceptors(jwtHandshakeInterceptor)
                 .setAllowedOrigins("*");
     }
 
