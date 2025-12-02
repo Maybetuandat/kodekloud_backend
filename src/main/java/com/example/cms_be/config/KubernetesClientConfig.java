@@ -71,6 +71,8 @@ public class KubernetesClientConfig {
             client = Config.defaultClient();
         }
         client.setReadTimeout(0);
+        client.setWriteTimeout(0);
+        client.setConnectTimeout(0);
         return client;
     }
     @Bean

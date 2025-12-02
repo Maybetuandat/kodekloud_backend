@@ -7,6 +7,9 @@ import com.example.cms_be.service.KubernetesDiscoveryService;
 import com.jcraft.jsch.ChannelShell;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
+import io.kubernetes.client.PortForward;
+import io.kubernetes.client.openapi.ApiClient;
+import io.kubernetes.client.openapi.models.V1Pod;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -18,7 +21,12 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
@@ -31,65 +39,160 @@ public class TerminalHandler extends TextWebSocketHandler {
     // --- DEPENDENCIES ---
     private final KubernetesDiscoveryService discoveryService;
     private final UserLabSessionRepository userLabSessionRepository;
+    private final ApiClient apiClient;
 
     // --- STATE MANAGEMENT: Quản lý các kết nối SSH cho mỗi WebSocket session ---
     private final Map<String, Session> sshSessions = new ConcurrentHashMap<>();
     private final Map<String, ChannelShell> sshChannels = new ConcurrentHashMap<>();
     private final Map<String, OutputStream> sshOutputStreams = new ConcurrentHashMap<>();
+    private final Map<String, ServerSocket> portForwardSockets = new ConcurrentHashMap<>();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         String wsSessionId = session.getId();
-        log.info("✅ WebSocket client connected: {}", wsSessionId);
-
         try {
-            // 1. Lấy labSessionId từ attributes mà Interceptor đã đặt
             Object labSessionIdAttr = session.getAttributes().get("labSessionId");
-            if (labSessionIdAttr == null) {
-                throw new IllegalArgumentException("labSessionId is missing from WebSocket session attributes.");
-            }
+            if (labSessionIdAttr == null) return;
             int labSessionId = Integer.parseInt(labSessionIdAttr.toString());
-            log.info("Attempting to establish terminal for lab session ID: {}", labSessionId);
 
-            // 2. Tìm thông tin máy ảo từ database
             UserLabSession userLabSession = userLabSessionRepository.findById(labSessionId)
-                    .orElseThrow(() -> new RuntimeException("UserLabSession not found for ID: " + labSessionId));
+                    .orElseThrow(() -> new RuntimeException("Session not found"));
 
-            // *** ENHANCED STATUS CHECKING ***
-            String status = userLabSession.getStatus();
-            log.info("Lab session {} current status: {}", labSessionId, status);
-            
-            if (!"READY".equals(status)) {
-                log.warn("Lab session {} is not ready yet (status: {}). Sending status message to client.", labSessionId, status);
-                String statusMessage = getStatusMessage(status);
-                session.sendMessage(new TextMessage(statusMessage));
-                
-                // 🔥 KEY FIX: Wait for lab to be ready instead of closing immediately
-                if ("SETUP_FAILED".equals(status) || "FAILED".equals(status)) {
-                    session.close(CloseStatus.NORMAL.withReason("Lab setup failed"));
-                    return;
-                }
-                
-                // For PENDING, STARTING, SETTING_UP - keep connection and periodically check
-                startStatusPolling(session, labSessionId);
+            if (!"READY".equals(userLabSession.getStatus())) {
+                session.sendMessage(new TextMessage("Lab is not ready."));
+                session.close();
                 return;
             }
 
-            // Status is READY, proceed with SSH connection
-            establishSSHConnectionForReadyLab(session, userLabSession, wsSessionId);
+            // BẮT ĐẦU KẾT NỐI QUA TUNNEL
+            connectViaTunnel(session, userLabSession, wsSessionId);
 
         } catch (Exception e) {
-            log.error("🚨 Failed to establish terminal connection for session {}: {}", wsSessionId, e.getMessage(), e);
-            try {
-                session.sendMessage(new TextMessage("\r\n🚨 Error: Could not connect to the lab environment. Details: " + e.getMessage()));
-                session.close(CloseStatus.SERVER_ERROR);
-            } catch (IOException ioEx) {
-                log.warn("Could not send error message to client: {}", ioEx.getMessage());
-            }
+            log.error("Connection failed", e);
             cleanup(wsSessionId);
         }
     }
 
+    private void connectViaTunnel(WebSocketSession wsSession, UserLabSession labSession, String wsSessionId) {
+        ServerSocket serverSocket = null;
+        try {
+            String vmName = "vm-" + labSession.getId();
+            String namespace = labSession.getLab().getNamespace();
+
+            // 1. Lấy Pod Name
+            V1Pod pod = discoveryService.waitForPodRunning(vmName, namespace, 10);
+            String podName = pod.getMetadata().getName();
+            log.info("[{}] Target Pod: {}", wsSessionId, podName);
+
+            // 2. Tạo ServerSocket để lắng nghe cục bộ (Làm cầu nối cho JSch)
+            // Port 0 để OS tự chọn port rảnh
+            serverSocket = new ServerSocket(0);
+            int localPort = serverSocket.getLocalPort();
+            portForwardSockets.put(wsSessionId, serverSocket); // Lưu để cleanup
+
+            log.info("[{}] Local Bridge Server started on port {}", wsSessionId, localPort);
+
+            // 3. Khởi chạy luồng Bridge (Nối JSch <-> K8s PortForward)
+            // Cần biến final để dùng trong lambda
+            final ServerSocket bridgeServer = serverSocket;
+
+            CompletableFuture.runAsync(() -> {
+                try {
+                    // Chờ JSch kết nối vào (accept sẽ block cho đến khi bước 4 chạy)
+                    Socket jschSocket = bridgeServer.accept();
+
+                    // Khởi tạo K8s PortForward Stream
+                    PortForward forward = new PortForward(apiClient);
+                    // FIX LỖI COMPILE: Dùng List<Integer> chỉ chứa port đích (22)
+                    PortForward.PortForwardResult result = forward.forward(namespace, podName, Collections.singletonList(22));
+
+                    // Lấy stream 2 chiều
+                    InputStream k8sIn = result.getInputStream(22);
+                    OutputStream k8sOut = result.getOutboundStream(22);
+
+                    InputStream jschIn = jschSocket.getInputStream();
+                    OutputStream jschOut = jschSocket.getOutputStream();
+
+                    log.info("[{}] Tunnel pipes connected. Bridging data...", wsSessionId);
+
+                    // Pipe 1: JSch (Client) -> K8s (Pod)
+                    CompletableFuture.runAsync(() -> {
+                        try {
+                            jschIn.transferTo(k8sOut); // Java 9+ method
+                        } catch (IOException e) {
+                            // Connection closed logic
+                        }
+                    });
+
+                    // Pipe 2: K8s (Pod) -> JSch (Client)
+                    try {
+                        k8sIn.transferTo(jschOut);
+                    } catch (IOException e) {
+                        // Connection closed logic
+                    }
+
+                } catch (Exception e) {
+                    log.error("[{}] Bridge error: {}", wsSessionId, e.getMessage());
+                }
+            });
+
+            // 4. JSch Connect tới LOCALHOST (vừa mở ở bước 2)
+            JSch jsch = new JSch();
+            // Kết nối vào chính port serverSocket đang lắng nghe
+            Session jschSession = jsch.getSession("ubuntu", "127.0.0.1", localPort);
+            jschSession.setPassword("1234");
+            jschSession.setConfig("StrictHostKeyChecking", "no");
+
+            // Timeout kết nối
+            jschSession.connect(10000);
+
+            log.info("[{}] JSch connected to Local Bridge successfully", wsSessionId);
+
+            // 5. Setup kênh Shell (như cũ)
+            ChannelShell channel = (ChannelShell) jschSession.openChannel("shell");
+            channel.setPty(true);
+
+            InputStream in = channel.getInputStream();
+            OutputStream out = channel.getOutputStream();
+            channel.connect();
+
+            // Lưu state
+            sshSessions.put(wsSessionId, jschSession);
+            sshChannels.put(wsSessionId, channel);
+            sshOutputStreams.put(wsSessionId, out);
+
+            wsSession.sendMessage(new TextMessage("\r\n🚀 Connected via K8s Secure Tunnel!\r\n"));
+
+            // Luồng đọc output từ SSH trả về Web Client
+            CompletableFuture.runAsync(() -> {
+                try {
+                    byte[] buffer = new byte[4096];
+                    int i;
+                    while ((i = in.read(buffer)) != -1) {
+                        wsSession.sendMessage(new TextMessage(new String(buffer, 0, i, StandardCharsets.UTF_8)));
+                    }
+                } catch (Exception e) {
+                    // ignore
+                } finally {
+                    cleanup(wsSessionId);
+                }
+            });
+
+        } catch (Exception e) {
+            log.error("[{}] Tunnel setup failed: {}", wsSessionId, e.getMessage());
+            try {
+                if (serverSocket != null && !serverSocket.isClosed()) serverSocket.close();
+                wsSession.close(CloseStatus.SERVER_ERROR);
+            } catch (IOException ex) {}
+        }
+    }
+    private int findFreePort() {
+        try (ServerSocket socket = new ServerSocket(0)) {
+            return socket.getLocalPort();
+        } catch (IOException e) {
+            throw new RuntimeException("No free ports", e);
+        }
+    }
     /**
      * 🔥 NEW: Poll session status periodically for labs that are not ready yet
      */
@@ -302,25 +405,26 @@ public class TerminalHandler extends TextWebSocketHandler {
      * Dọn dẹp tài nguyên (đóng kết nối SSH) cho một session cụ thể.
      */
     private void cleanup(String sessionId) {
-        log.info("🧹 Cleaning up SSH resources for WebSocket session: {}", sessionId);
+        log.info("🧹 Cleaning up session: {}", sessionId);
 
-        // Đóng Output Stream
-        OutputStream out = sshOutputStreams.remove(sessionId);
-        if (out != null) {
-            try { out.close(); } catch (IOException ignored) {}
-        }
+        try {
+            if (sshOutputStreams.containsKey(sessionId)) sshOutputStreams.get(sessionId).close();
+        } catch (Exception ignored) {}
+        sshOutputStreams.remove(sessionId);
 
-        // Đóng Channel
-        ChannelShell channel = sshChannels.remove(sessionId);
-        if (channel != null) {
-            channel.disconnect();
-        }
+        if (sshChannels.containsKey(sessionId)) sshChannels.get(sessionId).disconnect();
+        sshChannels.remove(sessionId);
 
-        // Đóng Session
-        Session sshSession = sshSessions.remove(sessionId);
-        if (sshSession != null) {
-            sshSession.disconnect();
-        }
+        if (sshSessions.containsKey(sessionId)) sshSessions.get(sessionId).disconnect();
+        sshSessions.remove(sessionId);
+
+        // Đóng Socket Bridge
+        try {
+            ServerSocket ss = portForwardSockets.remove(sessionId);
+            if (ss != null && !ss.isClosed()) {
+                ss.close();
+            }
+        } catch (Exception ignored) {}
 
         log.info("✅ Cleanup complete for session: {}", sessionId);
     }
