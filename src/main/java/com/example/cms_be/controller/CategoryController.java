@@ -28,7 +28,7 @@ public class CategoryController {
     private final CategoryService categoryService;
     private final LabService labService;
 
-//    @PreAuthorize("hasAuthority('CATEGORY_READ') or hasAuthority('CATEGORY_ALL')")
+    @PreAuthorize("hasAuthority('CATEGORY_READ') or hasAuthority('CATEGORY_ALL')")
     @GetMapping("")
     public ResponseEntity<List<Category>> getCategories() {
         try {
