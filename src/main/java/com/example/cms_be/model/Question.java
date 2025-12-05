@@ -38,9 +38,6 @@ public class Question {
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Answer> answers;
 
-    @JsonIgnore 
-    @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<SetupStepQuestion> setupStepQuestions;
 
     @Column(name = "created_at", updatable = false)
     @CreatedDate

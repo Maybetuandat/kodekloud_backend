@@ -72,7 +72,8 @@ public class WebSecurityConfig {
                             "/api/instance-types/**",
                             "/ws/**"    ,
                             "/api/terminal/**", 
-                            "/api/lab-validation/**"
+                            "/api/lab-validation/**",
+                            "/api/setup-steps/**"
                                     ).permitAll()
                             .anyRequest().authenticated()
             );
