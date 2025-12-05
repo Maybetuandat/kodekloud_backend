@@ -70,7 +70,8 @@ public class WebSecurityConfig {
                             "/api/categories/**",
                             "/api/users/**",
                             "/api/instance-types/**",
-                            "/ws/**"    ,
+                            "/ws/**",
+                            "/ws/lab-timer/",
                             "/api/terminal/**", 
                             "/api/lab-validation/**",
                             "/api/setup-steps/**"

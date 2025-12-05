@@ -60,7 +60,7 @@ public class KubernetesDiscoveryService {
                 log.info("SSH service is ready at {}:{}!", host, port);
                 break;
             } catch (IOException e) {
-                log.debug("SSH not ready yet at {}:{}. Retrying in 5 seconds...", host, port);
+                log.debug("SSH connection failed at {}:{}. Reason: {}", host, port, e.getMessage());
                 Thread.sleep(5000);
             }
         }

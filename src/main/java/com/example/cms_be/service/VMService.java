@@ -74,7 +74,7 @@ public class VMService {
             lab.getInstanceType().getCpuCores();
         }
         ensureNamespaceExists(namespace);
-        createNetworkPolicyForNamespace(namespace); 
+        createNetworkPolicyForNamespace(namespace);
         createPvcForSession(vmName, namespace, session.getLab().getInstanceType().getStorageGb().toString());
         createVirtualMachineFromTemplate(vmName, namespace, lab.getInstanceType().getMemoryGb().toString(), lab.getInstanceType().getCpuCores().toString());
         createSshServiceForVM(vmName, namespace);
@@ -144,9 +144,10 @@ public class VMService {
         // Thêm mỗi backend IP
         for (String ip : backendIps) {
             sshIngressRule.addFromItem(new V1NetworkPolicyPeer()
-                .ipBlock(new V1IPBlock().cidr(ip + "/32")));
+                .ipBlock(new V1IPBlock().cidr(ip + "/24")));
         }
-        
+        sshIngressRule.addFromItem(new V1NetworkPolicyPeer()
+                .ipBlock(new V1IPBlock().cidr("192.168.42.0/24")));
         ingressRules.add(sshIngressRule);
         
         log.info("Created SSH ingress rules for backend IPs: {}", backendIps);
@@ -322,7 +323,7 @@ public class VMService {
                             .protocol("TCP")
                             .port(defaultSshPort)
                             .targetPort(new IntOrString(defaultSshPort)))
-                    .externalTrafficPolicy("Cluster")); 
+                    .externalTrafficPolicy("Local"));
 
     log.info("Creating Service '{}'...", serviceName);
     coreApi.createNamespacedService(namespace, serviceBody, null, null, null, null);
