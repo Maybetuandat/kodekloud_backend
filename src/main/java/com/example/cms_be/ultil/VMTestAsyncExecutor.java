@@ -22,7 +22,7 @@ public class VMTestAsyncExecutor {
     private final PodLogWebSocketHandler webSocketHandler;
 
     @Async("taskExecutor")
-    public void executeTestAsync(String testId, Lab lab, InstanceType instanceType, String testVmName, 
+    public void executeTestAsync(String testId, Lab lab, InstanceType instanceType, String testVmName,
                                   String namespace, Integer timeoutSeconds,
                                   ConcurrentHashMap<String, LabTestResponse> activeTests) {
         try {
@@ -34,23 +34,23 @@ public class VMTestAsyncExecutor {
             log.info(" Test VM Name: {}", testVmName);
             log.info("===========================================");
 
-            // BƯỚC 1: ĐỢI WEBSOCKET CONNECTION 
+            // BƯỚC 1: ĐỢI WEBSOCKET CONNECTION
             log.info(" Step 1: Waiting for WebSocket client to connect...");
             updateTestStatus(testId, "WAITING_CONNECTION", activeTests);
-            
+
             boolean wsConnected = webSocketHandler.waitForConnection(testVmName, 30);
-            
+
             if (!wsConnected) {
                 log.error("❌ WebSocket connection timeout for VM: {}", testVmName);
                 updateTestStatus(testId, "FAILED", activeTests);
                 return;
             }
-            
+
             log.info("✅ WebSocket client connected successfully!");
-            
+
             // ✅ Gửi message xác nhận đã kết nối
             webSocketHandler.broadcastLogToPod(testVmName, "connection",
-                    "🔗 WebSocket connected successfully. Starting test...", 
+                    "🔗 WebSocket connected successfully. Starting test...",
                     Map.of("testId", testId));
 
             // Small delay để đảm bảo message được gửi
@@ -69,7 +69,7 @@ public class VMTestAsyncExecutor {
                     lab,
                     testVmName,
                     namespace != null ? namespace : lab.getNamespace(),
-                    timeoutSeconds != null ? timeoutSeconds : 1800, 
+                    timeoutSeconds != null ? timeoutSeconds : 1800,
                     instanceType
             );
 
@@ -87,7 +87,7 @@ public class VMTestAsyncExecutor {
             }
 
             log.info("✅ LAB TEST EXECUTION FINISHED - Success: {}", success);
-            
+
         } catch (InterruptedException e) {
             log.error("❌ Test execution interrupted for {}: {}", testId, e.getMessage());
             Thread.currentThread().interrupt();
@@ -95,14 +95,14 @@ public class VMTestAsyncExecutor {
             webSocketHandler.broadcastLogToPod(testVmName, "error",
                     "❌ Test interrupted: " + e.getMessage(),
                     Map.of("testId", testId, "error", "Interrupted"));
-                    
+
         } catch (Exception e) {
             log.error("❌ Error executing test {}: {}", testId, e.getMessage(), e);
             updateTestStatus(testId, "FAILED", activeTests);
             webSocketHandler.broadcastLogToPod(testVmName, "error",
                     "❌ Test execution error: " + e.getMessage(),
                     Map.of("testId", testId, "error", e.getMessage()));
-                    
+
         } finally {
             // ✅ BƯỚC 5: DỌN DẸP SAU 60 GIÂY
             try {

@@ -5,8 +5,9 @@ import com.example.cms_be.model.Lab;
 import com.example.cms_be.repository.LabRepository;
 import com.example.cms_be.ultil.PodLogWebSocketHandler;
 import com.example.cms_be.ultil.SocketConnectionInfo;
-import com.example.cms_be.ultil.VMTestAsyncExecutor;
+//import com.example.cms_be.ultil.VMTestAsyncExecutor;
 
+import com.example.cms_be.ultil.VMTestAsyncExecutor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -36,44 +37,44 @@ public class VMTestService {
 
         // Force loading instancetype for hibernate lazy loading
         if (lab.getInstanceType() != null) {
-            lab.getInstanceType().getId(); 
-            lab.getInstanceType().getStorageGb(); 
+            lab.getInstanceType().getId();
+            lab.getInstanceType().getStorageGb();
             lab.getInstanceType().getMemoryGb();
             lab.getInstanceType().getCpuCores();
         }
 
-        
+
         String testId = UUID.randomUUID().toString();
         String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
         String testVmName = String.format("test-vm-%d-%s", lab.getId(), timestamp);
 
         log.info(" Test ID: {}, Test VM Name: {}", testId, testVmName);
 
-        
+
         Map<String, Object> connectionInfo = socketConnectionInfo.createWebSocketConnectionInfo(testVmName);
         String wsUrl = (String) connectionInfo.get("url");
 
-        
+
         LabTestResponse response = LabTestResponse.builder()
                 .testId(testId)
                 .labId(lab.getId())
                 .testVmName(testVmName)
-                .status("WAITING_CONNECTION") 
+                .status("WAITING_CONNECTION")
                 .websocketUrl(wsUrl)
                 .connectionInfo(connectionInfo)
                 .build();
 
         activeTests.put(testId, response);
 
-        
+
         log.info(" Calling asyncExecutor.executeTestAsync()");
         asyncExecutor.executeTestAsync(
-                testId, 
-                lab, 
-                lab.getInstanceType(), 
-                testVmName, 
-                lab.getNamespace(), 
-                1800, 
+                testId,
+                lab,
+                lab.getInstanceType(),
+                testVmName,
+                lab.getNamespace(),
+                1800,
                 activeTests
         );
 

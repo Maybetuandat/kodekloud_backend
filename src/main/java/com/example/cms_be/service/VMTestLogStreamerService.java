@@ -1,117 +1,132 @@
 package com.example.cms_be.service;
 
-import com.example.cms_be.dto.connection.SshConnectionDetails;
 import com.example.cms_be.ultil.PodLogWebSocketHandler;
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
-import lombok.RequiredArgsConstructor;
+import io.kubernetes.client.openapi.ApiClient;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class VMTestLogStreamerService {
 
     private final PodLogWebSocketHandler webSocketHandler;
-
-    
+    private final ApiClient apiClient; // Client timeout=0
     private final ConcurrentHashMap<String, AtomicBoolean> activeStreamings = new ConcurrentHashMap<>();
 
-    
-    public void streamCloudInitLogs(SshConnectionDetails sshDetails, String vmName) {
-        String streamKey = vmName + "-cloud-init";
+    private final String defaultUsername = "ubuntu";
+    private final String defaultPassword = "1234";
+
+    public VMTestLogStreamerService(
+            PodLogWebSocketHandler webSocketHandler,
+            @Qualifier("longTimeoutApiClient") ApiClient apiClient) {
+        this.webSocketHandler = webSocketHandler;
+        this.apiClient = apiClient;
+        this.apiClient.setReadTimeout(0);
+    }
+
+    /**
+     * Stream log Cloud-init qua Tunnel K8s
+     */
+    public void streamCloudInitLogs(String namespace, String podName, String testVmName) {
+        String streamKey = testVmName + "-cloud-init";
         AtomicBoolean shouldContinue = new AtomicBoolean(true);
         activeStreamings.put(streamKey, shouldContinue);
 
-        log.info("Streaming cloud-init logs for VM: {}", vmName);
+        log.info("Streaming cloud-init logs for Test VM: {} (Pod: {})", testVmName, podName);
 
         JSch jsch = new JSch();
         Session session = null;
 
         try {
-            // Create SSH session
-            session = jsch.getSession("ubuntu", sshDetails.host(), sshDetails.port());
-            session.setPassword("1234");
-            session.setConfig("StrictHostKeyChecking", "no");
-            session.connect(10000);
+            // Retry Connection Logic (Tương tự SetupExecutionService)
+            session = connectSshWithRetry(jsch, namespace, podName, 20, 5000); // 100s timeout tổng
 
-            log.info("SSH connected for cloud-init log streaming");
+            log.info("SSH connected via Tunnel for Cloud-init streaming");
 
             // ===== STEP 1: Wait for cloud-init =====
-            webSocketHandler.broadcastLogToPod(vmName, "info",
+            webSocketHandler.broadcastLogToPod(testVmName, "info",
                     "⏳ Waiting for cloud-init to complete...", null);
 
-            ChannelExec waitChannel = (ChannelExec) session.openChannel("exec");
-            waitChannel.setCommand("cloud-init status --wait");
-            
-            InputStream waitStream = waitChannel.getInputStream();
-            waitChannel.connect();
+            // Channel 1: Check Status
+            executeCommandAndStream(session, "cloud-init status --wait", testVmName, "cloud-init-status", shouldContinue);
 
-            BufferedReader waitReader = new BufferedReader(new InputStreamReader(waitStream));
-            String line;
-            
-            while ((line = waitReader.readLine()) != null) {
-                log.info("Cloud-init status: {}", line);
-                webSocketHandler.broadcastLogToPod(vmName, "cloud-init-status",
-                        "[Status] " + line, null);
-            }
-            
-            waitChannel.disconnect();
-            
-            webSocketHandler.broadcastLogToPod(vmName, "success",
+            webSocketHandler.broadcastLogToPod(testVmName, "success",
                     "✅ Cloud-init finished", null);
 
-            // Delay nhỏ để đảm bảo log file được flush
-            Thread.sleep(2000);
+            Thread.sleep(1000);
 
             // ===== STEP 2: Read cloud-init log file =====
-            webSocketHandler.broadcastLogToPod(vmName, "info",
+            webSocketHandler.broadcastLogToPod(testVmName, "info",
                     "📜 Fetching cloud-init output log...", null);
 
-            ChannelExec logChannel = (ChannelExec) session.openChannel("exec");
-            logChannel.setCommand("cat /var/log/cloud-init-output.log 2>&1 || echo '[Log file not found]'");
-            
-            InputStream logStream = logChannel.getInputStream();
-            logChannel.connect();
+            // Channel 2: Read Log
+            executeCommandAndStream(session, "cat /var/log/cloud-init-output.log 2>&1", testVmName, "cloud-init-log", shouldContinue);
 
-            BufferedReader logReader = new BufferedReader(new InputStreamReader(logStream));
-            int lineCount = 0;
-            
-            while ((line = logReader.readLine()) != null && shouldContinue.get()) {
-                lineCount++;
-                webSocketHandler.broadcastLogToPod(vmName, "cloud-init-log", line, null);
-                
-                // Throttle để tránh quá tải WebSocket
-                if (lineCount % 50 == 0) {
-                    Thread.sleep(10);
-                }
-            }
-
-            logChannel.disconnect();
-
-            webSocketHandler.broadcastLogToPod(vmName, "success",
-                    String.format("✅ Cloud-init log complete (%d lines)", lineCount), null);
-
-            log.info("Cloud-init log streaming completed: {} ({} lines)", vmName, lineCount);
+            webSocketHandler.broadcastLogToPod(testVmName, "success",
+                    "✅ Cloud-init log streaming complete", null);
 
         } catch (Exception e) {
-            log.error("Error streaming cloud-init logs for {}: {}", vmName, e.getMessage(), e);
-            webSocketHandler.broadcastLogToPod(vmName, "error",
+            log.error("Error streaming cloud-init logs for {}: {}", testVmName, e.getMessage());
+            webSocketHandler.broadcastLogToPod(testVmName, "error",
                     "❌ Cloud-init log error: " + e.getMessage(), null);
-                    
         } finally {
             if (session != null && session.isConnected()) {
                 session.disconnect();
             }
             activeStreamings.remove(streamKey);
         }
+    }
+
+    private void executeCommandAndStream(Session session, String command, String testVmName, String logType, AtomicBoolean shouldContinue) throws Exception {
+        ChannelExec channel = null;
+        try {
+            channel = (ChannelExec) session.openChannel("exec");
+            channel.setCommand(command);
+            InputStream in = channel.getInputStream();
+            channel.connect(5000);
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+            String line;
+            int lineCount = 0;
+
+            while ((line = reader.readLine()) != null && shouldContinue.get()) {
+                lineCount++;
+                webSocketHandler.broadcastLogToPod(testVmName, logType, line, null);
+                if (lineCount % 20 == 0) Thread.sleep(10); // Throttle nhẹ
+            }
+        } finally {
+            if (channel != null) channel.disconnect();
+        }
+    }
+
+    private Session connectSshWithRetry(JSch jsch, String namespace, String podName, int maxRetries, long delayMs) throws Exception {
+        for (int i = 0; i < maxRetries; i++) {
+            try {
+                Session session = jsch.getSession(defaultUsername, "localhost", 2222);
+                session.setPassword(defaultPassword);
+                session.setConfig("StrictHostKeyChecking", "no");
+
+                // Sử dụng Factory chung từ SetupExecutionService
+                session.setSocketFactory(new SetupExecutionService.K8sTunnelSocketFactory(apiClient, namespace, podName));
+
+                session.connect(15000);
+                return session;
+            } catch (Exception e) {
+                log.warn("SSH connect attempt {}/{} failed: {}", i + 1, maxRetries, e.getMessage());
+                if (i == maxRetries - 1) throw e;
+                Thread.sleep(delayMs);
+            }
+        }
+        throw new RuntimeException("Failed to connect SSH after retries");
     }
 }

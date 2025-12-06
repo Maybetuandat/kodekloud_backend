@@ -4,15 +4,12 @@ import com.example.cms_be.dto.lab.CreateLabRequest;
 
 import com.example.cms_be.dto.lab.LabTestResponse;
 
+import com.example.cms_be.service.*;
 import org.springframework.web.bind.annotation.*;
 import com.example.cms_be.model.Lab;
 import com.example.cms_be.model.Question;
 import com.example.cms_be.model.SetupStep;
-import com.example.cms_be.service.LabService;
-import com.example.cms_be.service.QuestionService;
-import com.example.cms_be.service.SetupStepService;
-import com.example.cms_be.service.StorageService;
-import com.example.cms_be.service.VMTestService;
+//import com.example.cms_be.service.VMTestService;
 
 import io.kubernetes.client.openapi.ApiException;
 import jakarta.persistence.EntityNotFoundException;

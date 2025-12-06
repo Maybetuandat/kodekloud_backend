@@ -26,44 +26,34 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
     @Override
     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
                                    WebSocketHandler wsHandler, Map<String, Object> attributes) {
-        // 1. Kiểm tra xem request có phải là ServletRequest không (để lấy query param dễ dàng)
         if (request instanceof ServletServerHttpRequest) {
             ServletServerHttpRequest servletRequest = (ServletServerHttpRequest) request;
             HttpServletRequest httpRequest = servletRequest.getServletRequest();
 
-            // 2. Lấy token từ Query Parameter: ws://...?token=eyJ...
             String token = httpRequest.getParameter("token");
 
-            // 3. Logic xác thực với JwtUtils của bạn
             if (token != null && !token.isEmpty()) {
                 try {
-                    // Bước A: Parse lấy username trước
                     String username = jwtUtils.getUserNameFromToken(token);
 
                     if (username != null) {
-                        // Bước B: Load UserDetails từ DB
                         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-                        // Bước C: Validate token bằng hàm của bạn (check chữ ký + hạn + match username)
                         if (jwtUtils.validateToken(token, userDetails)) {
 
-                            // Token ngon lành -> Lưu thông tin vào session attributes
                             attributes.put("username", username);
 
-                            // (Optional) Lấy thêm userId nếu cần
                             Integer userId = jwtUtils.getUserIdFromToken(token);
                             if (userId != null) {
                                 attributes.put("userId", userId);
                             }
 
-                            // (Optional) Lấy labSessionId từ URL path
                             String path = request.getURI().getPath();
-                            // Giả sử URL dạng /ws/lab-timer/123
                             String labSessionId = path.substring(path.lastIndexOf('/') + 1);
                             attributes.put("labSessionId", labSessionId);
 
                             log.info("WebSocket connection authorized for user: {}", username);
-                            return true; // OK, cho phép kết nối
+                            return true;
                         }
                     }
                 } catch (Exception e) {
@@ -73,12 +63,11 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
         }
 
         log.warn("WebSocket connection rejected: No valid token found.");
-        return false; // Từ chối kết nối
+        return false;
     }
 
     @Override
     public void afterHandshake(ServerHttpRequest request, ServerHttpResponse response,
                                WebSocketHandler wsHandler, Exception exception) {
-        // Không cần làm gì ở đây
     }
 }

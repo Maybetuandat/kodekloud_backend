@@ -46,7 +46,6 @@ public class LabSessionService {
             throw new AccessDeniedException("Người dùng chưa đăng ký khóa học này.");
         }
 
-        // check exist session  if user has session for the lab then continue 
         List<String> activeStatuses = List.of("PENDING", "RUNNING");
         Optional<UserLabSession> existingSession = userLabSessionRepository.findActiveSessionByUserAndLab(userId, labId, activeStatuses);
         if (existingSession.isPresent()) {
@@ -87,7 +86,6 @@ public class LabSessionService {
         userLabSessionRepository.save(session);
         log.info("Session {} status updated to COMPLETED.", labSessionId);
 
-        // 2. Kích hoạt "nhạc trưởng" để dọn dẹp tài nguyên K8s chạy ngầm
         orchestrationService.cleanupLabResources(session);
         } catch (Exception e) {
             throw new RuntimeException("Lỗi khi gửi phiên lab: " + e.getMessage(), e);
