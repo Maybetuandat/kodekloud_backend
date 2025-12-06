@@ -1,3 +1,3 @@
         git add .
-        git commit -m "refractor(Model): delete setupstep question"
-        git push origin refractorcode
+        git commit -m "fix(Model): remove category object and add backingImage field to InstanceType"
+        git push origin map-authen

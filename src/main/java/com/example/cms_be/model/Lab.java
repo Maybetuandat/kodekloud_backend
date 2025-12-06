@@ -80,10 +80,7 @@ public class Lab {
     @JoinColumn(name = "instance_type_id", nullable = false)
     private InstanceType instanceType;
     
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id", nullable = false)
-    private Category category;
-
+   
 
     @PrePersist
     protected void onCreate() {

@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -39,6 +40,7 @@ public class InstanceTypeController {
         }
     }
 
+    // @PreAuthorize("hasAuthority('CATEGORY_READ') or hasAuthority('INSTANCE_ALL')")
     @GetMapping("{instanceTypeId}")
     public ResponseEntity<InstanceType> getInstanceTypeById(@PathVariable Integer instanceTypeId) {
         try {

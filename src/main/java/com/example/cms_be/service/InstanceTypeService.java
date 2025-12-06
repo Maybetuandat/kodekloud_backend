@@ -72,6 +72,10 @@ public class InstanceTypeService {
             {
                 existingInstanceType.setStorageGb(updatedInstanceType.getStorageGb());
             }
+            if(updatedInstanceType.getBackingImage() != null)
+            {
+                existingInstanceType.setBackingImage(updatedInstanceType.getBackingImage());
+            }
 
             return instanceTypeRepository.save(existingInstanceType);
         } catch (Exception e) {

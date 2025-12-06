@@ -49,8 +49,7 @@ public class LabController {
             @RequestParam(name = "page", defaultValue = "1") int page,
             @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) Boolean isActive,
-            @RequestParam(required = false) Integer categorySlug
+            @RequestParam(required = false) Boolean isActive
     ) {
         try {
             int pageNumber = page > 0 ? page - 1 : 0;

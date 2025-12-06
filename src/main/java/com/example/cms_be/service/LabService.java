@@ -1,12 +1,9 @@
 package com.example.cms_be.service;
 import java.util.Optional;
-
 import com.example.cms_be.dto.lab.CreateLabRequest;
 import com.example.cms_be.model.*;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
-
-import com.example.cms_be.repository.CategoryRepository;
 import com.example.cms_be.repository.InstanceTypeRepository;
 import com.example.cms_be.repository.LabRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 public class LabService {
 
     private final LabRepository labRepository;
-    private final CategoryRepository categoryRepository;
     private final InstanceTypeRepository instanceTypeRepository;
    public Page<Lab> getAllLabs(Pageable pageable, Boolean isActive, String keyword) {
        try {
@@ -58,17 +54,7 @@ public class LabService {
 
     public Lab createLab(CreateLabRequest createLabRequest) {
         try{
-            if(createLabRequest.getCategoryId() == null || createLabRequest.getInstanceTypeId() == null) {
-                throw new RuntimeException("CategoryId and InstanceTypeId cannot be null");
-            }
-            Category category = categoryRepository.findById(createLabRequest.getCategoryId())
-                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + createLabRequest.getCategoryId()));
             Lab lab = new Lab();
-            lab.setCategory(category);
-
-
-
-
             lab.setNamespace(generatedNameSpace(createLabRequest.getTitle()));
             InstanceType instanceType = instanceTypeRepository.findById(createLabRequest.getInstanceTypeId())
                     .orElseThrow(() -> new RuntimeException("InstanceType not found with id: " + createLabRequest.getInstanceTypeId()));
@@ -93,7 +79,7 @@ public class LabService {
     }
     public Optional<Lab> getLabById(Integer id) {
         try {
-              return labRepository.findByIdWithCategory(id);
+              return labRepository.findById(id);
         } catch (Exception e) {
             log.error("Error fetching lab by ID {}: {}", id, e.getMessage());
             throw new RuntimeException("Failed to fetch lab by ID", e);
@@ -105,21 +91,7 @@ public class LabService {
             if (existingLabOpt.isEmpty()) {
                 return null;
             }
-
             Lab existingLab = existingLabOpt.get();
-
-            // Update fields
-            if(labUpdate.getCategoryId() != null && labUpdate.getCategoryId() != existingLab.getCategory().getId()) {
-                Integer newCategoryId = labUpdate.getCategoryId();
-                Category newCategory = categoryRepository.findById(newCategoryId).orElse(null);
-                if (newCategory != null) {
-                    existingLab.setCategory(newCategory);
-                } else {
-                    log.warn("Category with ID {} not found. Skipping category update.", newCategoryId);
-                }
-
-            }
-
             if(labUpdate.getInstanceTypeId() != null && labUpdate.getInstanceTypeId() != existingLab.getInstanceType().getId()) {
                 Integer newInstanceTypeId = labUpdate.getInstanceTypeId();
                 InstanceType newInstanceType = instanceTypeRepository.findById(newInstanceTypeId).orElse(null);
