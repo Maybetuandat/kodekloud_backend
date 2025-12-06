@@ -50,8 +50,11 @@ public class Question {
     @Column(name = "check_command", columnDefinition = "TEXT", nullable = true)
     private String checkCommand;
 
+    // 0 : non check
+    // 1 : check output
     @Column(name = "type_question", nullable = true)
-    private String typeQuestion;
+    private Integer typeQuestion;  
+                    
 
 
     @JsonIgnore
