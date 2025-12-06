@@ -43,7 +43,6 @@ public class KubernetesClientConfig {
             log.info("Using default in-cluster Kubernetes config");
             client = Config.defaultClient();
         }
-        // Set this client as the default for other static uses
         io.kubernetes.client.openapi.Configuration.setDefaultApiClient(client);
         log.info("Kubernetes ApiClient bean created successfully.");
         return client;
@@ -71,6 +70,8 @@ public class KubernetesClientConfig {
             client = Config.defaultClient();
         }
         client.setReadTimeout(0);
+        client.setWriteTimeout(0);
+        client.setConnectTimeout(0);
         return client;
     }
     @Bean

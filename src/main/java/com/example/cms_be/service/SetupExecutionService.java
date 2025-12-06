@@ -1,39 +1,42 @@
 package com.example.cms_be.service;
-import java.io.*;
-import java.util.Comparator;
-import java.util.List;
-import java.util.stream.Collectors;
+
 import com.example.cms_be.dto.connection.ExecuteCommandResult;
-import com.example.cms_be.dto.connection.SshConnectionDetails;
 import com.example.cms_be.handler.LabTimerHandler;
 import com.example.cms_be.model.Lab;
+import com.example.cms_be.model.SetupStep;
 import com.example.cms_be.model.UserLabSession;
 import com.example.cms_be.repository.UserLabSessionRepository;
-import com.jcraft.jsch.ChannelExec;
-import com.jcraft.jsch.JSch;
-import com.jcraft.jsch.Session;
+import com.jcraft.jsch.*;
+import io.kubernetes.client.PortForward;
+import io.kubernetes.client.openapi.ApiClient;
+import io.kubernetes.client.openapi.models.V1Pod;
 import lombok.Getter;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Service;
-import com.example.cms_be.model.SetupStep;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.Socket;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class SetupExecutionService {
 
-    
-    
-    
     private final LabTimerHandler labTimerHandler;
-
-    
     private final UserLabSessionRepository userLabSessionRepository;
     private static final Logger executionLogger = LoggerFactory.getLogger("executionLogger");
+    private final ApiClient apiClient;
+    private final KubernetesDiscoveryService discoveryService;
 
     @Value("${app.execution-environment}")
     private String executionEnvironment;
@@ -42,20 +45,27 @@ public class SetupExecutionService {
     @Value("${kubernetes.namespace:default}")
     private String namespace;
 
-    @Value("${kubernetes.config.file.path:}")
-    private String kubeConfigPath;
-
     private final String defaultUsername = "ubuntu";
     private final String defaultPassword = "1234";
 
+    public SetupExecutionService(
+            LabTimerHandler labTimerHandler,
+            UserLabSessionRepository userLabSessionRepository,
+            @Qualifier("longTimeoutApiClient") ApiClient apiClient,
+            KubernetesDiscoveryService discoveryService) {
+        this.labTimerHandler = labTimerHandler;
+        this.userLabSessionRepository = userLabSessionRepository;
+        this.apiClient = apiClient;
+        this.discoveryService = discoveryService;
+        this.apiClient.setReadTimeout(0);
+    }
 
-
-    /**
-     * excute setup step in vm   1
-     */
     @Async
-    public void executeSteps(UserLabSession session, SshConnectionDetails connectionDetails) {
-        log.info("Starting setup steps execution for session ID: {}", session.getId());
+    public void executeSteps(UserLabSession session) {
+        log.info("Starting setup steps execution for session ID: {} via K8s SocketFactory", session.getId());
+
+        JSch jsch = new JSch();
+        Session sshSession = null;
 
         try {
             Lab lab = session.getLab();
@@ -63,70 +73,82 @@ public class SetupExecutionService {
                     .sorted(Comparator.comparing(SetupStep::getStepOrder))
                     .collect(Collectors.toList());
 
-            boolean overallSuccess = true;
-            log.info("[Session {}] Found {} setup steps to execute.", session.getId(), setupSteps.size());
-            if(!setupSteps.isEmpty()) {
-                for (SetupStep step : setupSteps) {
-                    log.info("[Session {}] Executing step: '{}' (Order: {})", session.getId(), step.getTitle(), step.getStepOrder());
-                    ExecuteCommandResult result = executeCommandViaSsh(connectionDetails, step.getSetupCommand(), step.getTimeoutSeconds());
-                    logStepResult(session, step, result);
+            if (setupSteps.isEmpty()) {
+                updateSessionStatus(session, "READY");
+                labTimerHandler.startTimerForSession(session);
+                return;
+            }
 
-                    if (result.getExitCode() != step.getExpectedExitCode()) {
-                        log.error("[Session {}] Step '{}' FAILED! (Expected: {}, Got: {})", session.getId(), step.getTitle(), step.getExpectedExitCode(), result.getExitCode());
-                        if (!step.getContinueOnFailure()) {
-                            log.warn("[Session {}] 'ContinueOnFailure' is false. Stopping execution.", session.getId());
-                            overallSuccess = false;
-                            break;
-                        } else {
-                            log.warn("[Session {}] 'ContinueOnFailure' is true. Continuing execution despite failure.", session.getId());
-                        }
-                    } else {
-                        log.info("[Session {}] Step '{}' successful.", session.getId(), step.getTitle());
+            String vmName = "vm-" + session.getId();
+            String namespace = lab.getNamespace();
+            V1Pod pod = discoveryService.waitForPodRunning(vmName, namespace, 120);
+            String podName = pod.getMetadata().getName();
+
+            sshSession = connectSshWithRetry(jsch, namespace, podName, 20, 5000);
+
+            log.info("[Session {}] SSH connected via K8s Tunnel. Executing steps...", session.getId());
+
+            boolean overallSuccess = true;
+            for (SetupStep step : setupSteps) {
+                log.info("[Session {}] Executing: {}", session.getId(), step.getTitle());
+                ExecuteCommandResult result = executeCommandOnSession(sshSession, step.getSetupCommand(), step.getTimeoutSeconds());
+                logStepResult(session, step, result);
+
+                if (result.getExitCode() != step.getExpectedExitCode()) {
+                    if (!step.getContinueOnFailure()) {
+                        overallSuccess = false;
+                        break;
                     }
                 }
             }
 
             updateSessionStatus(session, overallSuccess ? "READY" : "SETUP_FAILED");
+            if (overallSuccess) labTimerHandler.startTimerForSession(session);
 
-            if(overallSuccess) {
-                log.info("[Session {}] LAB IS READY. Calling labTimerHandler.startTimerForSession().", session.getId());
-                labTimerHandler.startTimerForSession(session);
-            } else {
-                log.warn("[Session {}] Lab setup failed. Notifying client and NOT starting timer.", session.getId());
-//                labTimerHandler.notifySessionFailed(String.valueOf(session.getId()), "Setup failed");
-            }
         } catch (Exception e) {
-            log.error("A critical error occurred during setup execution for session {}: {}", session.getId(), e.getMessage(), e);
+            log.error("Setup failed for session {}: {}", session.getId(), e.getMessage());
             updateSessionStatus(session, "SETUP_FAILED");
+        } finally {
+            if (sshSession != null && sshSession.isConnected()) {
+                sshSession.disconnect();
+            }
         }
     }
 
-    // 2
+    private Session connectSshWithRetry(JSch jsch, String namespace, String podName, int maxRetries, long delayMs) throws Exception {
+        for (int i = 0; i < maxRetries; i++) {
+            try {
+                Session session = jsch.getSession(defaultUsername, "localhost", 2222); // Host/Port ảo
+                session.setPassword(defaultPassword);
+                session.setConfig("StrictHostKeyChecking", "no");
 
-    private ExecuteCommandResult  executeCommandViaSsh(SshConnectionDetails details, String command, int timeoutSeconds) throws Exception {
-        JSch jsch = new JSch();
-        Session session = null;
+                session.setSocketFactory(new K8sTunnelSocketFactory(apiClient, namespace, podName));
+
+                session.connect(15000);
+                return session;
+
+            } catch (JSchException e) {
+                log.warn("SSH connect attempt {}/{} failed: {}. Retrying...", i + 1, maxRetries, e.getMessage());
+                if (i == maxRetries - 1) throw e;
+                Thread.sleep(delayMs);
+            }
+        }
+        throw new RuntimeException("Failed to connect SSH after retries");
+    }
+
+    private ExecuteCommandResult executeCommandOnSession(Session session, String command, int timeoutSeconds) throws Exception {
         ChannelExec channel = null;
         StringBuilder outputBuffer = new StringBuilder();
         int exitCode = -1;
-
         try {
-            log.info("Opening SSH session to {} on port {}...", details.host(), details.port());
-            session = jsch.getSession(defaultUsername, details.host(), details.port());
-            session.setPassword(defaultPassword);
-            session.setConfig("StrictHostKeyChecking", "no");
-            session.connect(15000);
-
             channel = (ChannelExec) session.openChannel("exec");
             channel.setCommand(command);
-
             InputStream in = channel.getInputStream();
             InputStream err = channel.getErrStream();
-
-            channel.connect(10000);
-            log.info("Executing command via SSH: {}", command);
+            channel.connect(5000);
 
             byte[] buffer = new byte[1024];
+            long startTime = System.currentTimeMillis();
             while (true) {
                 while (in.available() > 0) {
                     int i = in.read(buffer, 0, 1024);
@@ -138,66 +160,99 @@ public class SetupExecutionService {
                     if (i < 0) break;
                     outputBuffer.append(new String(buffer, 0, i));
                 }
-
                 if (channel.isClosed()) {
-                    while (in.available() > 0) {
-                        int i = in.read(buffer, 0, 1024);
-                        if (i < 0) break;
-                        outputBuffer.append(new String(buffer, 0, i));
-                    }
+                    if (in.available() > 0) continue;
                     exitCode = channel.getExitStatus();
-                    log.debug("SSH channel closed with exit code: {}", exitCode);
                     break;
                 }
-
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
+                if (timeoutSeconds > 0 && (System.currentTimeMillis() - startTime) > timeoutSeconds * 1000L) {
+                    throw new IOException("Command timeout");
                 }
+                Thread.sleep(100);
             }
         } finally {
             if (channel != null) channel.disconnect();
-            if (session != null) session.disconnect();
         }
         return new ExecuteCommandResult(exitCode, outputBuffer.toString().trim(), "");
     }
 
-    // 3
-
     private void logStepResult(UserLabSession session, SetupStep step, ExecuteCommandResult result) {
         if (result.getExitCode() == step.getExpectedExitCode()) {
-            executionLogger.info(
-                    "SESSION_ID={}|STEP_ID={}|STEP_TITLE='{}'|STATUS=SUCCESS|EXIT_CODE={}\n--- STDOUT ---\n{}\n--- STDERR ---\n{}",
-                    session.getId(), step.getId(), step.getTitle(), result.getExitCode(), result.getStdout(), result.getStderr()
-            );
+            executionLogger.info("SESSION_ID={}|STEP='{}'|SUCCESS", session.getId(), step.getTitle());
         } else {
-            executionLogger.error(
-                    "SESSION_ID={}|STEP_ID={}|STEP_TITLE='{}'|STATUS=FAILED|EXIT_CODE={}\n--- STDOUT ---\n{}\n--- STDERR ---\n{}",
-                    session.getId(), step.getId(), step.getTitle(), result.getExitCode(), result.getStdout(), result.getStderr()
-            );
+            executionLogger.error("SESSION_ID={}|STEP='{}'|FAILED|Code={}\nOUT: {}\nERR: {}",
+                    session.getId(), step.getTitle(), result.getExitCode(), result.getStdout(), result.getStderr());
         }
     }
 
-    //4 
-
     private void updateSessionStatus(UserLabSession session, String status) {
-        log.info("Updating session {} status from '{}' to '{}'.", session.getId(), session.getStatus(), status);
+        log.info("Updating session {} status to '{}'.", session.getId(), status);
         session.setStatus(status);
         userLabSessionRepository.save(session);
     }
 
+    public static class K8sTunnelSocketFactory implements SocketFactory {
+        private final ApiClient apiClient;
+        private final String namespace;
+        private final String podName;
 
+        public K8sTunnelSocketFactory(ApiClient apiClient, String namespace, String podName) {
+            this.apiClient = apiClient;
+            this.namespace = namespace;
+            this.podName = podName;
+        }
 
-//     public boolean executeSetupStepsForAdminTest(Integer labId, String podName) {
-//     try {
-//         return executeCommandViaSsh(labId, podName);
-//     } catch (Exception e) {
-//         log.error("Error executing setup steps for lab {}: {}", labId, e.getMessage(), e);
-//         webSocketHandler.broadcastLogToPod(podName, "error",
-//                 "Failed to execute setup steps: " + e.getMessage(), null);
-//         return false;
-//     }
-// }
+        @Override
+        public Socket createSocket(String host, int port) throws IOException {
+            try {
+                PortForward forward = new PortForward(apiClient);
+                PortForward.PortForwardResult result = forward.forward(namespace, podName, Collections.singletonList(22));
+
+                return new VirtualSocket(result.getInputStream(22), result.getOutboundStream(22));
+            } catch (Exception e) {
+                throw new IOException("Failed to create K8s tunnel: " + e.getMessage(), e);
+            }
+        }
+
+        @Override
+        public InputStream getInputStream(Socket socket) throws IOException {
+            return socket.getInputStream();
+        }
+
+        @Override
+        public OutputStream getOutputStream(Socket socket) throws IOException {
+            return socket.getOutputStream();
+        }
+    }
+
+    public static class VirtualSocket extends Socket {
+        private final InputStream in;
+        private final OutputStream out;
+
+        public VirtualSocket(InputStream in, OutputStream out) {
+            this.in = in;
+            this.out = out;
+        }
+
+        @Override
+        public InputStream getInputStream() {
+            return in;
+        }
+
+        @Override
+        public OutputStream getOutputStream() {
+            return out;
+        }
+
+        @Override
+        public boolean isConnected() {
+            return true;
+        }
+
+        @Override
+        public void close() throws IOException {
+            if(in != null) in.close();
+            if(out != null) out.close();
+        }
+    }
 }

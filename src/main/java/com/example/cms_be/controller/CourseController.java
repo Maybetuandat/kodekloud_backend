@@ -1,6 +1,8 @@
 package com.example.cms_be.controller;
 
 import com.example.cms_be.dto.CourseDetailResponse;
+import com.example.cms_be.dto.course.CreateCourseRequest;
+
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -224,6 +226,19 @@ public class CourseController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+
+    @PostMapping("")
+        public ResponseEntity<?> createCourse(@RequestBody CreateCourseRequest courseRequest) {
+            log.info("Creating course: {}", courseRequest);
+            try {
+                Course createdCourse = courseService.createCourse(courseRequest);
+                return ResponseEntity.status(HttpStatus.CREATED).body(createdCourse);
+            } catch (Exception e) {
+                log.error("Error creating course: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            }
+        }
     @PostMapping("/{courseId}/labs")
     public ResponseEntity<?> addLabsToCourseBulk(
             @PathVariable Integer courseId,

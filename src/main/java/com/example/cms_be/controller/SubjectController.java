@@ -60,17 +60,7 @@ public class SubjectController {
                 return ResponseEntity.status(500).body("Failed to create Subject");
             }
         }
-        @PostMapping("/{subjectId}/courses")
-        public ResponseEntity<?> createCourse(@RequestBody Course course, @PathVariable Integer subjectId) {
-            log.info("Creating course: {}", course);
-            try {
-                Course createdCourse = courseService.createCourse(course, subjectId);
-                return ResponseEntity.status(HttpStatus.CREATED).body(createdCourse);
-            } catch (Exception e) {
-                log.error("Error creating course: {}", e.getMessage());
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-            }
-        }
+       
         @PutMapping("/{id}")
         public ResponseEntity<?> updateSubject(@PathVariable Integer id, @RequestBody Subject Subject) {
             try {

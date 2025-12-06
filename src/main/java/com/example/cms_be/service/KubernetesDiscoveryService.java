@@ -47,7 +47,6 @@ public class KubernetesDiscoveryService {
         throw new RuntimeException("Timeout: Pod with label '" + labelSelector + "' did not enter Running state within " + timeoutSeconds + " seconds.");
     }
 
-    // Thực hiện tại kết nối TCP để kiểm tra xem ssh đã sẵn sàng hay chưa
     public void waitForSshReady(String host, int port, int timeoutSeconds) throws InterruptedException {
         log.info("Waiting for SSH service to be ready at {}:{}...", host, port);
         long startTime = System.currentTimeMillis();
@@ -60,7 +59,7 @@ public class KubernetesDiscoveryService {
                 log.info("SSH service is ready at {}:{}!", host, port);
                 break;
             } catch (IOException e) {
-                log.debug("SSH not ready yet at {}:{}. Retrying in 5 seconds...", host, port);
+                log.debug("SSH connection failed at {}:{}. Reason: {}", host, port, e.getMessage());
                 Thread.sleep(5000);
             }
         }
@@ -73,15 +72,12 @@ public class KubernetesDiscoveryService {
     public SshConnectionDetails getExternalSshDetails(String vmName, String namespace) throws ApiException {
         log.info("Fetching external SSH details for VM '{}' in namespace '{}'", vmName, namespace);
         
-        // Bước 1: Tìm pod VM và worker node chứa nó
         String workerNodeName = findWorkerNodeForVM(vmName, namespace);
         log.info("VM '{}' is running on worker node: {}", vmName, workerNodeName);
         
-        // Bước 2: Lấy thông tin NodePort từ SSH service
         Integer nodePort = getNodePortFromService(vmName, namespace);
         log.info("SSH NodePort for VM '{}': {}", vmName, nodePort);
         
-        // Bước 3: Lấy IP của worker node cụ thể
         String workerNodeIp = getWorkerNodeIp(workerNodeName);
         if (workerNodeIp == null) {
             throw new RuntimeException("Could not determine IP address for worker node: " + workerNodeName);
@@ -91,9 +87,6 @@ public class KubernetesDiscoveryService {
         return new SshConnectionDetails(workerNodeIp, nodePort);
     }
     
-    /**
-     * Tìm worker node đang chạy VM pod
-     */
     private String findWorkerNodeForVM(String vmName, String namespace) throws ApiException {
         String labelSelector = "app=" + vmName;
         
@@ -104,7 +97,6 @@ public class KubernetesDiscoveryService {
                 throw new RuntimeException("No pods found for VM: " + vmName + " with label selector: " + labelSelector);
             }
             
-            // Lấy pod đầu tiên (virt-launcher pod)
             V1Pod vmPod = podList.getItems().get(0);
             String nodeName = vmPod.getSpec().getNodeName();
             
@@ -121,16 +113,12 @@ public class KubernetesDiscoveryService {
         }
     }
     
-    /**
-     * Lấy NodePort từ SSH service
-     */
     private Integer getNodePortFromService(String vmName, String namespace) throws ApiException {
         String serviceName = "ssh-" + vmName;
         
         try {
             V1Service service = coreApi.readNamespacedService(serviceName, namespace, null);
             
-            // Kiểm tra service có port không
             if (service.getSpec() == null || service.getSpec().getPorts() == null || service.getSpec().getPorts().isEmpty()) {
                 throw new RuntimeException("SSH service exists but has no ports configured: " + serviceName);
             }
@@ -153,9 +141,6 @@ public class KubernetesDiscoveryService {
         }
     }
     
-    /**
-     * Lấy IP của worker node cụ thể theo tên
-     */
     private String getWorkerNodeIp(String nodeName) throws ApiException {
         try {
             V1Node node = coreApi.readNode(nodeName, null);
