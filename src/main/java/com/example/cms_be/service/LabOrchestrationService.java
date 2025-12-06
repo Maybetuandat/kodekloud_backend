@@ -56,9 +56,6 @@ public class LabOrchestrationService {
         provisionAndSetupLabAsync(detachedSession);
     }
 
-    /**
-     * Create a detached session object with all required data loaded
-     */
     private UserLabSession createDetachedSession(UserLabSession original, Lab loadedLab) {
         UserLabSession detached = new UserLabSession();
         detached.setId(original.getId());
@@ -82,29 +79,22 @@ public class LabOrchestrationService {
         String namespace = session.getLab().getNamespace();
 
         try {
-            // === Phase 1: Create VM resources ===
             log.info("Phase 1: Creating VM resources for session {}...", session.getId());
             updateSessionStatus(session.getId(), "PENDING");
             vmService.createKubernetesResourcesForSession(session);
 
-            // === Phase 2: Wait for VM to be ready ===
             log.info("Phase 2: Waiting for VM to be ready for session {}...", session.getId());
             updateSessionStatus(session.getId(), "STARTING");
             V1Pod pod = discoveryService.waitForPodRunning(vmName, namespace, 1200);
 
-            // === Phase 3: Wait for SSH ready ===
-            // 🔥 THAY ĐỔI: Không dùng discoveryService.waitForSshReady (NodePort) nữa.
-            // SetupExecutionService sẽ tự retry kết nối qua tunnel.
             log.info("Phase 3: VM Pod is running. Skipping external SSH check (Tunneling mode).");
 
-            // === Phase 4: Execute setup steps ===
             List<SetupStep> setupSteps = session.getLab().getSetupSteps();
             if (setupSteps != null && !setupSteps.isEmpty()) {
                 log.info("Phase 4: Starting setup execution for session {}...", session.getId());
                 updateSessionStatus(session.getId(), "SETTING_UP");
                 updateSessionSetupCompletedTime(session.getId());
 
-                // 🔥 GỌI HÀM MỚI (không truyền connectionDetails)
                 setupExecutionService.executeSteps(session);
             } else {
                 log.info("Phase 4: No setup steps. Marking as READY.");

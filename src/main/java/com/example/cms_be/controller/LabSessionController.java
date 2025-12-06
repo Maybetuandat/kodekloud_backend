@@ -66,7 +66,6 @@ public class LabSessionController {
         }
     }
 
-    // Trong LabSessionController.java
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getLabSessionStatus(@PathVariable Integer id) {
@@ -74,8 +73,6 @@ public class LabSessionController {
             UserLabSession session = labSessionService.findById(id)
                     .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy phiên Lab với ID: " + id));
 
-            // 2. Trả về đúng những gì Frontend cần (quan trọng nhất là status)
-            // Bạn có thể dùng lại UserLabSessionResponse hoặc Map cho nhanh
             Map<String, Object> response = new HashMap<>();
             response.put("id", session.getId());
             response.put("status", session.getStatus());

@@ -54,11 +54,9 @@ public class LabValidationService {
         UserLabSession session = userLabSessionRepository.findById(labSessionId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy UserLabSession với ID: " + labSessionId));
 
-        // 1. Lấy thông tin Pod
         String vmName = "vm-" + session.getId();
         String namespace = session.getLab().getNamespace();
 
-        // Đảm bảo Pod đang chạy
         V1Pod pod;
         try {
             pod = discoveryService.waitForPodRunning(vmName, namespace, 10);
@@ -68,7 +66,6 @@ public class LabValidationService {
         }
         String podName = pod.getMetadata().getName();
 
-        // 2. Thực thi lệnh qua Tunnel
         try {
             ExecuteCommandResult result = executeCommandViaTunnel(namespace, podName, checkCommand, 60);
             log.info("Check command '{}' resulted in exit code: {}", checkCommand, result.getExitCode());
@@ -88,18 +85,14 @@ public class LabValidationService {
         int exitCode = -1;
 
         try {
-            // Setup Session
             session = jsch.getSession(defaultUsername, "localhost", 2222);
             session.setPassword(defaultPassword);
             session.setConfig("StrictHostKeyChecking", "no");
 
-            // --- QUAN TRỌNG: Tái sử dụng SocketFactory từ SetupExecutionService ---
-            // Đảm bảo class SetupExecutionService và inner class K8sTunnelSocketFactory là public
             session.setSocketFactory(new SetupExecutionService.K8sTunnelSocketFactory(apiClient, namespace, podName));
 
-            session.connect(15000); // 15s timeout connect
+            session.connect(15000);
 
-            // Setup Channel Exec
             channel = (ChannelExec) session.openChannel("exec");
             channel.setCommand(command);
 

@@ -4,14 +4,11 @@ import com.example.cms_be.dto.lab.CreateLabRequest;
 
 import com.example.cms_be.dto.lab.LabTestResponse;
 
+import com.example.cms_be.service.*;
 import org.springframework.web.bind.annotation.*;
 import com.example.cms_be.model.Lab;
 import com.example.cms_be.model.Question;
 import com.example.cms_be.model.SetupStep;
-import com.example.cms_be.service.LabService;
-import com.example.cms_be.service.QuestionService;
-import com.example.cms_be.service.SetupStepService;
-import com.example.cms_be.service.StorageService;
 //import com.example.cms_be.service.VMTestService;
 
 import io.kubernetes.client.openapi.ApiException;
@@ -41,7 +38,7 @@ public class LabController {
     private final QuestionService questionService;
     private final SetupStepService setupStepService;
     private final StorageService    storageService;
-//     private final VMTestService vmTestService;
+     private final VMTestService vmTestService;
 
     
     @GetMapping("")
@@ -158,22 +155,22 @@ public class LabController {
 
 
 
-//    @GetMapping("/test/{testId}/status")
-//    public ResponseEntity<?> getTestStatus(@PathVariable String testId) {
-//        try {
-//            LabTestResponse response = vmTestService.getTestStatus(testId);
-//            return ResponseEntity.ok(response);
-//
-//        } catch (EntityNotFoundException e) {
-//            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-//                    .body(Map.of("error", "Test not found: " + testId));
-//
-//        } catch (Exception e) {
-//            log.error("Error getting test status: {}", e.getMessage(), e);
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-//                    .body(Map.of("error", "Failed to get test status"));
-//        }
-//    }
+    @GetMapping("/test/{testId}/status")
+    public ResponseEntity<?> getTestStatus(@PathVariable String testId) {
+        try {
+            LabTestResponse response = vmTestService.getTestStatus(testId);
+            return ResponseEntity.ok(response);
+
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Test not found: " + testId));
+
+        } catch (Exception e) {
+            log.error("Error getting test status: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to get test status"));
+        }
+    }
 
 
 
@@ -240,26 +237,26 @@ public class LabController {
     
     
     
-//   @PostMapping("{labId}/test")
-//    public ResponseEntity<?> testLabWithConfig(@PathVariable Integer labId) {
-//        try {
-//            log.info("Received test request with config: {}", labId);
-//
-//            LabTestResponse response = vmTestService.startLabTest(labId);
-//
-//            return ResponseEntity.accepted().body(response);
-//
-//        } catch (EntityNotFoundException e) {
-//            log.error("Lab not found: {}", labId);
-//            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-//                    .body(Map.of("error", e.getMessage()));
-//
-//        } catch (Exception e) {
-//            log.error("Error starting lab test: {}", e.getMessage(), e);
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-//                    .body(Map.of("error", "Failed to start lab test: " + e.getMessage()));
-//        }
-//    }
+   @PostMapping("{labId}/test")
+    public ResponseEntity<?> testLabWithConfig(@PathVariable Integer labId) {
+        try {
+            log.info("Received test request with config: {}", labId);
+
+            LabTestResponse response = vmTestService.startLabTest(labId);
+
+            return ResponseEntity.accepted().body(response);
+
+        } catch (EntityNotFoundException e) {
+            log.error("Lab not found: {}", labId);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
+
+        } catch (Exception e) {
+            log.error("Error starting lab test: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to start lab test: " + e.getMessage()));
+        }
+    }
     
     
     
@@ -303,24 +300,24 @@ public class LabController {
 
    
 
-//    @DeleteMapping("/test/{testId}")
-//    public ResponseEntity<?> cancelTest(@PathVariable String testId) {
-//        try {
-//            vmTestService.cancelTest(testId);
-//            return ResponseEntity.ok(Map.of(
-//                    "message", "Test cancelled successfully",
-//                    "testId", testId
-//            ));
-//
-//        } catch (EntityNotFoundException e) {
-//            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-//                    .body(Map.of("error", "Test not found: " + testId));
-//
-//        } catch (Exception e) {
-//            log.error("Error cancelling test: {}", e.getMessage(), e);
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-//                    .body(Map.of("error", "Failed to cancel test"));
-//        }
-//    }
+    @DeleteMapping("/test/{testId}")
+    public ResponseEntity<?> cancelTest(@PathVariable String testId) {
+        try {
+            vmTestService.cancelTest(testId);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Test cancelled successfully",
+                    "testId", testId
+            ));
+
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Test not found: " + testId));
+
+        } catch (Exception e) {
+            log.error("Error cancelling test: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to cancel test"));
+        }
+    }
    
 }

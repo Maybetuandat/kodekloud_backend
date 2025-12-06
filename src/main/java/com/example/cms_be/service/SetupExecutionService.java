@@ -57,7 +57,7 @@ public class SetupExecutionService {
         this.userLabSessionRepository = userLabSessionRepository;
         this.apiClient = apiClient;
         this.discoveryService = discoveryService;
-        this.apiClient.setReadTimeout(0); // Tắt timeout
+        this.apiClient.setReadTimeout(0);
     }
 
     @Async
@@ -79,14 +79,11 @@ public class SetupExecutionService {
                 return;
             }
 
-            // 1. Tìm Pod
             String vmName = "vm-" + session.getId();
             String namespace = lab.getNamespace();
             V1Pod pod = discoveryService.waitForPodRunning(vmName, namespace, 120);
             String podName = pod.getMetadata().getName();
 
-            // 2. Kết nối SSH với Custom SocketFactory
-            // Retry logic để chờ SSHD trong VM khởi động xong
             sshSession = connectSshWithRetry(jsch, namespace, podName, 20, 5000);
 
             log.info("[Session {}] SSH connected via K8s Tunnel. Executing steps...", session.getId());
@@ -118,22 +115,15 @@ public class SetupExecutionService {
         }
     }
 
-    /**
-     * Hàm kết nối SSH sử dụng SocketFactory tùy chỉnh.
-     * Mỗi lần retry sẽ tạo một Tunnel mới.
-     */
     private Session connectSshWithRetry(JSch jsch, String namespace, String podName, int maxRetries, long delayMs) throws Exception {
         for (int i = 0; i < maxRetries; i++) {
             try {
-                // Tạo Session JSch
                 Session session = jsch.getSession(defaultUsername, "localhost", 2222); // Host/Port ảo
                 session.setPassword(defaultPassword);
                 session.setConfig("StrictHostKeyChecking", "no");
 
-                // Gán SocketFactory để chặn việc tạo TCP Socket thật
                 session.setSocketFactory(new K8sTunnelSocketFactory(apiClient, namespace, podName));
 
-                // Kết nối (Timeout 15s)
                 session.connect(15000);
                 return session;
 
@@ -146,7 +136,6 @@ public class SetupExecutionService {
         throw new RuntimeException("Failed to connect SSH after retries");
     }
 
-    // --- Các hàm executeCommandOnSession, logStepResult, updateSessionStatus giữ nguyên như cũ ---
     private ExecuteCommandResult executeCommandOnSession(Session session, String command, int timeoutSeconds) throws Exception {
         ChannelExec channel = null;
         StringBuilder outputBuffer = new StringBuilder();
@@ -202,14 +191,6 @@ public class SetupExecutionService {
         userLabSessionRepository.save(session);
     }
 
-    // =================================================================================
-    // INNER CLASSES: K8sTunnelSocketFactory & VirtualSocket
-    // =================================================================================
-
-    /**
-     * Factory này sẽ được JSch gọi khi session.connect().
-     * Thay vì mở TCP Socket, nó mở K8s PortForward và trả về một VirtualSocket.
-     */
     public static class K8sTunnelSocketFactory implements SocketFactory {
         private final ApiClient apiClient;
         private final String namespace;
@@ -224,11 +205,9 @@ public class SetupExecutionService {
         @Override
         public Socket createSocket(String host, int port) throws IOException {
             try {
-                // Tạo Tunnel MỚI mỗi khi JSch yêu cầu tạo Socket
                 PortForward forward = new PortForward(apiClient);
                 PortForward.PortForwardResult result = forward.forward(namespace, podName, Collections.singletonList(22));
 
-                // Trả về Socket giả lập bao bọc Streams của K8s
                 return new VirtualSocket(result.getInputStream(22), result.getOutboundStream(22));
             } catch (Exception e) {
                 throw new IOException("Failed to create K8s tunnel: " + e.getMessage(), e);
@@ -246,9 +225,6 @@ public class SetupExecutionService {
         }
     }
 
-    /**
-     * Một lớp Socket giả lập, chỉ dùng để chứa InputStream/OutputStream
-     */
     public static class VirtualSocket extends Socket {
         private final InputStream in;
         private final OutputStream out;
@@ -270,7 +246,7 @@ public class SetupExecutionService {
 
         @Override
         public boolean isConnected() {
-            return true; // Luôn báo là đã kết nối
+            return true;
         }
 
         @Override

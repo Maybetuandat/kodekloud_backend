@@ -19,7 +19,6 @@ public class StorageService {
 
     private final CustomObjectsApi customApi;
 
-    // Định nghĩa các hằng số cho tài nguyên của Longhorn
     private static final String LONGHORN_GROUP = "longhorn.io";
     private static final String LONGHORN_VERSION = "v1beta2";
     private static final String LONGHORN_NAMESPACE = "longhorn-system";
@@ -45,23 +44,18 @@ public class StorageService {
                     null,    // timeoutSeconds
                     false    // watch: PHẢI LÀ FALSE ĐỂ THỰC HIỆN LIST
             );
-            // Chuyển đổi kết quả thô sang danh sách DTO
             return mapToBackingImageDTOs(rawObject);
 
         } catch (ApiException e) {
             log.error("Kubernetes API Error when listing backing images. Status: {}, Body: {}", e.getCode(), e.getResponseBody(), e);
-            throw e; // Ném lại lỗi để Controller có thể bắt và xử lý
+            throw e;
         }
     }
 
-    /**
-     * Hàm helper để parse kết quả từ CustomObjectsApi
-     */
     @SuppressWarnings("unchecked")
     private List<BackingImageDTO> mapToBackingImageDTOs(Object rawObject) {
         List<BackingImageDTO> dtoList = new ArrayList<>();
 
-        // Kết quả trả về là một Map, trong đó key "items" chứa danh sách thật sự
         if (rawObject instanceof Map) {
             Map<String, Object> objectMap = (Map<String, Object>) rawObject;
             List<Object> items = (List<Object>) objectMap.get("items");
@@ -73,31 +67,25 @@ public class StorageService {
                     Map<String, Object> itemMap = (Map<String, Object>) item;
                     BackingImageDTO dto = new BackingImageDTO();
 
-                    // Lấy thông tin từ metadata
                     Map<String, Object> metadata = (Map<String, Object>) itemMap.get("metadata");
                     if (metadata != null) {
                         dto.setName((String) metadata.get("name"));
                         dto.setUuid((String) metadata.get("uid"));
                     }
 
-                    // Lấy thông tin từ status
                     Map<String, Object> status = (Map<String, Object>) itemMap.get("status");
                     if (status != null) {
-                        // Trạng thái của image
                         dto.setState((String) status.get("currentState"));
-                        // Tiến độ download
                         Object progressObj = status.get("progress");
                         if (progressObj instanceof Number) {
                             dto.setDownloadProgress(((Number) progressObj).intValue());
                         }
-                        // Kích thước thật sau khi tải xong
                         Object sizeObj = status.get("size");
                         if (sizeObj instanceof Number) {
                             dto.setSize(((Number) sizeObj).longValue());
                         }
                     }
 
-                    // Lấy thông tin từ spec
                     Map<String, Object> spec = (Map<String, Object>) itemMap.get("spec");
                     if (spec != null) {
                         dto.setCreatedFrom((String) spec.get("sourceType")); // "download", "upload", etc.
