@@ -6,7 +6,7 @@ import com.example.cms_be.model.User;
 import com.example.cms_be.repository.UserRepository;
 import com.example.cms_be.security.jwt.JwtUtils;
 import com.example.cms_be.security.service.UserDetailsImpl;
-import com.example.cms_be.security.service.UserDetailsServiceImpl; // Cần import
+import com.example.cms_be.security.service.UserDetailsServiceImpl;
 
 import com.example.cms_be.service.RoleService;
 import jakarta.validation.Valid;
@@ -42,6 +42,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
 
+        
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
 

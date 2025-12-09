@@ -1,5 +1,6 @@
 package com.example.cms_be.config;
 
+import com.example.cms_be.filter.NoCorsFilter;
 import com.example.cms_be.security.jwt.AuthEntryPointJwt;
 import com.example.cms_be.security.jwt.AuthTokenFilter;
 import com.example.cms_be.security.service.UserDetailsServiceImpl;
@@ -19,8 +20,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
-import static org.springframework.security.config.Customizer.withDefaults;
+import org.springframework.web.filter.CorsFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -30,18 +30,15 @@ import static org.springframework.security.config.Customizer.withDefaults;
 public class WebSecurityConfig {
 
     UserDetailsServiceImpl userDetailsService;
-
     AuthEntryPointJwt unauthorizedHandler;
-
     AuthTokenFilter authTokenFilter;
+    NoCorsFilter noCorsFilter;
 
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-
         authProvider.setUserDetailsService(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
-
         return authProvider;
     }
 
@@ -58,20 +55,21 @@ public class WebSecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .cors(withDefaults())
+            .cors(cors -> cors.disable())
             .csrf(csrf -> csrf.disable())
             .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth ->
-                    auth.requestMatchers(
-                            "/ws/**",
-                            "/api/**"
-                                    ).permitAll()
-                            .anyRequest().authenticated()
+                    auth.requestMatchers("/api/auth/**").permitAll()
+                        .anyRequest().authenticated()
             );
 
         http.authenticationProvider(authenticationProvider());
+        
+        // Add NoCorsFilter FIRST to intercept all CORS headers
+        http.addFilterBefore(noCorsFilter, CorsFilter.class);
         http.addFilterBefore(authTokenFilter, UsernamePasswordAuthenticationFilter.class);
+        
         return http.build();
     }
 }

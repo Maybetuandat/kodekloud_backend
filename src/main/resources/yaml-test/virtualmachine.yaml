@@ -24,12 +24,12 @@ spec:
                   groups: [adm, sudo]
                   shell: /bin/bash
                   sudo: ['ALL=(ALL) NOPASSWD:ALL']
-                  plain_text_passwd: '1234'
+                  plain_text_passwd: 'ubuntu'
                   lock_passwd: false
       domain:
         resources:
           requests:
-            memory: 1Gi
+            memory: 2Gi
             cpu: 2
         devices:
           disks:

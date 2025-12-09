@@ -15,11 +15,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.Arrays;
+import java.util.List;
 
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
@@ -28,21 +31,26 @@ import java.text.ParseException;
 public class AuthTokenFilter extends OncePerRequestFilter {
 
     JwtUtils jwtUtils;
-
     UserDetailsServiceImpl userDetailsService;
+
+    private static final List<String> EXCLUDED_PATHS = Arrays.asList(
+        "/api/auth/**",
+        "/auth/**",
+        "/api/public/**",
+        "/public/**"
+    );
+
+    private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        log.info("Request path: {}", request.getServletPath());
-        if (request.getServletPath().startsWith("/auth/")) {
-            logger.info("Bypassing authentication for auth path");
-            filterChain.doFilter(request, response);
-            return;
-        }
+        
+        log.info("AuthTokenFilter running for path: {}", request.getServletPath());
 
         try {
             String jwt = parseJwt(request);
+            
             if (jwt != null) {
                 try {
                     String username = jwtUtils.getUserNameFromToken(jwt);
@@ -53,26 +61,37 @@ public class AuthTokenFilter extends OncePerRequestFilter {
                                 userDetails, null, userDetails.getAuthorities());
                         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                         SecurityContextHolder.getContext().setAuthentication(authentication);
+                        log.info("User authenticated successfully: {}", username);
                     } else {
-                        logger.error("Token không hợp lệ");
-                        // KHÔNG set authentication vào SecurityContextHolder
+                        log.error("Token validation failed for user: {}", username);
                     }
                 } catch (ParseException | JOSEException e) {
-                    log.error("Không thể parse/validate token: {}", e.getMessage());
-                    // KHÔNG set authentication vào SecurityContextHolder
+                    log.error("Cannot parse/validate token: {}", e.getMessage());
                 }
             } else {
-                logger.info("Không tìm thấy token JWT");
-                // KHÔNG set authentication vào SecurityContextHolder
+                log.info("No JWT token found in request");
             }
         } catch (Exception e) {
-            log.error("Không thể xác thực người dùng: {}", e.getMessage());
-            // KHÔNG set authentication vào SecurityContextHolder
+            log.error("Cannot set user authentication: {}", e.getMessage());
         }
 
         filterChain.doFilter(request, response);
     }
 
+   
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        String path = request.getServletPath();
+        
+        boolean shouldSkip = EXCLUDED_PATHS.stream()
+                .anyMatch(pattern -> pathMatcher.match(pattern, path));
+        
+        if (shouldSkip) {
+            log.info("Skipping AuthTokenFilter for path: {}", path);
+        }
+        
+        return shouldSkip;
+    }
 
     private String parseJwt(HttpServletRequest request) {
         String headerAuth = request.getHeader("Authorization");
