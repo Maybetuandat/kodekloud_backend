@@ -72,7 +72,12 @@ public class VMService {
         ensureNamespaceExists(namespace);
 
         // 2. Tạo PVC (Ổ cứng)
-        createPvcForSession(vmName, namespace, session.getLab().getInstanceType().getStorageGb().toString());
+        createPvcForSession(
+                vmName,
+                namespace,
+                session.getLab().getInstanceType().getBackingImage().toString(),
+                session.getLab().getInstanceType().getStorageGb().toString()
+        );
 
         // 3. Tạo VM (Máy ảo)
         createVirtualMachineFromTemplate(vmName, namespace,
@@ -93,10 +98,11 @@ public class VMService {
         return template;
     }
 
-    public void createPvcForSession(String vmName, String namespace, String storage) throws IOException, ApiException {
+    public void createPvcForSession(String vmName, String namespace, String backingImage, String storage) throws IOException, ApiException {
         Map<String, String> values = Map.of(
                 "NAME", vmName,
                 "NAMESPACE", namespace,
+                "BACKING_IMAGE", backingImage,
                 "STORAGE", storage
         );
         String pvcYaml = loadAndRenderTemplate("templates/pvc.yaml", values);

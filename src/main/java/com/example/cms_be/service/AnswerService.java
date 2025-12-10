@@ -1,6 +1,7 @@
 package com.example.cms_be.service;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
@@ -74,6 +75,10 @@ public class AnswerService {
             log.error("Error deleting answer: {}", e.getMessage());
             throw new RuntimeException("Failed to delete answer", e);
         }
+    }
+
+    public Optional<Answer> findById(Integer id) {
+        return answerRepository.findById(id);
     }
     
 }

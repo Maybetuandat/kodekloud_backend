@@ -39,6 +39,8 @@ public class InstanceType {
     private Integer memoryGb;
     @Column(name = "storage_gb", nullable = false)
     private Integer storageGb;
+    @Column(name = "backing_image", nullable = true)
+    private String backingImage;
 
 
     @JsonIgnore
