@@ -1,28 +1,14 @@
 package com.example.cms_be.controller;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-
-import com.example.cms_be.model.Lab;
-import com.example.cms_be.service.LabService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import com.example.cms_be.service.AnswerService;
 import com.example.cms_be.service.QuestionService;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
 import com.example.cms_be.model.Answer;
 import com.example.cms_be.model.Question;
-
-
-
 @RestController
 @RequestMapping("/api/questions")
 @Slf4j
