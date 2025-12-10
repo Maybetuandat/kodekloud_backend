@@ -136,4 +136,8 @@ public class QuestionService {
         }
        
     }
+
+    public Optional<Question> findById(Integer questionId) {
+        return questionRepository.findById(questionId);
+    }
 }

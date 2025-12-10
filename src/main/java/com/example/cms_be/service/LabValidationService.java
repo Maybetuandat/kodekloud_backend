@@ -1,7 +1,9 @@
 package com.example.cms_be.service;
 
 import com.example.cms_be.dto.connection.ExecuteCommandResult;
+import com.example.cms_be.model.Answer;
 import com.example.cms_be.model.Question;
+import com.example.cms_be.model.Submission;
 import com.example.cms_be.model.UserLabSession;
 import com.example.cms_be.repository.QuestionRepository;
 import com.example.cms_be.repository.UserLabSessionRepository;
@@ -18,6 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
+import java.util.List;
+import java.util.Objects;
 
 @Service
 @Slf4j
@@ -44,15 +48,23 @@ public class LabValidationService {
     }
 
     @Transactional(readOnly = true)
-    public boolean validateQuestion(Integer labSessionId, Integer questionId) throws ApiException {
-        Question question = questionRepository.findById(questionId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy câu hỏi với ID: " + questionId));
+    public boolean validateQuestion(Submission submission) throws ApiException {
+        Question question = submission.getQuestion();
         String checkCommand = question.getCheckCommand();
-        if (checkCommand == null || checkCommand.isBlank())
-            throw new IllegalStateException("This question does not have check cmd");
+        Answer userAnswer = submission.getUserAnswer();
 
-        UserLabSession session = userLabSessionRepository.findById(labSessionId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy UserLabSession với ID: " + labSessionId));
+        if (Objects.equals(question.getTypeQuestion(), "non-check") && userAnswer != null) {
+            List<Answer> listAnswer = question.getAnswers();
+            for(Answer answer : listAnswer) {
+
+                if(Objects.equals(answer.getId(), userAnswer.getId()) && answer.getIsRightAns()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        UserLabSession session = submission.getUserLabSession();
 
         String vmName = "vm-" + session.getId();
         String namespace = session.getLab().getNamespace();
@@ -72,7 +84,7 @@ public class LabValidationService {
             return result.getExitCode() == 0;
 
         } catch (Exception e) {
-            log.error("Error executing check command for session {}: {}", labSessionId, e.getMessage(), e);
+            log.error("Error executing check command for session {}: {}", session.getId(), e.getMessage(), e);
             return false;
         }
     }

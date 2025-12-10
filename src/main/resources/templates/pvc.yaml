@@ -4,7 +4,7 @@ metadata:
   name: "{{NAME}}"
   namespace: "{{NAMESPACE}}"
 spec:
-  storageClassName: longhorn-ext4-backing
+  storageClassName: "{{BACKING_IMAGE}}"
   accessModes:
     - ReadWriteOnce
   volumeMode: Block

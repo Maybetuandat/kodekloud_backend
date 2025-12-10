@@ -29,7 +29,12 @@ public class VMTestOrchestrationService {
         webSocketHandler.broadcastLogToPod(testVmName, "info",
                 "⏳ Creating PersistentVolumeClaim...", null);
 
-        vmService.createPvcForSession(testVmName, namespace, instanceType.getStorageGb().toString());
+        vmService.createPvcForSession(
+                testVmName,
+                namespace,
+                instanceType.getBackingImage(),
+                instanceType.getStorageGb().toString()
+        );
 
         webSocketHandler.broadcastLogToPod(testVmName, "success",
                 "✅ PVC created successfully", null);
