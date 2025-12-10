@@ -81,6 +81,7 @@ public class LabOrchestrationService {
         try {
             log.info("Phase 1: Creating VM resources for session {}...", session.getId());
             updateSessionStatus(session.getId(), "PENDING");
+
             vmService.createKubernetesResourcesForSession(session);
 
             log.info("Phase 2: Waiting for VM to be ready for session {}...", session.getId());
