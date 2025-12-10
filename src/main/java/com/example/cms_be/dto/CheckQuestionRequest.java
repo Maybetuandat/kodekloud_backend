@@ -1,4 +1,3 @@
 package com.example.cms_be.dto;
 
-public class CheckQuestionRequest {
-}
+public record CheckQuestionRequest(Integer userAnswer) {}

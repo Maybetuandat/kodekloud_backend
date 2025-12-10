@@ -1,4 +1,7 @@
 package com.example.cms_be.dto;
 
-public class QuestionSubmissionStatus {
-}
+public record QuestionSubmissionStatus(
+        boolean isSubmitted,
+        boolean isCorrect,
+        Integer userAnswerId
+) {}
