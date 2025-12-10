@@ -5,7 +5,6 @@ import com.example.cms_be.repository.CourseLabRepository;
 import com.example.cms_be.repository.CourseUserRepository;
 import com.example.cms_be.repository.LabRepository;
 import com.example.cms_be.repository.UserLabSessionRepository;
-import com.example.cms_be.repository.UserRepository;
 import io.kubernetes.client.openapi.ApiException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -25,7 +24,7 @@ import java.util.Optional;
 public class LabSessionService {
 
     private final LabRepository labRepository;
-    private final UserRepository userRepository;
+
     private final CourseUserRepository courseUserRepository;
     private final UserLabSessionRepository userLabSessionRepository;
 
@@ -37,11 +36,10 @@ public class LabSessionService {
          try {
              Lab lab = labRepository.findById(labId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Lab với ID: " + labId));
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy User với ID: " + userId));
+       
         CourseLab courseLab = courseLabRepository.findByLabId(labId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy CourseLab với Lab ID: " + labId));
-        boolean isEnrolled = courseUserRepository.existsByUserAndCourseId(user, courseLab.getCourse());
+        boolean isEnrolled = courseUserRepository.existsByUserIdAndCourse(userId, courseLab.getCourse());
         if (!isEnrolled) {
             throw new AccessDeniedException("Người dùng chưa đăng ký khóa học này.");
         }
@@ -57,7 +55,7 @@ public class LabSessionService {
         session.setLab(lab);
         session.setSetupStartedAt(LocalDateTime.now());
         session.setStatus("PENDING");
-        CourseUser courseUser = courseUserRepository.findByUserAndCourse(user, courseLab.getCourse())
+        CourseUser courseUser = courseUserRepository.findByUserAndCourse(userId, courseLab.getCourse())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bản ghi đăng ký khóa học (CourseUser) tương ứng."));
         session.setCourseUser(courseUser);
 

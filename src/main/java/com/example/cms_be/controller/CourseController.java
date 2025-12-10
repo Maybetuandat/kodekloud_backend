@@ -1,28 +1,20 @@
 package com.example.cms_be.controller;
-
 import com.example.cms_be.dto.CourseDetailResponse;
 import com.example.cms_be.dto.course.CreateCourseRequest;
-
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RestController;
-
 import com.example.cms_be.model.Course;
 import com.example.cms_be.model.CourseLab;
 import com.example.cms_be.model.CourseUser;
 import com.example.cms_be.model.Lab;
-import com.example.cms_be.model.User;
 import com.example.cms_be.service.CourseLabService;
 import com.example.cms_be.service.CourseService;
 import com.example.cms_be.service.CourseUserService;
 import com.example.cms_be.service.LabService;
-import com.example.cms_be.service.UserService;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,12 +23,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-
-
 @RestController
 @Slf4j
 @RequiredArgsConstructor
@@ -47,7 +36,7 @@ public class CourseController {
     private final LabService labService;
     private final CourseLabService courseLabService;
     private final CourseUserService courseUserService;
-    private final UserService userService;
+    
 
     @GetMapping("")
     public ResponseEntity<?> getAllCourses(
@@ -108,65 +97,65 @@ public class CourseController {
     
     
 
-    @GetMapping("/{courseId}/users")
-    public ResponseEntity<?> getUsersByCourse(
-            @RequestParam(name = "page", defaultValue = "1") int page,
-            @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
-            @PathVariable Integer courseId,
-            @RequestParam(required = false) Boolean isActive,
-            @RequestParam(required = false) String search
-    ) {
-        try {
-            if(page > 0){
-                page = page - 1;
-            }
-            Pageable pageable = PageRequest.of(page, pageSize);
-            Page<User> userPage = userService.getUsersByCourseId(courseId, search, isActive, pageable);
-            Map<String, Object> response = new HashMap<>();
-            response.put("data", userPage.getContent());
-            response.put("currentPage", userPage.getNumber()  + 1);
-            response.put("totalItems", userPage.getTotalElements());
-            response.put("totalPages", userPage.getTotalPages());
-            response.put("hasNext", userPage.hasNext());
-            response.put("hasPrevious", userPage.hasPrevious());
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("Error getting users by course id: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
+    // @GetMapping("/{courseId}/users")
+    // public ResponseEntity<?> getUsersByCourse(
+    //         @RequestParam(name = "page", defaultValue = "1") int page,
+    //         @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
+    //         @PathVariable Integer courseId,
+    //         @RequestParam(required = false) Boolean isActive,
+    //         @RequestParam(required = false) String search
+    // ) {
+    //     try {
+    //         if(page > 0){
+    //             page = page - 1;
+    //         }
+    //         Pageable pageable = PageRequest.of(page, pageSize);
+    //         Page<User> userPage = userService.getUsersByCourseId(courseId, search, isActive, pageable);
+    //         Map<String, Object> response = new HashMap<>();
+    //         response.put("data", userPage.getContent());
+    //         response.put("currentPage", userPage.getNumber()  + 1);
+    //         response.put("totalItems", userPage.getTotalElements());
+    //         response.put("totalPages", userPage.getTotalPages());
+    //         response.put("hasNext", userPage.hasNext());
+    //         response.put("hasPrevious", userPage.hasPrevious());
+    //         return ResponseEntity.ok(response);
+    //     } catch (Exception e) {
+    //         log.error("Error getting users by course id: {}", e.getMessage());
+    //         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    //     }
+    // }
     
 
 
-     @GetMapping("/{courseId}/users/not-in-course")
-    public ResponseEntity<?> getUsersNotInCourse(
-            @RequestParam(name = "page", defaultValue = "1") int page,
-            @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) Boolean isActive,
-            @PathVariable Integer courseId
-    ) {
-        try {
-            if(page > 0){
-                page = page - 1;
-            }
-            Pageable pageable = PageRequest.of(page, pageSize);
-            Page<User> userPage = userService.getUsersNotInCourse(courseId, search, isActive, pageable);
+    //  @GetMapping("/{courseId}/users/not-in-course")
+    // public ResponseEntity<?> getUsersNotInCourse(
+    //         @RequestParam(name = "page", defaultValue = "1") int page,
+    //         @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
+    //         @RequestParam(required = false) String search,
+    //         @RequestParam(required = false) Boolean isActive,
+    //         @PathVariable Integer courseId
+    // ) {
+    //     try {
+    //         if(page > 0){
+    //             page = page - 1;
+    //         }
+    //         Pageable pageable = PageRequest.of(page, pageSize);
+    //         Page<User> userPage = userService.getUsersNotInCourse(courseId, search, isActive, pageable);
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("data", userPage.getContent());
-            response.put("currentPage", userPage.getNumber() + 1);
-            response.put("totalItems", userPage.getTotalElements());
-            response.put("totalPages", userPage.getTotalPages());
-            response.put("hasNext", userPage.hasNext());
-            response.put("hasPrevious", userPage.hasPrevious());
+    //         Map<String, Object> response = new HashMap<>();
+    //         response.put("data", userPage.getContent());
+    //         response.put("currentPage", userPage.getNumber() + 1);
+    //         response.put("totalItems", userPage.getTotalElements());
+    //         response.put("totalPages", userPage.getTotalPages());
+    //         response.put("hasNext", userPage.hasNext());
+    //         response.put("hasPrevious", userPage.hasPrevious());
 
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("Error getting users not in course: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
+    //         return ResponseEntity.ok(response);
+    //     } catch (Exception e) {
+    //         log.error("Error getting users not in course: {}", e.getMessage());
+    //         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    //     }
+    // }
     @GetMapping("/{courseId}/labs")
     public ResponseEntity<?> getLabsByCourse(
             @RequestParam(name = "page", defaultValue = "1") int page,

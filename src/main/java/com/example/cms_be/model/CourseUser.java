@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.FetchType;
@@ -31,9 +32,8 @@ public class CourseUser {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    private User user;
+    @Column(name = "user_id", nullable = false)
+    private Integer userId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id")
