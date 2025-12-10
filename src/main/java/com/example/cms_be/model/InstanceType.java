@@ -43,8 +43,6 @@ public class InstanceType {
     private String backingImage;
 
 
-    @Column(name = "backing_image", nullable =  false)
-    private String backingImage;
 
     @JsonIgnore
     @OneToMany(mappedBy = "instanceType", cascade = CascadeType.ALL, orphanRemoval = true)
