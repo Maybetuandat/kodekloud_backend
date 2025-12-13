@@ -4,6 +4,8 @@ import org.springframework.stereotype.Service;
 import com.example.cms_be.model.CourseUser;
 import com.example.cms_be.repository.CourseRepository;
 import com.example.cms_be.repository.CourseUserRepository;
+import com.example.cms_be.repository.UserReplicaRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 @Slf4j
@@ -12,13 +14,17 @@ import lombok.extern.slf4j.Slf4j;
 public class CourseUserService {
     private final CourseRepository courseRepository;
     private final CourseUserRepository courseUserRepository;
+    private final UserReplicaRepository userReplicaRepository;
     public CourseUser createEnrollment(Integer courseId, Integer userId) {
        try {
          var course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new RuntimeException("Course not found with id: " + courseId));
         var courseUser = new CourseUser();
         courseUser.setCourse(course);
-        courseUser.setUserId(userId);
+
+        var user = userReplicaRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+        courseUser.setUserReplica(user);
 
         return courseUserRepository.save(courseUser);
        } catch (Exception e) {
@@ -27,7 +33,7 @@ public class CourseUserService {
     }
     public void removeEnrollment(Integer courseId, Integer userId) {
        try {
-         var courseUser = courseUserRepository.findByCourseIdAndUserId(courseId, userId)
+         var courseUser = courseUserRepository.findByCourseIdAndUserReplicaId(courseId, userId)
                 .orElseThrow(() -> new RuntimeException("Enrollment not found for course id: " + courseId + " and user id: " + userId));
 
         courseUserRepository.delete(courseUser);
@@ -43,7 +49,10 @@ public class CourseUserService {
         List<CourseUser> enrollments = userIds.stream().map(userId -> {
             var courseUser = new CourseUser();
             courseUser.setCourse(course);
-            courseUser.setUserId(userId);
+            
+            var user = userReplicaRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+            courseUser.setUserReplica(user);
             return courseUser;
         }).toList();
         return courseUserRepository.saveAll(enrollments);
@@ -53,7 +62,7 @@ public class CourseUserService {
     }
     public void removeUserFromCourse(Integer courseId, Integer userId) {
        try {
-         var courseUser = courseUserRepository.findByCourseIdAndUserId(courseId, userId)
+         var courseUser = courseUserRepository.findByCourseIdAndUserReplicaId(courseId, userId)
                 .orElseThrow(() -> new RuntimeException("Enrollment not found for course id: " + courseId + " and user id: " + userId));
         courseUserRepository.delete(courseUser);
        } catch (Exception e) {

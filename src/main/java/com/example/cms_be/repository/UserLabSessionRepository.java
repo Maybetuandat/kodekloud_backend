@@ -11,11 +11,15 @@ import java.util.Optional;
 
 @Repository
 public interface UserLabSessionRepository extends JpaRepository<UserLabSession, Integer> {
-    @Query("SELECT uls FROM UserLabSession uls " +
-            "WHERE uls.courseUser.userId = :userId " +
-            "AND uls.lab.id = :labId " +
-            "AND uls.status IN :statuses " +
-            "ORDER BY uls.createdAt DESC")
+
+    @Query("""
+        SELECT uls
+        FROM UserLabSession uls
+        WHERE uls.courseUser.userReplica.id = :userId
+          AND uls.lab.id = :labId
+          AND uls.status IN :statuses
+        ORDER BY uls.createdAt DESC
+    """)
     Optional<UserLabSession> findActiveSessionByUserAndLab(
             @Param("userId") Integer userId,
             @Param("labId") Integer labId,

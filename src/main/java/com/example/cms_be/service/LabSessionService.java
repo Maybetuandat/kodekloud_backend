@@ -24,6 +24,7 @@ import java.util.Optional;
 public class LabSessionService {
 
     private final LabRepository labRepository;
+    private final UserReplicaRepository userReplicaRepository;
     private final CourseUserRepository courseUserRepository;
     private final UserLabSessionRepository userLabSessionRepository;
     private final CourseLabRepository courseLabRepository;
@@ -38,7 +39,10 @@ public class LabSessionService {
         CourseLab courseLab = courseLabRepository.findByLabId(labId)
             .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy CourseLab với Lab ID: " + labId));
         
-        boolean isEnrolled = courseUserRepository.existsByUserIdAndCourse(userId, courseLab.getCourse());
+        UserReplica user = userReplicaRepository.findById(userId)
+            .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy User với ID: " + userId));
+
+        boolean isEnrolled = courseUserRepository.existsByUserReplicaAndCourse(user, courseLab.getCourse());
         if (!isEnrolled) {
             throw new AccessDeniedException("Người dùng chưa đăng ký khóa học này.");
         }
@@ -54,7 +58,10 @@ public class LabSessionService {
         session.setLab(lab);
         session.setSetupStartedAt(LocalDateTime.now());
         session.setStatus("PENDING");
-        CourseUser courseUser = courseUserRepository.findByUserAndCourse(userId, courseLab.getCourse())
+
+
+
+        CourseUser courseUser = courseUserRepository.findByUserReplicaAndCourse(user, courseLab.getCourse())
             .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bản ghi đăng ký khóa học"));
         session.setCourseUser(courseUser);
 
