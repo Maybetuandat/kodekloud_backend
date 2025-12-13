@@ -1,18 +1,18 @@
 package com.example.cms_be.service;
 
+
+import com.example.cms_be.dto.kafka.LabProvisionRequest;
+import com.example.cms_be.kafka.LabProvisionProducer;
 import com.example.cms_be.model.*;
-import com.example.cms_be.repository.CourseLabRepository;
-import com.example.cms_be.repository.CourseUserRepository;
-import com.example.cms_be.repository.LabRepository;
-import com.example.cms_be.repository.UserLabSessionRepository;
-import io.kubernetes.client.openapi.ApiException;
+import com.example.cms_be.repository.*;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
 import java.nio.file.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,30 +24,29 @@ import java.util.Optional;
 public class LabSessionService {
 
     private final LabRepository labRepository;
-
     private final CourseUserRepository courseUserRepository;
     private final UserLabSessionRepository userLabSessionRepository;
-
-    private final LabOrchestrationService orchestrationService;
     private final CourseLabRepository courseLabRepository;
+    private final LabProvisionProducer labProvisionProducer;
+    private final ObjectMapper objectMapper;
 
     @Transactional
-    public UserLabSession createAndStartSession(Integer labId, Integer userId) throws IOException, ApiException {
-         try {
-             Lab lab = labRepository.findById(labId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Lab với ID: " + labId));
-       
+    public UserLabSession createAndStartSession(Integer labId, Integer userId) throws Exception {
+        Lab lab = labRepository.findById(labId)
+            .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Lab với ID: " + labId));
+   
         CourseLab courseLab = courseLabRepository.findByLabId(labId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy CourseLab với Lab ID: " + labId));
+            .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy CourseLab với Lab ID: " + labId));
+        
         boolean isEnrolled = courseUserRepository.existsByUserIdAndCourse(userId, courseLab.getCourse());
         if (!isEnrolled) {
             throw new AccessDeniedException("Người dùng chưa đăng ký khóa học này.");
         }
 
-        List<String> activeStatuses = List.of("PENDING", "RUNNING");
+        List<String> activeStatuses = List.of("PENDING", "RUNNING", "STARTING", "SETTING_UP");
         Optional<UserLabSession> existingSession = userLabSessionRepository.findActiveSessionByUserAndLab(userId, labId, activeStatuses);
         if (existingSession.isPresent()) {
-            log.info("User {} already has an active session for lab {}. Returning existing session.", userId, labId);
+            log.info("User {} already has an active session for lab {}", userId, labId);
             return existingSession.get();
         }
 
@@ -56,38 +55,49 @@ public class LabSessionService {
         session.setSetupStartedAt(LocalDateTime.now());
         session.setStatus("PENDING");
         CourseUser courseUser = courseUserRepository.findByUserAndCourse(userId, courseLab.getCourse())
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bản ghi đăng ký khóa học (CourseUser) tương ứng."));
+            .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bản ghi đăng ký khóa học"));
         session.setCourseUser(courseUser);
 
         UserLabSession savedSession = userLabSessionRepository.save(session);
         log.info("Created UserLabSession {} for user {}", savedSession.getId(), userId);
 
-        
-        orchestrationService.provisionAndSetupLabWithEagerLoading(savedSession);
+        LabProvisionRequest provisionRequest = new LabProvisionRequest(
+            savedSession.getId(),
+            lab.getId(),
+            userId,
+            "vm-" + savedSession.getId(),
+            lab.getNamespace(),
+            lab.getInstanceType().getBackingImage(),
+            lab.getInstanceType().getCpuCores(),
+            lab.getInstanceType().getMemoryGb(),
+            lab.getInstanceType().getStorageGb(),
+            objectMapper.writeValueAsString(lab.getSetupSteps())
+        );
+
+        labProvisionProducer.sendProvisionRequest(provisionRequest);
+        log.info("Sent provision request to infrastructure service for session {}", savedSession.getId());
 
         return savedSession;
-         } catch (Exception e) {
-            throw new RuntimeException("Lỗi khi tạo và khởi động phiên lab: " + e.getMessage(), e);
-         }
     }
 
     @Transactional 
     public void submitSession(Integer labSessionId) {
-        try {
-            log.info("Submitting session {}...", labSessionId);
+        log.info("Submitting session {}...", labSessionId);
 
         UserLabSession session = userLabSessionRepository.findById(labSessionId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy UserLabSession với ID: " + labSessionId));
+            .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy UserLabSession với ID: " + labSessionId));
 
         session.setStatus("COMPLETED");
         session.setExpiresAt(LocalDateTime.now());
         userLabSessionRepository.save(session);
-        log.info("Session {} status updated to COMPLETED.", labSessionId);
+        log.info("Session {} status updated to COMPLETED", labSessionId);
 
-        orchestrationService.cleanupLabResources(session);
-        } catch (Exception e) {
-            throw new RuntimeException("Lỗi khi gửi phiên lab: " + e.getMessage(), e);
-        }
+        LabProvisionRequest cleanupRequest = new LabProvisionRequest();
+        cleanupRequest.setSessionId(session.getId());
+        cleanupRequest.setVmName("vm-" + session.getId());
+        cleanupRequest.setNamespace(session.getLab().getNamespace());
+        
+        labProvisionProducer.sendProvisionRequest(cleanupRequest);
     }
 
     public Optional<UserLabSession> findById(Integer labSessionId) {
