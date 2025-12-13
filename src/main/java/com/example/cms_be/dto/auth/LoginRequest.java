@@ -1,6 +1,5 @@
-package com.example.cms_be.dto;
+package com.example.cms_be.dto.auth;
 
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 

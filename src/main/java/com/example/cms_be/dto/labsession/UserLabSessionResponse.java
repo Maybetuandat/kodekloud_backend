@@ -1,4 +1,4 @@
-package com.example.cms_be.dto;
+package com.example.cms_be.dto.labsession;
 
 import java.time.LocalDateTime;
 

@@ -40,6 +40,9 @@ public class UserLabSession {
     @Column(name = "expires_at")
     private LocalDateTime expiresAt;
 
+    @Column(name = "submited_at")
+    private LocalDateTime submitedAt;
+
     @Column(name = "pod_name")
     private String podName;
 

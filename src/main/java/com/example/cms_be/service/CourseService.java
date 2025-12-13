@@ -30,16 +30,15 @@ public class CourseService {
     private final CourseRepository courseRepository;
     private final SubjectRepository subjectRepository;
 
-    public Page<Course> getAllCourses(Pageable pageable, Boolean isActive, String keyword, String code)
+    public Page<Course> getAllCourses(Pageable pageable, Boolean isActive, String keyword, String code, Integer subjectId)
     {
         try {
-            return courseRepository.findWithFilters(keyword, isActive, code, pageable);
+            return courseRepository.findWithFilters(keyword, isActive, code, subjectId, pageable);
         } catch (Exception e) {
             log.error("Error fetching courses with filters: {}", e.getMessage());
             throw new RuntimeException("Failed to fetch courses", e);
         }
     }
-
    
     public Course createCourse(CreateCourseRequest courseRequest) {
 

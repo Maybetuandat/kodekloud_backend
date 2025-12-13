@@ -19,11 +19,13 @@ public interface CourseRepository extends JpaRepository<Course, Integer> {
            "LEFT JOIN c.subject sub " +
            "WHERE (:isActive IS NULL OR c.isActive = :isActive) " +
            "AND (:keyword IS NULL OR :keyword = '' OR LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-           "AND (:code IS NULL OR :code = '' OR sub.code = :code)")
+            "AND (:code IS NULL OR :code = '' OR sub.code = :code) " +
+            "AND (:subjectId IS NULL OR sub.id = :subjectId)")
     Page<Course> findWithFilters(
             @Param("keyword") String keyword,
             @Param("isActive") Boolean isActive,
             @Param("code") String code,
+            @Param("subjectId") Integer subjectId,
             Pageable pageable
     );
 

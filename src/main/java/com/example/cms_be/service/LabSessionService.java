@@ -1,5 +1,6 @@
 package com.example.cms_be.service;
 
+import com.example.cms_be.dto.labsession.LabSessionHistoryResponse;
 import com.example.cms_be.model.*;
 import com.example.cms_be.repository.CourseLabRepository;
 import com.example.cms_be.repository.CourseUserRepository;
@@ -11,6 +12,8 @@ import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -37,37 +40,38 @@ public class LabSessionService {
          try {
              Lab lab = labRepository.findById(labId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Lab với ID: " + labId));
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy User với ID: " + userId));
-        CourseLab courseLab = courseLabRepository.findByLabId(labId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy CourseLab với Lab ID: " + labId));
-        boolean isEnrolled = courseUserRepository.existsByUserAndCourseId(user, courseLab.getCourse());
-        if (!isEnrolled) {
-            throw new AccessDeniedException("Người dùng chưa đăng ký khóa học này.");
-        }
+             User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy User với ID: " + userId));
+             CourseLab courseLab = courseLabRepository.findByLabId(labId)
+                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy CourseLab với Lab ID: " + labId));
+             boolean isEnrolled = courseUserRepository.existsByUserAndCourseId(user, courseLab.getCourse());
+             if (!isEnrolled) {
+                 throw new AccessDeniedException("Người dùng chưa đăng ký khóa học này.");
+             }
 
-        List<String> activeStatuses = List.of("PENDING", "RUNNING");
-        Optional<UserLabSession> existingSession = userLabSessionRepository.findActiveSessionByUserAndLab(userId, labId, activeStatuses);
-        if (existingSession.isPresent()) {
-            log.info("User {} already has an active session for lab {}. Returning existing session.", userId, labId);
-            return existingSession.get();
-        }
+             List<String> activeStatuses = List.of("PENDING", "RUNNING");
+             Optional<UserLabSession> existingSession = userLabSessionRepository.findActiveSessionByUserAndLab(userId, labId, activeStatuses);
+             if (existingSession.isPresent()) {
+                 log.info("User {} already has an active session for lab {}. Returning existing session.", userId, labId);
+                 return existingSession.get();
+             }
 
-        UserLabSession session = new UserLabSession();
-        session.setLab(lab);
-        session.setSetupStartedAt(LocalDateTime.now());
-        session.setStatus("PENDING");
-        CourseUser courseUser = courseUserRepository.findByUserAndCourse(user, courseLab.getCourse())
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bản ghi đăng ký khóa học (CourseUser) tương ứng."));
-        session.setCourseUser(courseUser);
+             UserLabSession session = new UserLabSession();
+             session.setLab(lab);
+             session.setSetupStartedAt(LocalDateTime.now());
+             session.setExpiresAt(LocalDateTime.now().plusMinutes(lab.getEstimatedTime()));
+             session.setStatus("PENDING");
+             CourseUser courseUser = courseUserRepository.findByUserAndCourse(user, courseLab.getCourse())
+                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bản ghi đăng ký khóa học (CourseUser) tương ứng."));
+             session.setCourseUser(courseUser);
 
-        UserLabSession savedSession = userLabSessionRepository.save(session);
-        log.info("Created UserLabSession {} for user {}", savedSession.getId(), userId);
+             UserLabSession savedSession = userLabSessionRepository.save(session);
+             log.info("Created UserLabSession {} for user {}", savedSession.getId(), userId);
 
-        
-        orchestrationService.provisionAndSetupLabWithEagerLoading(savedSession);
 
-        return savedSession;
+             orchestrationService.provisionAndSetupLabWithEagerLoading(savedSession);
+
+             return savedSession;
          } catch (Exception e) {
             throw new RuntimeException("Lỗi khi tạo và khởi động phiên lab: " + e.getMessage(), e);
          }
@@ -82,7 +86,7 @@ public class LabSessionService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy UserLabSession với ID: " + labSessionId));
 
         session.setStatus("COMPLETED");
-        session.setExpiresAt(LocalDateTime.now());
+        session.setSubmitedAt(LocalDateTime.now());
         userLabSessionRepository.save(session);
         log.info("Session {} status updated to COMPLETED.", labSessionId);
 
@@ -94,5 +98,16 @@ public class LabSessionService {
 
     public Optional<UserLabSession> findById(Integer labSessionId) {
         return userLabSessionRepository.findById(labSessionId);
+    }
+
+    public Page<LabSessionHistoryResponse> getListLabHistory(Integer userId, Pageable pageable) {
+        return userLabSessionRepository.findHistoryByUserId(userId, pageable)
+                .map(session -> new LabSessionHistoryResponse(
+                        session.getId(),
+                        session.getLab().getTitle(), // Cẩn thận Lazy Load chỗ này nếu chưa fetch Lab
+                        session.getStatus(),
+                        session.getSetupStartedAt(),
+                        session.getSetupCompletedAt()
+                ));
     }
 }

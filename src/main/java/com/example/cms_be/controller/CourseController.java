@@ -55,7 +55,8 @@ public class CourseController {
             @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Boolean isActive,
-            @RequestParam(required = false) String code
+            @RequestParam(required = false) String code,
+            @RequestParam(name = "subject", required = false) Integer subjectId
     ) {
         try {
             int pageNumber = page > 0 ? page - 1 : 0;
@@ -67,7 +68,7 @@ public class CourseController {
                 search = search.trim(); 
             }
 
-            Page<Course> coursePage = courseService.getAllCourses(pageable, isActive, search, code);
+            Page<Course> coursePage = courseService.getAllCourses(pageable, isActive, search, code, subjectId);
 
             Map<String, Object> response = new HashMap<>();
             response.put("data", coursePage.getContent());
@@ -105,8 +106,8 @@ public class CourseController {
         return ResponseEntity.ok(courseDetail);
     }
 
-    
-    
+
+
 
     @GetMapping("/{courseId}/users")
     public ResponseEntity<?> getUsersByCourse(
