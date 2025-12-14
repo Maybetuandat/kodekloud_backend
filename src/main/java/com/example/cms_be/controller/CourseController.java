@@ -132,7 +132,7 @@ public class CourseController {
 
 
      @GetMapping("/{courseId}/users/not-in-course")
-    public ResponseEntity<?> getUsersNotInCourse(
+    public ResponseEntity<?> getStudentsNotInCourse(
             @RequestParam(name = "page", defaultValue = "1") int page,
             @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
             @RequestParam(required = false) String search,
@@ -144,7 +144,8 @@ public class CourseController {
                 page = page - 1;
             }
             Pageable pageable = PageRequest.of(page, pageSize);
-            Page<UserReplica> userPage = userReplicaService.getUsersNotInCourse(courseId, search, isActive, pageable);
+            String role = "ROLE_STUDENT";
+            Page<UserReplica> userPage = userReplicaService.getStudentsNotInCourse(courseId,role, search, isActive, pageable);
 
             Map<String, Object> response = new HashMap<>();
             response.put("data", userPage.getContent());

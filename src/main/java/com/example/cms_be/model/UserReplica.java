@@ -39,6 +39,8 @@ public class UserReplica {
     private Boolean isActive;
 
 
+    @Column(name="role")
+    private String role;
     @JsonIgnore
     @OneToMany(mappedBy = "userReplica", fetch = FetchType.LAZY)
     private Set<CourseUser> courseUsers;

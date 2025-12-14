@@ -24,10 +24,11 @@ public class UserReplicaService {
             log.error("Error fetching users by course ID {}: {}", courseId, e.getMessage());
             throw new RuntimeException("Failed to fetch users by course ID", e);
         }
-    }
-      public Page<UserReplica> getUsersNotInCourse(Integer courseId,String search, Boolean isActive,  Pageable pageable) {
+        }
+        public Page<UserReplica> getStudentsNotInCourse(Integer courseId,String role, String search, Boolean isActive,  Pageable pageable) {
         try {
-            Page<UserReplica> usersInCourse = userReplicaRepository.findUsersNotInCourseId(courseId, search, isActive, pageable);
+            
+            Page<UserReplica> usersInCourse = userReplicaRepository.findUsersNotInCourseId(courseId, role,search, isActive, pageable);
             return usersInCourse;
         } catch (Exception e) {
             log.error("Error fetching users by course ID {}: {}", courseId, e.getMessage());
