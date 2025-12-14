@@ -6,7 +6,6 @@ import com.example.cms_be.repository.CourseUserRepository;
 import com.example.cms_be.repository.LabRepository;
 import com.example.cms_be.repository.UserLabSessionRepository;
 import com.example.cms_be.repository.UserRepository;
-import io.kubernetes.client.openapi.ApiException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -29,11 +28,11 @@ public class LabSessionService {
     private final CourseUserRepository courseUserRepository;
     private final UserLabSessionRepository userLabSessionRepository;
 
-    private final LabOrchestrationService orchestrationService;
+    // private final LabOrchestrationService orchestrationService;
     private final CourseLabRepository courseLabRepository;
 
     @Transactional
-    public UserLabSession createAndStartSession(Integer labId, Integer userId) throws IOException, ApiException {
+    public UserLabSession createAndStartSession(Integer labId, Integer userId) throws IOException {
          try {
              Lab lab = labRepository.findById(labId)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy Lab với ID: " + labId));
@@ -65,7 +64,7 @@ public class LabSessionService {
         log.info("Created UserLabSession {} for user {}", savedSession.getId(), userId);
 
         
-        orchestrationService.provisionAndSetupLabWithEagerLoading(savedSession);
+        // orchestrationService.provisionAndSetupLabWithEagerLoading(savedSession);
 
         return savedSession;
          } catch (Exception e) {
@@ -86,7 +85,7 @@ public class LabSessionService {
         userLabSessionRepository.save(session);
         log.info("Session {} status updated to COMPLETED.", labSessionId);
 
-        orchestrationService.cleanupLabResources(session);
+        // orchestrationService.cleanupLabResources(session);
         } catch (Exception e) {
             throw new RuntimeException("Lỗi khi gửi phiên lab: " + e.getMessage(), e);
         }

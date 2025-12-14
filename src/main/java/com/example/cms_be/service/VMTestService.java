@@ -1,21 +1,19 @@
 package com.example.cms_be.service;
 
+import com.example.cms_be.dto.lab.InstanceTypeDTO;
+import com.example.cms_be.dto.lab.LabTestRequest;
 import com.example.cms_be.dto.lab.LabTestResponse;
+import com.example.cms_be.kafka.LabTestRequestProducer;
 import com.example.cms_be.model.Lab;
 import com.example.cms_be.repository.LabRepository;
-import com.example.cms_be.ultil.PodLogWebSocketHandler;
-import com.example.cms_be.ultil.SocketConnectionInfo;
-//import com.example.cms_be.ultil.VMTestAsyncExecutor;
-
-import com.example.cms_be.ultil.VMTestAsyncExecutor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import jakarta.persistence.EntityNotFoundException;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @Slf4j
@@ -23,19 +21,17 @@ import java.util.concurrent.ConcurrentHashMap;
 public class VMTestService {
 
     private final LabRepository labRepository;
-    private final VMTestAsyncExecutor asyncExecutor;
-    private final PodLogWebSocketHandler webSocketHandler;
-    private final SocketConnectionInfo socketConnectionInfo;
+    private final LabTestRequestProducer labTestRequestProducer;
 
-    private final ConcurrentHashMap<String, LabTestResponse> activeTests = new ConcurrentHashMap<>();
+    @Value("${infrastructure.service.websocket.url}")
+    private String infrastructureWebSocketUrl;
 
     public LabTestResponse startLabTest(Integer labId) {
-        log.info(" [SYNC] Starting lab test for labId: {}", labId);
+        log.info("[SYNC] Starting lab test for labId: {}", labId);
 
         Lab lab = labRepository.findById(labId)
                 .orElseThrow(() -> new EntityNotFoundException("Lab not found with ID: " + labId));
 
-        // Force loading instancetype for hibernate lazy loading
         if (lab.getInstanceType() != null) {
             lab.getInstanceType().getId();
             lab.getInstanceType().getStorageGb();
@@ -43,17 +39,30 @@ public class VMTestService {
             lab.getInstanceType().getCpuCores();
         }
 
-
         String testId = UUID.randomUUID().toString();
         String timestamp = String.valueOf(System.currentTimeMillis() / 1000);
         String testVmName = String.format("test-vm-%d-%s", lab.getId(), timestamp);
 
-        log.info(" Test ID: {}, Test VM Name: {}", testId, testVmName);
+        log.info("Test ID: {}, Test VM Name: {}", testId, testVmName);
 
+        String wsUrl = String.format("%s?podName=%s", infrastructureWebSocketUrl, testVmName);
 
-        Map<String, Object> connectionInfo = socketConnectionInfo.createWebSocketConnectionInfo(testVmName);
-        String wsUrl = (String) connectionInfo.get("url");
+        InstanceTypeDTO instanceTypeDTO = new InstanceTypeDTO(
+            lab.getInstanceType().getBackingImage(),
+            lab.getInstanceType().getCpuCores(),
+            lab.getInstanceType().getMemoryGb(),
+            lab.getInstanceType().getStorageGb()
+        );
 
+        LabTestRequest request = new LabTestRequest(
+            lab.getId(),
+            testVmName,
+            lab.getNamespace(),
+            lab.getTitle(),
+            instanceTypeDTO
+        );
+        
+        labTestRequestProducer.sendLabTestRequest(request);
 
         LabTestResponse response = LabTestResponse.builder()
                 .testId(testId)
@@ -61,42 +70,13 @@ public class VMTestService {
                 .testVmName(testVmName)
                 .status("WAITING_CONNECTION")
                 .websocketUrl(wsUrl)
-                .connectionInfo(connectionInfo)
+                .connectionInfo(Map.of(
+                    "url", wsUrl,
+                    "podName", testVmName
+                ))
                 .build();
 
-        activeTests.put(testId, response);
-
-
-        log.info(" Calling asyncExecutor.executeTestAsync()");
-        asyncExecutor.executeTestAsync(
-                testId,
-                lab,
-                lab.getInstanceType(),
-                testVmName,
-                lab.getNamespace(),
-                1800,
-                activeTests
-        );
-
-        log.info(" Test request accepted. Client should connect to WebSocket: {}", wsUrl);
+        log.info("Test request sent to infrastructure service. WebSocket URL: {}", wsUrl);
         return response;
-    }
-
-    public LabTestResponse getTestStatus(String testId) {
-        LabTestResponse response = activeTests.get(testId);
-        if (response == null) {
-            throw new EntityNotFoundException("Test not found with ID: " + testId);
-        }
-        return response;
-    }
-
-    public void cancelTest(String testId) {
-        LabTestResponse response = activeTests.get(testId);
-        if (response != null) {
-            response.setStatus("CANCELLED");
-            webSocketHandler.broadcastLogToPod(response.getTestVmName(), "warning",
-                    "⚠️ Test cancelled by user",
-                    Map.of("testId", testId));
-        }
     }
 }
