@@ -38,9 +38,9 @@ public class UserService {
             throw new RuntimeException("Failed to fetch users by course ID", e);
         }
     }
-      public Page<User> getUsersNotInCourse(Integer courseId,String search, Boolean isActive,  Pageable pageable) {
+      public Page<User> getUsersNotInCourse(Integer courseId,String roleName, String search, Boolean isActive,  Pageable pageable) {
         try {
-            Page<User> usersInCourse = userRepository.findUsersNotInCourseId(courseId, search, isActive, pageable);
+            Page<User> usersInCourse = userRepository.findUsersNotInCourseId(courseId, roleName, search, isActive, pageable);
             return usersInCourse;
         } catch (Exception e) {
             log.error("Error fetching users by course ID {}: {}", courseId, e.getMessage());

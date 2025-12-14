@@ -151,7 +151,8 @@ public class CourseController {
                 page = page - 1;
             }
             Pageable pageable = PageRequest.of(page, pageSize);
-            Page<User> userPage = userService.getUsersNotInCourse(courseId, search, isActive, pageable);
+            String roleName = "ROLE_STUDENT";
+            Page<User> userPage = userService.getUsersNotInCourse(courseId, roleName, search, isActive, pageable);
 
             Map<String, Object> response = new HashMap<>();
             response.put("data", userPage.getContent());
