@@ -3,7 +3,7 @@ package com.example.cms_be.controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-
+import com.example.cms_be.dto.user.UserDTO;
 import com.example.cms_be.model.User;
 import com.example.cms_be.service.UserService;
 
@@ -45,7 +45,7 @@ public class UserController {
                 page = page - 1;
             }
             Pageable pageable = PageRequest.of(page, pageSize);
-            Page<User> userPage = userService.getAllUsersWithPagination(pageable, isActive, search);
+            Page<UserDTO> userPage = userService.getAllUsersWithPagination(pageable, isActive, search);
             Map<String, Object> response = Map.of(
                 "data", userPage.getContent(),
                 "currentPage", userPage.getNumber() + 1,

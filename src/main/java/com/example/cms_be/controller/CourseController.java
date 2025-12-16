@@ -2,6 +2,7 @@ package com.example.cms_be.controller;
 
 import com.example.cms_be.dto.CourseDetailResponse;
 import com.example.cms_be.dto.course.CreateCourseRequest;
+import com.example.cms_be.dto.user.UserDTO;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RestController;
@@ -121,7 +122,7 @@ public class CourseController {
                 page = page - 1;
             }
             Pageable pageable = PageRequest.of(page, pageSize);
-            Page<User> userPage = userService.getUsersByCourseId(courseId, search, isActive, pageable);
+            Page<UserDTO> userPage = userService.getUsersByCourseId(courseId, search, isActive, pageable);
             Map<String, Object> response = new HashMap<>();
             response.put("data", userPage.getContent());
             response.put("currentPage", userPage.getNumber()  + 1);
@@ -152,7 +153,7 @@ public class CourseController {
             }
             Pageable pageable = PageRequest.of(page, pageSize);
             String roleName = "ROLE_STUDENT";
-            Page<User> userPage = userService.getUsersNotInCourse(courseId, roleName, search, isActive, pageable);
+            Page<UserDTO> userPage = userService.getUsersNotInCourse(courseId, roleName, search, isActive, pageable);
 
             Map<String, Object> response = new HashMap<>();
             response.put("data", userPage.getContent());

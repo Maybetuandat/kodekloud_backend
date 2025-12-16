@@ -48,6 +48,8 @@ public class JwtUtils {
                     .subject(userDetails.getUsername())
                     .claim("id", userDetails.getId())
                     .claim("email", userDetails.getEmail())
+                    .claim("firstName", userDetails.getFirstName())
+                    .claim("lastName", userDetails.getLastName())
                     .claim("username", userDetails.getUsername())
                     .claim("roles", roles) // Đổi thành số nhiều cho chuẩn
                     .issuer("labplatform")

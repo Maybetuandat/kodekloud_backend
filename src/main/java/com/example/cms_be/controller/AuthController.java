@@ -1,14 +1,8 @@
 package com.example.cms_be.controller;
-
-
 import com.example.cms_be.dto.*;
-import com.example.cms_be.model.User;
-import com.example.cms_be.repository.UserRepository;
 import com.example.cms_be.security.jwt.JwtUtils;
 import com.example.cms_be.security.service.UserDetailsImpl;
-import com.example.cms_be.security.service.UserDetailsServiceImpl; // Cần import
-
-import com.example.cms_be.service.RoleService;
+import com.example.cms_be.security.service.UserDetailsServiceImpl; 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +11,6 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.text.ParseException;
@@ -33,15 +26,11 @@ import com.nimbusds.jose.JOSEException;
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
     private final UserDetailsServiceImpl userDetailsService;
-    private final RoleService roleService;
 
-    @PostMapping("/login")
+  @PostMapping("/login")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
-
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
 
@@ -52,36 +41,19 @@ public class AuthController {
         List<String> roles = userDetails.getAuthorities().stream()
                 .map(item -> item.getAuthority())
                 .collect(Collectors.toList());
+        
         return ResponseEntity.ok(new JwtResponse(
                 accessToken,
                 refreshToken,
                 userDetails.getId(),
                 userDetails.getUsername(),
                 userDetails.getEmail(),
+                userDetails.getFirstName(),
+                userDetails.getLastName(),
                 roles));
     }
 
-    @PostMapping("/signup")
-    public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
-
-        if (userRepository.existsByEmail(signUpRequest.getEmail())) {
-            return ResponseEntity
-                    .badRequest()
-                    .body(new MessageResponse("Lỗi: Email đã được sử dụng!"));
-        }
-
-        User user = new User();
-        user.setEmail(signUpRequest.getEmail());
-        user.setUsername(signUpRequest.getTen());
-
-        user.setPassword(passwordEncoder.encode(signUpRequest.getPassword()));
-
-        user.setRole(roleService.getRoleByName("ROLE_USER"));
-
-        userRepository.save(user);
-
-        return ResponseEntity.ok(new MessageResponse("Đăng ký người dùng thành công!"));
-    }
+  
 
 
     @PostMapping("/refreshtoken")

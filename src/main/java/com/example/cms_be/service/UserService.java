@@ -1,14 +1,10 @@
 package com.example.cms_be.service;
-
-import java.util.List;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
+import com.example.cms_be.dto.user.UserDTO;
 import com.example.cms_be.model.User;
 import com.example.cms_be.repository.UserRepository;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -19,29 +15,30 @@ public class UserService {
 
     private final UserRepository userRepository;
 
-
-    public Page<User> getAllUsersWithPagination(Pageable pageable, Boolean isActive, String search)
-    {
+    public Page<UserDTO> getAllUsersWithPagination(Pageable pageable, Boolean isActive, String search) {
         try {
-                    return userRepository.findWithFilters(search, isActive, pageable);
+            Page<User> userPage = userRepository.findWithFilters(search, isActive, pageable);
+            return userPage.map(this::convertToDTO);
         } catch (Exception e) {
             log.error("Error fetching users with pagination: {}", e.getMessage());
             throw new RuntimeException("Failed to fetch users", e);
         }
     }
-    public Page<User> getUsersByCourseId(Integer courseId, String search, Boolean isActive, Pageable pageable) {
+
+    public Page<UserDTO> getUsersByCourseId(Integer courseId, String search, Boolean isActive, Pageable pageable) {
         try {
             Page<User> usersInCourse = userRepository.findUsersByCourseId(courseId, search, isActive, pageable);
-            return usersInCourse;
+            return usersInCourse.map(this::convertToDTO);
         } catch (Exception e) {
             log.error("Error fetching users by course ID {}: {}", courseId, e.getMessage());
             throw new RuntimeException("Failed to fetch users by course ID", e);
         }
     }
-      public Page<User> getUsersNotInCourse(Integer courseId,String roleName, String search, Boolean isActive,  Pageable pageable) {
+
+    public Page<UserDTO> getUsersNotInCourse(Integer courseId, String roleName, String search, Boolean isActive, Pageable pageable) {
         try {
             Page<User> usersInCourse = userRepository.findUsersNotInCourseId(courseId, roleName, search, isActive, pageable);
-            return usersInCourse;
+            return usersInCourse.map(this::convertToDTO);
         } catch (Exception e) {
             log.error("Error fetching users by course ID {}: {}", courseId, e.getMessage());
             throw new RuntimeException("Failed to fetch users by course ID", e);
@@ -105,5 +102,18 @@ public class UserService {
             log.error("Error deleting user with ID {}: {}", id, e.getMessage());
             throw new RuntimeException("Failed to delete user", e);
         }
+    }
+
+    private UserDTO convertToDTO(User user) {
+        return UserDTO.builder()
+                .id(user.getId())
+                .lastName(user.getLastName())
+                .firstName(user.getFirstName())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
+                .isActive(user.getIsActive())
+                .roleName(user.getRole() != null ? user.getRole().getName() : null)
+                .build();
     }
 }
