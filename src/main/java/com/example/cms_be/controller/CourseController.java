@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -49,25 +50,24 @@ public class CourseController {
     private final CourseUserService courseUserService;
     private final UserService userService;
 
-    @GetMapping("")
+   @GetMapping("")
     public ResponseEntity<?> getAllCourses(
             @RequestParam(name = "page", defaultValue = "1") int page,
             @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Boolean isActive,
-            @RequestParam(required = false) String code
+            @RequestParam(required = false) String code,
+            @RequestHeader(value = "X-User-Id") Integer userId
     ) {
         try {
             int pageNumber = page > 0 ? page - 1 : 0;
-
-            System.err.println("Search parameter: '" + search + "'" + pageSize + " " + pageNumber + " " + isActive + " " + code);
             Pageable pageable = PageRequest.of(pageNumber, pageSize);
 
             if (search != null) {
                 search = search.trim(); 
             }
 
-            Page<Course> coursePage = courseService.getAllCourses(pageable, isActive, search, code);
+            Page<Course> coursePage = courseService.getCoursesByUser(userId, pageable, isActive, search, code);
 
             Map<String, Object> response = new HashMap<>();
             response.put("data", coursePage.getContent());
@@ -230,10 +230,13 @@ public class CourseController {
 
 
     @PostMapping("")
-        public ResponseEntity<?> createCourse(@RequestBody CreateCourseRequest courseRequest) {
+        public ResponseEntity<?> createCourse(@RequestBody CreateCourseRequest courseRequest,
+
+                    @RequestHeader(value = "X-User-Id") Integer userId
+        ) {
             log.info("Creating course: {}", courseRequest);
             try {
-                Course createdCourse = courseService.createCourse(courseRequest);
+                Course createdCourse = courseService.createCourse(courseRequest, userId);
                 return ResponseEntity.status(HttpStatus.CREATED).body(createdCourse);
             } catch (Exception e) {
                 log.error("Error creating course: {}", e.getMessage());

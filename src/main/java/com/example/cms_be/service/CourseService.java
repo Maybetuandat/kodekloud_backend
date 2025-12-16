@@ -12,8 +12,10 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
 import com.example.cms_be.model.Subject;
+import com.example.cms_be.model.User;
 import com.example.cms_be.model.Course;
 import com.example.cms_be.repository.SubjectRepository;
+import com.example.cms_be.repository.UserRepository;
 import com.example.cms_be.repository.CourseRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,8 @@ public class CourseService {
 
     private final CourseRepository courseRepository;
     private final SubjectRepository subjectRepository;
+    private final UserRepository userRepository;
+    private final CourseUserService courseUserService;
 
     public Page<Course> getAllCourses(Pageable pageable, Boolean isActive, String keyword, String code)
     {
@@ -40,8 +44,24 @@ public class CourseService {
         }
     }
 
-   
-    public Course createCourse(CreateCourseRequest courseRequest) {
+    public Page<Course> getCoursesByUser(Integer userId, Pageable pageable, Boolean isActive, String keyword, String code) {
+        try {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+            
+            String roleName = user.getRole() != null ? user.getRole().getName() : "";
+            
+            if ("ROLE_ADMIN".equals(roleName) ) {
+                return courseRepository.findWithFilters(keyword, isActive, code, pageable);
+            } else {
+                return courseRepository.findCoursesByUserId(userId, keyword, isActive, code, pageable);
+            }
+        } catch (Exception e) {
+            log.error("Error fetching courses by user: {}", e.getMessage());
+            throw new RuntimeException("Failed to fetch courses", e);
+        }
+    }
+    public Course createCourse(CreateCourseRequest courseRequest, Integer userId) {
 
         try {
             Subject subject = subjectRepository.findById(courseRequest.getSubjectId())
@@ -53,7 +73,10 @@ public class CourseService {
             course.setLevel(courseRequest.getLevel());
             course.setIsActive(courseRequest.getIsActive());
             course.setSubject(subject);    
-            return courseRepository.save(course);
+
+            Course savedCourse = courseRepository.save(course);
+              courseUserService.createEnrollment(savedCourse.getId(), userId);
+            return savedCourse;
         } catch (Exception e) {
             log.error("Error creating course: {}", e.getMessage());
             throw new RuntimeException("Failed to create course", e);
