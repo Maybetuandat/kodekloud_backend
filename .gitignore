@@ -4,7 +4,7 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 logs/
-
+.vscode
 ### STS ###
 .apt_generated
 .classpath
