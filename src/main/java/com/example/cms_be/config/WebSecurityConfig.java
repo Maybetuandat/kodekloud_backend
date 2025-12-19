@@ -64,7 +64,8 @@ public class WebSecurityConfig {
             .authorizeHttpRequests(auth ->
                     auth.requestMatchers(
                             "/ws/**",
-                            "/api/auth/**"
+                            "/api/auth/**",
+                            "/api/lab-validation/**"
                                     ).permitAll()
                             .anyRequest().authenticated()
             );

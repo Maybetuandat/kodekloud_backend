@@ -39,7 +39,7 @@ public class InstanceTypeController {
         }
     }
 
-    // @PreAuthorize("hasAuthority('CATEGORY_READ') or hasAuthority('INSTANCE_ALL')")
+    
     @GetMapping("{instanceTypeId}")
     public ResponseEntity<InstanceType> getInstanceTypeById(@PathVariable Integer instanceTypeId) {
         try {

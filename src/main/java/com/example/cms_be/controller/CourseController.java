@@ -4,14 +4,13 @@ import com.example.cms_be.dto.CourseDetailResponse;
 import com.example.cms_be.dto.course.CreateCourseRequest;
 import com.example.cms_be.dto.user.UserDTO;
 
-import org.springframework.security.access.prepost.PreAuthorize;
+
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.cms_be.model.Course;
 import com.example.cms_be.model.CourseLab;
 import com.example.cms_be.model.CourseUser;
 import com.example.cms_be.model.Lab;
-import com.example.cms_be.model.User;
 import com.example.cms_be.service.CourseLabService;
 import com.example.cms_be.service.CourseService;
 import com.example.cms_be.service.CourseUserService;
