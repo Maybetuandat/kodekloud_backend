@@ -27,8 +27,7 @@ public class LabSessionService {
     private final UserRepository userRepository;
     private final CourseUserRepository courseUserRepository;
     private final UserLabSessionRepository userLabSessionRepository;
-
-    // private final LabOrchestrationService orchestrationService;
+    private final LabOrchestrationService orchestrationService;
     private final CourseLabRepository courseLabRepository;
 
     @Transactional
@@ -63,8 +62,7 @@ public class LabSessionService {
         UserLabSession savedSession = userLabSessionRepository.save(session);
         log.info("Created UserLabSession {} for user {}", savedSession.getId(), userId);
 
-        
-        // orchestrationService.provisionAndSetupLabWithEagerLoading(savedSession);
+        orchestrationService.provisionAndSetupLabWithEagerLoading(savedSession);
 
         return savedSession;
          } catch (Exception e) {
@@ -85,7 +83,7 @@ public class LabSessionService {
         userLabSessionRepository.save(session);
         log.info("Session {} status updated to COMPLETED.", labSessionId);
 
-        // orchestrationService.cleanupLabResources(session);
+
         } catch (Exception e) {
             throw new RuntimeException("Lỗi khi gửi phiên lab: " + e.getMessage(), e);
         }
