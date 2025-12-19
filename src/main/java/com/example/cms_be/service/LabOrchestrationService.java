@@ -11,11 +11,12 @@ import com.example.cms_be.repository.LabRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -24,6 +25,9 @@ public class LabOrchestrationService {
     private final LabRepository labRepository;
     private final UserLabSessionProducer userLabSessionProducer;
     private final ObjectMapper objectMapper;
+    
+    @Value("${infrastructure.service.websocket.url}")
+    private String infrastructureWebSocketUrl;
 
     @Transactional(readOnly = true)
     public void provisionAndSetupLabWithEagerLoading(UserLabSession session) {
@@ -45,6 +49,7 @@ public class LabOrchestrationService {
                 : null;
             
             String vmName = "vm-" + session.getId();
+            String wsUrl = String.format("%s?podName=%s", infrastructureWebSocketUrl, vmName);
             
             InstanceTypeDTO instanceTypeDTO = new InstanceTypeDTO(
                 labWithSetupSteps.getInstanceType().getBackingImage(),
@@ -63,6 +68,8 @@ public class LabOrchestrationService {
                 .build();
             
             log.info("Sending user lab session request to Kafka for session {}", session.getId());
+            log.info("VM Name: {}, WebSocket URL: {}", vmName, wsUrl);
+            
             userLabSessionProducer.sendUserLabSessionRequest(request);
             
         } catch (Exception e) {

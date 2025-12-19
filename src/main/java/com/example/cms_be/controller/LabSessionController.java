@@ -1,13 +1,14 @@
 package com.example.cms_be.controller;
 import com.example.cms_be.dto.CreateLabSessionRequest;
-import com.example.cms_be.dto.UserLabSessionResponse;
+import com.example.cms_be.dto.lab.UserLabSessionResponse;
 import com.example.cms_be.model.UserLabSession;
-import com.example.cms_be.service.LabService;
 import com.example.cms_be.service.LabSessionService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,19 +23,31 @@ import java.util.Map;
 @Slf4j
 public class LabSessionController {
 
+    
     private final LabSessionService labSessionService;
-    private final LabService labService;
+    
+    @Value("${infrastructure.service.websocket.url}")
+    private String infrastructureWebSocketUrl;
 
     @PostMapping()
     public ResponseEntity<?> createLabSession(@Valid @RequestBody CreateLabSessionRequest request) {
         try {
             Integer userIdFromRequest = request.userId();
             log.warn("!!! INSECURE !!! Using userId from request body: {}", userIdFromRequest);
+            
             UserLabSession session = labSessionService.createAndStartSession(request.labId(), userIdFromRequest);
+            
+            // Tạo socket URL theo format giống VMTestService
+            String vmName = "vm-" + session.getId();
+            String socketUrl = String.format("%s?podName=%s", infrastructureWebSocketUrl, vmName);
+            
+            log.info("Created lab session {} with socket URL: {}", session.getId(), socketUrl);
+            
             UserLabSessionResponse responseDto = new UserLabSessionResponse(
                     session.getId(),
                     session.getStatus(),
-                    session.getSetupStartedAt()
+                    session.getSetupStartedAt(),
+                    socketUrl
             );
 
             return ResponseEntity.status(HttpStatus.ACCEPTED).body(responseDto);
