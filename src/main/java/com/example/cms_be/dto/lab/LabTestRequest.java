@@ -13,4 +13,5 @@ public class LabTestRequest {
     private String namespace;
     private String labTitle;
     private InstanceTypeDTO instanceType;
+    private String setupStepsJson;
 }

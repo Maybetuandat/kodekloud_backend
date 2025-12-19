@@ -6,14 +6,19 @@ import com.example.cms_be.dto.lab.LabTestResponse;
 import com.example.cms_be.kafka.LabTestRequestProducer;
 import com.example.cms_be.model.Lab;
 import com.example.cms_be.repository.LabRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import jakarta.persistence.EntityNotFoundException;
+
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -22,6 +27,7 @@ public class VMTestService {
 
     private final LabRepository labRepository;
     private final LabTestRequestProducer labTestRequestProducer;
+    private final ObjectMapper objectMapper;
 
     @Value("${infrastructure.service.websocket.url}")
     private String infrastructureWebSocketUrl;
@@ -54,12 +60,37 @@ public class VMTestService {
             lab.getInstanceType().getStorageGb()
         );
 
+        // Convert setup steps to JSON
+        String setupStepsJson = null;
+        try {
+            if (lab.getSetupSteps() != null && !lab.getSetupSteps().isEmpty()) {
+                List<Map<String, Object>> setupStepsList = lab.getSetupSteps().stream()
+                    .map(step -> {
+                        Map<String, Object> stepMap = new HashMap<>();
+                        stepMap.put("stepOrder", step.getStepOrder());
+                        stepMap.put("title", step.getTitle());
+                        stepMap.put("setupCommand", step.getSetupCommand());
+                        stepMap.put("expectedExitCode", step.getExpectedExitCode());
+                        stepMap.put("timeoutSeconds", step.getTimeoutSeconds());
+                        stepMap.put("continueOnFailure", step.getContinueOnFailure());
+                        return stepMap;
+                    })
+                    .collect(Collectors.toList());
+                
+                setupStepsJson = objectMapper.writeValueAsString(setupStepsList);
+                log.info("Setup steps JSON: {}", setupStepsJson);
+            }
+        } catch (Exception e) {
+            log.error("Error serializing setup steps: {}", e.getMessage(), e);
+        }
+
         LabTestRequest request = new LabTestRequest(
             lab.getId(),
             testVmName,
             lab.getNamespace(),
             lab.getTitle(),
-            instanceTypeDTO
+            instanceTypeDTO,
+            setupStepsJson
         );
         
         labTestRequestProducer.sendLabTestRequest(request);
