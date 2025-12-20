@@ -36,14 +36,8 @@ public class Lab {
 
     private String description;
 
-   
-
     @Column(name = "namespace", nullable = false)   
     private String namespace;
-
-  
-
-  
 
     @Column(name = "estimated_time", nullable = false)
     private Integer estimatedTime;

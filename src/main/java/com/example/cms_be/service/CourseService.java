@@ -5,6 +5,8 @@ package com.example.cms_be.service;
 import com.example.cms_be.dto.CourseDetailResponse;
 import com.example.cms_be.dto.LabInfo;
 import com.example.cms_be.dto.course.CreateCourseRequest;
+import com.example.cms_be.dto.user.UserDTO;
+import com.example.cms_be.dto.user.UserDTO;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -33,6 +35,10 @@ public class CourseService {
     private final SubjectRepository subjectRepository;
     private final UserRepository userRepository;
     private final CourseUserService courseUserService;
+    public static final String STUDENT_ROLE = "ROLE_STUDENT";
+    private static final String LECTURE_ROLE = "ROLE_LECTURER";
+    private final UserService userService;
+
 
     public Page<Course> getAllCourses(Pageable pageable, Boolean isActive, String keyword, String code)
     {
@@ -97,22 +103,40 @@ public class CourseService {
     public CourseDetailResponse getCourseDetailById(Integer id) {
         Course course = courseRepository.findCourseWithLabsById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Course not found with id: " + id));
-        return mapToDetailDto(course);
+        
+
+        Integer studentsCount = userRepository.countUsersByCourseIdAndRole(id, STUDENT_ROLE, true);
+
+        
+        List<User> lecturers = userRepository.findUsersByCourseIdAndRole(id, LECTURE_ROLE, true);
+
+        UserDTO lecturerDTO = lecturers.isEmpty() ? null : userService.convertToDTO(lecturers.get(0));
+        
+        return mapToDetailDto(course, studentsCount, lecturerDTO);
     }
 
-    private CourseDetailResponse mapToDetailDto(Course course) {
+    private CourseDetailResponse mapToDetailDto(Course course, Integer studentsCount, UserDTO lecturer ) {
         CourseDetailResponse dto = new CourseDetailResponse();
         dto.setId(course.getId());
         dto.setTitle(course.getTitle());
         dto.setDescription(course.getDescription());
+        dto.setShortDescription(course.getShortDescription());
+        dto.setLevel(course.getLevel());
+        
+        dto.setStudentsCount(studentsCount != null ? studentsCount : 0);
+        dto.setUpdatedAt(course.getUpdatedAt() != null ? course.getUpdatedAt().toString() : null);
+        dto.setLecturer(lecturer);
+
+
 
         List<LabInfo> labDtos = course.getCourseLabs().stream()
                 .map(courseLab -> {
                     var lab = courseLab.getLab();
-                    return new LabInfo(lab.getId(), lab.getTitle());
+                    return new LabInfo(lab.getId(), lab.getTitle(), lab.getDescription(), lab.getEstimatedTime(), lab.getInstanceType().getName());
                 })
                 .collect(Collectors.toList());
         dto.setLabs(labDtos);
+        dto.setCategory(labDtos.get(0).category());
 
         return dto;
     }

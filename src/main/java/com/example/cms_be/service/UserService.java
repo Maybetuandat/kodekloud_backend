@@ -104,7 +104,7 @@ public class UserService {
         }
     }
 
-    private UserDTO convertToDTO(User user) {
+    public UserDTO convertToDTO(User user) {
         return UserDTO.builder()
                 .id(user.getId())
                 .lastName(user.getLastName())

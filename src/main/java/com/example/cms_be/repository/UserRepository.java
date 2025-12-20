@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -67,4 +68,34 @@ public interface UserRepository extends JpaRepository<User, Integer> {
 
         Optional<User> findByUsername(String username);
         boolean existsByEmail(String email);
+
+
+
+
+       @Query("""
+        SELECT COUNT(cu) 
+        FROM CourseUser cu 
+        WHERE cu.course.id = :courseId 
+        AND cu.user.role.name = :roleName
+        AND (:isActive IS NULL OR cu.user.isActive = :isActive)
+        """)
+        Integer countUsersByCourseIdAndRole(
+        @Param("courseId") Integer courseId,
+        @Param("roleName") String roleName,
+        @Param("isActive") Boolean isActive
+        );
+
+
+        @Query("""
+        SELECT u FROM User u
+        JOIN CourseUser cu ON cu.user = u
+        WHERE cu.course.id = :courseId
+        AND u.role.name = :roleName
+        AND (:isActive IS NULL OR u.isActive = :isActive)
+        """)
+        List<User> findUsersByCourseIdAndRole(
+        @Param("courseId") Integer courseId,
+        @Param("roleName") String roleName,
+        @Param("isActive") Boolean isActive
+        );
 }
