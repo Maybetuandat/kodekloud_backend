@@ -73,8 +73,8 @@ public class WebSecurityConfig {
                             "/ws/**",
                             "/ws/lab-timer/",
                             "/api/terminal/**", 
-                            "/api/lab-validation/**",
-                            "/api/lab-sessions/**"
+                            "/api/lab-validation/**"
+//                            "/api/lab-sessions/**"
                                     ).permitAll()
                             .anyRequest().authenticated()
             );

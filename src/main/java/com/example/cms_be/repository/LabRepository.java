@@ -51,7 +51,7 @@ public interface LabRepository extends JpaRepository<Lab, Integer> {
         @Param("isActive") Boolean isActive,
         Pageable pageable);
 
-        @Query("SELECT l FROM Lab l JOIN FETCH l.category WHERE l.id = :id")
+        @Query("SELECT l FROM Lab l WHERE l.id = :id")
         Optional<Lab> findByIdWithCategory(@Param("id") Integer id);
 
         // 🔥 NEW: Eager fetch lab with setupSteps to avoid LazyInitializationException
@@ -61,7 +61,6 @@ public interface LabRepository extends JpaRepository<Lab, Integer> {
         // 🔥 NEW: Eager fetch lab with all related data for async operations
         @Query("SELECT l FROM Lab l " +
                "LEFT JOIN FETCH l.setupSteps " +
-               "LEFT JOIN FETCH l.category " +
                "LEFT JOIN FETCH l.instanceType " +
                "WHERE l.id = :id")
         Optional<Lab> findByIdWithAllData(@Param("id") Integer id);

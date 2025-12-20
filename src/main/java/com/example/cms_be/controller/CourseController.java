@@ -65,14 +65,14 @@ public class CourseController {
             Pageable pageable = PageRequest.of(pageNumber, pageSize);
 
             if (search != null) {
-                search = search.trim(); 
+                search = search.trim();
             }
 
             Page<Course> coursePage = courseService.getAllCourses(pageable, isActive, search, code, subjectId);
 
             Map<String, Object> response = new HashMap<>();
             response.put("data", coursePage.getContent());
-            response.put("currentPage", coursePage.getNumber() + 1); 
+            response.put("currentPage", coursePage.getNumber() + 1);
             response.put("totalItems", coursePage.getTotalElements());
             response.put("totalPages", coursePage.getTotalPages());
             response.put("hasNext", coursePage.hasNext());
@@ -139,7 +139,7 @@ public class CourseController {
     
 
 
-     @GetMapping("/{courseId}/users/not-in-course")
+    @GetMapping("/{courseId}/users/not-in-course")
     public ResponseEntity<?> getUsersNotInCourse(
             @RequestParam(name = "page", defaultValue = "1") int page,
             @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,

@@ -6,7 +6,6 @@ import com.example.cms_be.model.*;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
-import com.example.cms_be.repository.CategoryRepository;
 import com.example.cms_be.repository.InstanceTypeRepository;
 import com.example.cms_be.repository.LabRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 public class LabService {
 
     private final LabRepository labRepository;
-    private final CategoryRepository categoryRepository;
     private final InstanceTypeRepository instanceTypeRepository;
    public Page<Lab> getAllLabs(Pageable pageable, Boolean isActive, String keyword) {
        try {
@@ -61,13 +59,7 @@ public class LabService {
             if(createLabRequest.getCategoryId() == null || createLabRequest.getInstanceTypeId() == null) {
                 throw new RuntimeException("CategoryId and InstanceTypeId cannot be null");
             }
-            Category category = categoryRepository.findById(createLabRequest.getCategoryId())
-                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + createLabRequest.getCategoryId()));
             Lab lab = new Lab();
-            lab.setCategory(category);
-
-
-
 
             lab.setNamespace(generatedNameSpace(createLabRequest.getTitle()));
             InstanceType instanceType = instanceTypeRepository.findById(createLabRequest.getInstanceTypeId())
@@ -108,17 +100,6 @@ public class LabService {
 
             Lab existingLab = existingLabOpt.get();
 
-            // Update fields
-            if(labUpdate.getCategoryId() != null && labUpdate.getCategoryId() != existingLab.getCategory().getId()) {
-                Integer newCategoryId = labUpdate.getCategoryId();
-                Category newCategory = categoryRepository.findById(newCategoryId).orElse(null);
-                if (newCategory != null) {
-                    existingLab.setCategory(newCategory);
-                } else {
-                    log.warn("Category with ID {} not found. Skipping category update.", newCategoryId);
-                }
-
-            }
 
             if(labUpdate.getInstanceTypeId() != null && labUpdate.getInstanceTypeId() != existingLab.getInstanceType().getId()) {
                 Integer newInstanceTypeId = labUpdate.getInstanceTypeId();

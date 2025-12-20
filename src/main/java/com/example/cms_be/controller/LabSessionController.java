@@ -16,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -36,6 +37,7 @@ public class LabSessionController {
     private final LabService labService;
     private final SubmissionService submissionService;
 
+    @PreAuthorize("hasAuthority('LAB_SESSION_READ') or hasAuthority('LAB_SESSION_ALL')")
     @PostMapping()
     public ResponseEntity<?> createLabSession(@Valid @RequestBody CreateLabSessionRequest request) {
         try {
