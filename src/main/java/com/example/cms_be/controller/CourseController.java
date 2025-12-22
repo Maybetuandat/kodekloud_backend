@@ -2,6 +2,7 @@ package com.example.cms_be.controller;
 
 import com.example.cms_be.dto.CourseDetailResponse;
 import com.example.cms_be.dto.course.CreateCourseRequest;
+import com.example.cms_be.dto.course.LeaderboardEntryDTO;
 import com.example.cms_be.dto.user.UserDTO;
 
 
@@ -15,6 +16,7 @@ import com.example.cms_be.service.CourseLabService;
 import com.example.cms_be.service.CourseService;
 import com.example.cms_be.service.CourseUserService;
 import com.example.cms_be.service.LabService;
+import com.example.cms_be.service.LeaderboardService;
 import com.example.cms_be.service.UserService;
 
 import lombok.RequiredArgsConstructor;
@@ -50,6 +52,7 @@ public class CourseController {
     private final CourseUserService courseUserService;
     private final UserService userService;
 
+    private final LeaderboardService leaderboardService;
    @GetMapping("")
     public ResponseEntity<?> getAllCourses(
             @RequestParam(name = "page", defaultValue = "1") int page,
@@ -84,6 +87,18 @@ public class CourseController {
         }
     }
 
+
+
+     @GetMapping("/{courseId}/leaderboard")
+    public ResponseEntity<List<LeaderboardEntryDTO>> getLeaderboard(@PathVariable Integer courseId) {
+        try {
+            List<LeaderboardEntryDTO> leaderboard = leaderboardService.getLeaderboardByCourse(courseId);
+            return ResponseEntity.ok(leaderboard);
+        } catch (Exception e) {
+            log.error("Error getting leaderboard for course {}: {}", courseId, e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
     @GetMapping("/{courseId}")
     public ResponseEntity<?> getCourseById(@PathVariable Integer courseId) {
         try {
