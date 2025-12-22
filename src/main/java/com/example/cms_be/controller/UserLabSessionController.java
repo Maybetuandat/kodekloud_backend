@@ -21,7 +21,7 @@ import java.util.Map;
 @RequestMapping("/api/lab-sessions")
 @RequiredArgsConstructor
 @Slf4j
-public class LabSessionController {
+public class UserLabSessionController {
 
     
     private final LabSessionService labSessionService;
@@ -37,7 +37,6 @@ public class LabSessionController {
             
             UserLabSession session = labSessionService.createAndStartSession(request.labId(), userIdFromRequest);
             
-            // Tạo socket URL theo format giống VMTestService
             String vmName = "vm-" + session.getId();
             String socketUrl = String.format("%s?podName=%s", infrastructureWebSocketUrl, vmName);
             
