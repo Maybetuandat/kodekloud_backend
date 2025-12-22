@@ -1,3 +1,3 @@
         git add .
-        git commit -m "update logic for check user session status"
-        git push origin   feat/user-session
+        git commit -m "update logic hash password fix question"
+        git push origin    feat/hash-password-fix-question
