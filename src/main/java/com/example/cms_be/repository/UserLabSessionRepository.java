@@ -6,7 +6,6 @@ import com.example.cms_be.model.UserLabSession;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import java.util.List;
 
 import java.util.Optional;
 
@@ -16,11 +15,11 @@ public interface UserLabSessionRepository extends JpaRepository<UserLabSession, 
     @Query("SELECT uls FROM UserLabSession uls " +
             "WHERE uls.courseUser.user.id = :userId " +
             "AND uls.lab.id = :labId " +
-            "AND uls.status IN :statuses " +
+            "AND uls.status <> :completedStatus " +
             "ORDER BY uls.createdAt DESC")
-    Optional<UserLabSession> findActiveSessionByUserAndLab(
+    Optional<UserLabSession> findNonCompletedSessionByUserAndLab(
             @Param("userId") Integer userId,
             @Param("labId") Integer labId,
-            @Param("statuses") List<String> statuses
+            @Param("completedStatus") String completedStatus
     );
 }

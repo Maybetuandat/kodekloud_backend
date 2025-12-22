@@ -2,7 +2,7 @@ package com.example.cms_be.controller;
 import com.example.cms_be.dto.CreateLabSessionRequest;
 import com.example.cms_be.dto.lab.UserLabSessionResponse;
 import com.example.cms_be.model.UserLabSession;
-import com.example.cms_be.service.LabSessionService;
+import com.example.cms_be.service.UserLabSessionService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.nio.file.AccessDeniedException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 
 @RestController
@@ -24,7 +25,7 @@ import java.util.Map;
 public class UserLabSessionController {
 
     
-    private final LabSessionService labSessionService;
+    private final UserLabSessionService userLabSessionService;;
     
     @Value("${infrastructure.service.websocket.url}")
     private String infrastructureWebSocketUrl;
@@ -35,7 +36,7 @@ public class UserLabSessionController {
             Integer userIdFromRequest = request.userId();
             log.warn("!!! INSECURE !!! Using userId from request body: {}", userIdFromRequest);
             
-            UserLabSession session = labSessionService.createAndStartSession(request.labId(), userIdFromRequest);
+            UserLabSession session = userLabSessionService.createAndStartSession(request.labId(), userIdFromRequest);
             
             String vmName = "vm-" + session.getId();
             String socketUrl = String.format("%s?podName=%s", infrastructureWebSocketUrl, vmName);
@@ -61,28 +62,11 @@ public class UserLabSessionController {
         }
     }
 
-    @PostMapping("/{labSessionId}/submit")
-    public ResponseEntity<?> handleSubmitSession(@PathVariable Integer labSessionId) {
-        try {
-            labSessionService.submitSession(labSessionId);
 
-            return ResponseEntity.ok(Map.of(
-                    "message", "Lab session " + labSessionId + " submitted successfully.",
-                    "status", "COMPLETED"
-            ));
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            log.error("Failed to submit lab session {}: {}", labSessionId, e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Lỗi hệ thống."));
-        }
-    }
-
-
-    @GetMapping("/{id}")
+     @GetMapping("/{id}")
     public ResponseEntity<?> getLabSessionStatus(@PathVariable Integer id) {
         try {
-            UserLabSession session = labSessionService.findById(id)
+            UserLabSession session = userLabSessionService.findById(id)
                     .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy phiên Lab với ID: " + id));
 
             Map<String, Object> response = new HashMap<>();
@@ -98,4 +82,92 @@ public class UserLabSessionController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Lỗi server"));
         }
     }
+
+
+
+    @GetMapping("/check-active/{labId}/{userId}")
+    public ResponseEntity<?> checkActiveSession(
+        @PathVariable Integer labId,
+        @PathVariable Integer userId) {
+    try {
+        
+        Optional<UserLabSession> activeSession = userLabSessionService.checkActiveSession(userId, labId);
+            
+        log.info(activeSession.isPresent() ?
+            "User {} has active session {} for lab {}" :
+            "User {} has no active session for lab {}",
+            userId, activeSession.map(UserLabSession::getId).orElse(null), labId);
+        if (activeSession.isPresent()) {
+            UserLabSession session = activeSession.get();
+            return ResponseEntity.ok(Map.of(
+                "hasActiveSession", true,
+                "sessionId", session.getId(),
+                "status", session.getStatus(),
+                "startedAt", session.getSetupStartedAt()
+            ));
+        }
+        
+        return ResponseEntity.ok(Map.of("hasActiveSession", false));
+        
+    } catch (Exception e) {
+        log.error("Error checking active session for user {} lab {}: {}", 
+            userId, labId, e.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(Map.of("error", "Lỗi hệ thống."));
+    }
+}
+
+    @PostMapping("/{labSessionId}/submit")
+    public ResponseEntity<?> handleSubmitSession(@PathVariable Integer labSessionId) {
+        try {
+            userLabSessionService.submitSession(labSessionId);
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Lab session " + labSessionId + " submitted successfully.",
+                    "status", "COMPLETED"
+            ));
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Failed to submit lab session {}: {}", labSessionId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Lỗi hệ thống."));
+        }
+    }
+
+
+
+    @DeleteMapping("/{labSessionId}")
+    public ResponseEntity<?> deleteLabSession(@PathVariable Integer labSessionId) {
+        try {
+            final String COMPLETED_STATUS = "COMPLETED";
+            
+            UserLabSession session = userLabSessionService.findById(labSessionId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                    "Không tìm thấy phiên lab với ID: " + labSessionId));
+            
+            if (COMPLETED_STATUS.equals(session.getStatus())) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", "Không thể xóa phiên lab đã hoàn thành."));
+            }
+            
+            userLabSessionService.deleteSession(labSessionId);
+            
+            log.info("Deleted lab session {} successfully", labSessionId);
+            
+            return ResponseEntity.ok(Map.of(
+                "message", "Phiên lab đã được xóa thành công.",
+                "sessionId", labSessionId
+            ));
+            
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Failed to delete lab session {}: {}", labSessionId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Lỗi hệ thống."));
+        }
+    }
+
+   
 }

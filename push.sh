@@ -1,3 +1,3 @@
         git add .
-        git commit -m "fix: update logic for get detail course with lecturer info"
-        git push origin  main    
+        git commit -m "update logic for check user session status"
+        git push origin   feat/user-session
