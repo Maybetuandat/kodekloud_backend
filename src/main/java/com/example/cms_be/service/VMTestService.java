@@ -1,3 +1,4 @@
+// cms-backend/src/main/java/com/example/cms_be/service/VMTestService.java
 package com.example.cms_be.service;
 
 import com.example.cms_be.dto.lab.InstanceTypeDTO;
@@ -29,8 +30,8 @@ public class VMTestService {
     private final LabTestRequestProducer labTestRequestProducer;
     private final ObjectMapper objectMapper;
 
-    @Value("${infrastructure.service.websocket.url}")
-    private String infrastructureWebSocketUrl;
+    @Value("${infrastructure.service.websocket.admin-test-url}")
+    private String adminTestWebSocketUrl;
 
     public LabTestResponse startLabTest(Integer labId) {
         log.info("[SYNC] Starting lab test for labId: {}", labId);
@@ -51,7 +52,8 @@ public class VMTestService {
 
         log.info("Test ID: {}, Test VM Name: {}", testId, testVmName);
 
-        String wsUrl = String.format("%s?podName=%s", infrastructureWebSocketUrl, testVmName);
+        // Admin test WebSocket URL
+        String wsUrl = String.format("%s?podName=%s", adminTestWebSocketUrl, testVmName);
 
         InstanceTypeDTO instanceTypeDTO = new InstanceTypeDTO(
             lab.getInstanceType().getBackingImage(),
@@ -70,6 +72,7 @@ public class VMTestService {
                         stepMap.put("stepOrder", step.getStepOrder());
                         stepMap.put("title", step.getTitle());
                         stepMap.put("setupCommand", step.getSetupCommand());
+                        stepMap.put("retryCount", step.getRetryCount());
                         stepMap.put("expectedExitCode", step.getExpectedExitCode());
                         stepMap.put("timeoutSeconds", step.getTimeoutSeconds());
                         stepMap.put("continueOnFailure", step.getContinueOnFailure());
@@ -107,7 +110,7 @@ public class VMTestService {
                 ))
                 .build();
 
-        log.info("Test request sent to infrastructure service. WebSocket URL: {}", wsUrl);
+        log.info("Test request sent to infrastructure service. Admin Test WebSocket URL: {}", wsUrl);
         return response;
     }
 }

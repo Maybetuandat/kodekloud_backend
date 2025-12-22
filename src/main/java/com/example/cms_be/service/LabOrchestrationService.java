@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -26,7 +27,7 @@ public class LabOrchestrationService {
     private final UserLabSessionProducer userLabSessionProducer;
     private final ObjectMapper objectMapper;
     
-    @Value("${infrastructure.service.websocket.url}")
+    @Value("${infrastructure.service.websocket.student-url}")
     private String infrastructureWebSocketUrl;
 
     @Transactional(readOnly = true)

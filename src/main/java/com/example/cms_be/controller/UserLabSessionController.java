@@ -33,9 +33,9 @@ import lombok.extern.slf4j.Slf4j;
 public class UserLabSessionController {
 
     
-    private final UserLabSessionService userLabSessionService;;
+    private final UserLabSessionService userLabSessionService;
     
-    @Value("${infrastructure.service.websocket.url}")
+    @Value("${infrastructure.service.websocket.student-url}")
     private String infrastructureWebSocketUrl;
 
     private final String COMPLETED_STATUS = "COMPLETED";
