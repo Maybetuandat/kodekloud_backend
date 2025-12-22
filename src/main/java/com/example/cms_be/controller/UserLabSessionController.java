@@ -1,21 +1,29 @@
 package com.example.cms_be.controller;
-import com.example.cms_be.dto.CreateLabSessionRequest;
-import com.example.cms_be.dto.lab.UserLabSessionResponse;
-import com.example.cms_be.model.UserLabSession;
-import com.example.cms_be.service.UserLabSessionService;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 import java.nio.file.AccessDeniedException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.example.cms_be.dto.CreateLabSessionRequest;
+import com.example.cms_be.dto.lab.UserLabSessionResponse;
+import com.example.cms_be.model.UserLabSession;
+import com.example.cms_be.service.UserLabSessionService;
+
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 
 @RestController
@@ -29,6 +37,8 @@ public class UserLabSessionController {
     
     @Value("${infrastructure.service.websocket.url}")
     private String infrastructureWebSocketUrl;
+
+    private final String COMPLETED_STATUS = "COMPLETED";
 
     @PostMapping()
     public ResponseEntity<?> createLabSession(@Valid @RequestBody CreateLabSessionRequest request) {
@@ -139,7 +149,7 @@ public class UserLabSessionController {
     @DeleteMapping("/{labSessionId}")
     public ResponseEntity<?> deleteLabSession(@PathVariable Integer labSessionId) {
         try {
-            final String COMPLETED_STATUS = "COMPLETED";
+        
             
             UserLabSession session = userLabSessionService.findById(labSessionId)
                 .orElseThrow(() -> new EntityNotFoundException(
