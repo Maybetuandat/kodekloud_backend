@@ -39,16 +39,9 @@ public class CourseService {
     private static final String LECTURE_ROLE = "ROLE_LECTURER";
     private final UserService userService;
 
+    private final Boolean DEFAULT_ACTIVE_COURSE_USER = true;
 
-    public Page<Course> getAllCourses(Pageable pageable, Boolean isActive, String keyword, String code)
-    {
-        try {
-            return courseRepository.findWithFilters(keyword, isActive, code, pageable);
-        } catch (Exception e) {
-            log.error("Error fetching courses with filters: {}", e.getMessage());
-            throw new RuntimeException("Failed to fetch courses", e);
-        }
-    }
+  
 
     public Page<Course> getCoursesByUser(Integer userId, Pageable pageable, Boolean isActive, String keyword, String code) {
         try {
@@ -60,7 +53,7 @@ public class CourseService {
             if ("ROLE_ADMIN".equals(roleName) ) {
                 return courseRepository.findWithFilters(keyword, isActive, code, pageable);
             } else {
-                return courseRepository.findCoursesByUserId(userId, keyword, isActive, code, pageable);
+                return courseRepository.findCoursesByUserId(userId, keyword, DEFAULT_ACTIVE_COURSE_USER, code, pageable);
             }
         } catch (Exception e) {
             log.error("Error fetching courses by user: {}", e.getMessage());
