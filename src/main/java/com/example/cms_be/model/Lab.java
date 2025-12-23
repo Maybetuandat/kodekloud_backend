@@ -2,6 +2,7 @@ package com.example.cms_be.model;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -65,9 +66,8 @@ public class Lab {
     private List<UserLabSession> userLabSessions;
 
 
-    @JsonIgnore
-    @OneToMany(mappedBy = "lab", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Question> labQuestions;
+   @OneToMany(mappedBy = "lab")
+    private Set<Question> labQuestions;
 
 
     @ManyToOne(fetch = FetchType.LAZY)

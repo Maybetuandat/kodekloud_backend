@@ -12,23 +12,20 @@ import java.util.Optional;
 
 @Repository
 public interface UserLabSessionRepository extends JpaRepository<UserLabSession, Integer> {
+        
+        
+        
+      @Query("SELECT DISTINCT uls FROM UserLabSession uls " +
+       "JOIN FETCH uls.courseUser cu " +
+       "JOIN FETCH cu.user u " +
+       "JOIN FETCH uls.lab l " +
+       "LEFT JOIN FETCH l.labQuestions " +
+       "LEFT JOIN FETCH uls.submissions " +
+       "WHERE cu.course.id = :courseId")
+        List<UserLabSession> findAllByCourseId(@Param("courseId") Integer courseId);
 
-    @Query("SELECT " +
-           "u.id, " +
-           "u.username, " +
-           "CONCAT(u.lastName, ' ', u.firstName), " +
-           "COUNT(CASE WHEN uls.status = 'COMPLETED' THEN 1 END), " +
-           "(SELECT COUNT(cl.id) FROM CourseLab cl WHERE cl.course.id = :courseId), " +
-           "AVG(TIMESTAMPDIFF(MINUTE, uls.setupStartedAt, uls.expiresAt)), " +
-           "SUM(TIMESTAMPDIFF(MINUTE, uls.setupStartedAt, uls.expiresAt)), " +
-           "MAX(uls.expiresAt) " +
-           "FROM UserLabSession uls " +
-           "JOIN uls.courseUser cu " +
-           "JOIN cu.user u " +
-           "WHERE cu.course.id = :courseId " +
-           "GROUP BY u.id, u.username, u.lastName, u.firstName " +
-           "ORDER BY COUNT(CASE WHEN uls.status = 'COMPLETED' THEN 1 END) DESC")
-    List<Object[]> findLeaderboardByCourseId(@Param("courseId") Integer courseId);
+
+
 
     @Query("SELECT uls FROM UserLabSession uls " +
             "WHERE uls.courseUser.user.id = :userId " +

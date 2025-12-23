@@ -1,5 +1,7 @@
 package com.example.cms_be.model;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Set;
 
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -56,6 +58,13 @@ public class UserLabSession {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_user_id", nullable = true)
     private CourseUser courseUser;
+
+
+
+
+    @OneToMany(mappedBy = "userLabSession")
+    private Set<Submission> submissions; 
+
 
   
 }
