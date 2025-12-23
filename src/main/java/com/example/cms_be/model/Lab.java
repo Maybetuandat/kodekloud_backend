@@ -67,7 +67,7 @@ public class Lab {
 
 
    @OneToMany(mappedBy = "lab")
-    private Set<Question> labQuestions;
+    private Set<Question> questions;
 
 
     @ManyToOne(fetch = FetchType.LAZY)

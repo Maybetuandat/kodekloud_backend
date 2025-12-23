@@ -1,6 +1,10 @@
 package com.example.cms_be.service;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
 import com.example.cms_be.dto.lab.CreateLabRequest;
+import com.example.cms_be.dto.lab.LabDTO;
 import com.example.cms_be.model.*;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
@@ -16,6 +20,23 @@ public class LabService {
 
     private final LabRepository labRepository;
     private final InstanceTypeRepository instanceTypeRepository;
+    
+    // Convert Lab entity to LabDTO
+    private LabDTO convertToDTO(Lab lab) {
+        LabDTO dto = new LabDTO();
+        dto.setId(lab.getId());
+        dto.setTitle(lab.getTitle());
+        dto.setDescription(lab.getDescription());
+        dto.setEstimatedTime(lab.getEstimatedTime());
+        dto.setNamespace(lab.getNamespace());
+        dto.setIsActive(lab.getIsActive());
+        
+        
+        dto.setCreatedAt(lab.getCreatedAt());
+        dto.setUpdatedAt(lab.getUpdatedAt());
+        return dto;
+    }
+    
    public Page<Lab> getAllLabs(Pageable pageable, Boolean isActive, String keyword) {
        try {
         return labRepository.findWithFilters(keyword, isActive, pageable );
@@ -26,13 +47,9 @@ public class LabService {
    }
 
 
-    public Page<Lab> getLabsByCourseId(Integer courseId, String keyword, Boolean isActive, Pageable pageable) {
-        try {
-            return labRepository.findLabsByCourseId(courseId, keyword, isActive, pageable);
-        } catch (Exception e) {
-            log.error("Error fetching labs by course ID {}: {}", courseId, e.getMessage());
-            return Page.empty();
-        }
+    public Page<LabDTO> getLabsByCourse(Integer courseId, Boolean isActive, String keyword, Pageable pageable) {
+        Page<Lab> labPage = labRepository.findLabsByCourseId(courseId, keyword, isActive, pageable);
+        return labPage.map(this::convertToDTO);
     }
 
     public Page<Lab> getLabsNotInCourse(Integer courseId, String keyword, Boolean isActive, Pageable pageable) {

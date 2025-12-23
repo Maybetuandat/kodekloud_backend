@@ -3,6 +3,7 @@ package com.example.cms_be.controller;
 import com.example.cms_be.dto.CourseDetailResponse;
 import com.example.cms_be.dto.course.CreateCourseRequest;
 import com.example.cms_be.dto.course.DashboardDTO;
+import com.example.cms_be.dto.lab.LabDTO;
 import com.example.cms_be.dto.user.UserDTO;
 
 
@@ -89,15 +90,10 @@ public class CourseController {
 
 
 
-     @GetMapping("/{courseId}/leaderboard")
-    public ResponseEntity<List<DashboardDTO>> getLeaderboard(@PathVariable Integer courseId) {
-        try {
-            List<DashboardDTO> leaderboard = dashboardService.getLeaderboardByCourse(courseId);
-            return ResponseEntity.ok(leaderboard);
-        } catch (Exception e) {
-            log.error("Error getting leaderboard for course {}: {}", courseId, e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+     @GetMapping("/{courseId}/dashboard")
+    public ResponseEntity<List<DashboardDTO>> getDashboard(@PathVariable Integer courseId) {
+        List<DashboardDTO> dashboard = dashboardService.getDashboard(courseId);
+        return ResponseEntity.ok(dashboard);
     }
     @GetMapping("/{courseId}")
     public ResponseEntity<?> getCourseById(@PathVariable Integer courseId) {
@@ -196,7 +192,7 @@ public class CourseController {
                 page = page - 1;
             }
             Pageable pageable = PageRequest.of(page, pageSize);
-            Page<Lab> labPage = labService.getLabsByCourseId(courseId, search, isActive, pageable);
+            Page<LabDTO> labPage = labService.getLabsByCourse(courseId, isActive, search, pageable);
 
             Map<String, Object> response = new HashMap<>();
             response.put("data", labPage.getContent());
