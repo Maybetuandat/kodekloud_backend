@@ -66,6 +66,7 @@ public class Lab {
     private List<UserLabSession> userLabSessions;
 
 
+    @JsonIgnore
    @OneToMany(mappedBy = "lab")
     private Set<Question> questions;
 

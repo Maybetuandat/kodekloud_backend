@@ -1,9 +1,6 @@
-
 package com.example.cms_be.kafka;
 
-
 import com.example.cms_be.dto.lab.ValidationRequest;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -14,15 +11,13 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ValidationProducer {
     
-    private final KafkaTemplate<String, String> kafkaTemplate;
-    private final ObjectMapper objectMapper;
+    private final KafkaTemplate<String, ValidationRequest> validationKafkaTemplate;
     
     private static final String TOPIC = "lab-validation-requests";
     
     public void sendValidationRequest(ValidationRequest request) {
         try {
-            String message = objectMapper.writeValueAsString(request);
-            kafkaTemplate.send(TOPIC, message);
+            validationKafkaTemplate.send(TOPIC, request);
             log.info("📤 Sent validation request: labSessionId={}, questionId={}", 
                 request.labSessionId(), request.questionId());
         } catch (Exception e) {
