@@ -3,6 +3,7 @@ package com.example.cms_be.config;
 
 import com.example.cms_be.dto.lab.LabTestRequest;
 import com.example.cms_be.dto.lab.UserLabSessionRequest;
+import com.example.cms_be.dto.lab.ValidationRequest;
 
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -50,5 +51,14 @@ public class KafkaProducerConfig {
     @Bean
     public KafkaTemplate<String, UserLabSessionRequest> userLabSessionKafkaTemplate() {
         return new KafkaTemplate<>(userLabSessionRequestProducerFactory());
+    }
+
+    @Bean
+    public ProducerFactory<String, ValidationRequest> validationRequestProducerFactory() {
+        return new DefaultKafkaProducerFactory<>(getCommonProducerProps());
+    }
+    @Bean
+    public KafkaTemplate<String, ValidationRequest> validationRequestKafkaTemplate() {
+        return new KafkaTemplate<>(validationRequestProducerFactory());
     }
 }

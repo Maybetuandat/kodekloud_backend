@@ -1,8 +1,9 @@
-// cms-be/src/main/java/com/example/cms_be/service/LabValidationService.java
 package com.example.cms_be.service;
 
-import com.example.cms_be.dto.ValidationRequest;
-import com.example.cms_be.dto.ValidationResponse;
+import com.example.cms_be.constant.QuestionType;
+import com.example.cms_be.constant.ValidationStatus;
+import com.example.cms_be.dto.lab.ValidationRequest;
+import com.example.cms_be.dto.lab.ValidationResponse;
 import com.example.cms_be.kafka.ValidationProducer;
 import com.example.cms_be.model.*;
 import com.example.cms_be.repository.SubmissionRepository;
@@ -20,7 +21,7 @@ import java.util.Optional;
 public class LabValidationService {
 
     private final SubmissionRepository submissionRepository;
-    private final LabSessionService labSessionService;
+    private final UserLabSessionService labSessionService;
     private final QuestionService questionService;
     private final AnswerService answerService;
     private final ValidationProducer validationProducer;
@@ -63,7 +64,7 @@ public class LabValidationService {
         Answer userAnswer = answerService.findById(userAnswerId)
                 .orElseThrow(() -> new EntityNotFoundException("Answer not found: " + userAnswerId));
 
-        boolean isCorrect = userAnswer.isCorrect();
+        boolean isCorrect = userAnswer.getIsRightAns();
 
         Submission submission = Submission.builder()
                 .userLabSession(labSession)
@@ -96,7 +97,7 @@ public class LabValidationService {
                 .labSessionId(labSession.getId())
                 .questionId(question.getId())
                 .userAnswerId(userAnswerId)
-                .vmName(labSession.getVmName())
+                .vmName(labSession.getPodName())
                 .namespace(labSession.getLab().getNamespace())
                 .podName(labSession.getPodName())
                 .validationCommand(question.getCheckCommand())
