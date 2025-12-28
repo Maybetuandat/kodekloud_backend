@@ -1,7 +1,10 @@
 package com.example.cms_be.service;
 
 import com.example.cms_be.dto.course.DashboardDTO;
+import com.example.cms_be.model.CourseUser;
+import com.example.cms_be.model.User;
 import com.example.cms_be.model.UserLabSession;
+import com.example.cms_be.repository.CourseUserRepository;
 import com.example.cms_be.repository.SubmissionRepository;
 import com.example.cms_be.repository.UserLabSessionRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,53 +18,62 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class DashboardService {
     
+    private final CourseUserRepository courseUserRepository; 
     private final UserLabSessionRepository sessionRepository;
     private final SubmissionRepository submissionRepository;
     
     public List<DashboardDTO> getDashboard(Integer courseId) {
-        List<UserLabSession> sessions = sessionRepository.findByCourseIdWithUser(courseId);
+        
+        List<CourseUser> enrolledUsers = courseUserRepository.findByCourseId(courseId);
         
         Map<Integer, DashboardDTO> dashboardMap = new HashMap<>();
         
+        for (CourseUser cu : enrolledUsers) {
+            User user = cu.getUser();
+            DashboardDTO dto = new DashboardDTO();
+            dto.setUserId(user.getId());
+            dto.setUsername(user.getUsername());
+            dto.setFullName(user.getFirstName() + " " + user.getLastName());
+            
+        
+            dto.setTotalScore(0);
+            dto.setCompletedLabs(0);
+            dto.setTotalAttempts(0);
+            
+            dto.setCompletionRate(0.0);
+            dto.setLastActivityAt(null);
+            
+            dashboardMap.put(user.getId(), dto);
+        }
+        
+   
+        List<UserLabSession> sessions = sessionRepository.findByCourseIdWithUser(courseId);
+        
         for (UserLabSession session : sessions) {
             Integer userId = session.getCourseUser().getUser().getId();
-            
-            if (!dashboardMap.containsKey(userId)) {
-                DashboardDTO dto = new DashboardDTO();
-                dto.setUserId(userId);
-                dto.setUsername(session.getCourseUser().getUser().getUsername());
-                dto.setFullName(session.getCourseUser().getUser().getFirstName() + " " + 
-                               session.getCourseUser().getUser().getLastName());
-                dto.setTotalScore(0);
-                dto.setCompletedLabs(0);
-                dto.setTotalAttempts(0);
-                dto.setTotalSubmissions(0);
-                dto.setCompletionRate(0.0);
-                dto.setLastActivityAt(null);
-                
-                dashboardMap.put(userId, dto);
-            }
-            
             DashboardDTO dto = dashboardMap.get(userId);
-            dto.setTotalAttempts(dto.getTotalAttempts() + 1);
             
-            if ("COMPLETED".equals(session.getStatus())) {
-                int correctCount = submissionRepository.countCorrectBySessionId(session.getId());
-                dto.setTotalScore(dto.getTotalScore() + correctCount * 10);
-                dto.setCompletedLabs(dto.getCompletedLabs() + 1);
+            if (dto != null) {
+                dto.setTotalAttempts(dto.getTotalAttempts() + 1);
+                
+                if ("COMPLETED".equals(session.getStatus())) {
+                    int correctCount = submissionRepository.countCorrectBySessionId(session.getId());
+                    dto.setTotalScore(dto.getTotalScore() + correctCount * 10);  // 1 cau hop = 10 diem
+                    dto.setCompletedLabs(dto.getCompletedLabs() + 1);
+                }
             }
         }
         
+     
         for (DashboardDTO dto : dashboardMap.values()) {
             Integer userId = dto.getUserId();
             
-            int totalSubmissions = submissionRepository.countTotalByUserAndCourse(userId, courseId);
-            dto.setTotalSubmissions(totalSubmissions);
             
-            int completedLabs = sessionRepository.countCompletedByUserAndCourse(userId, courseId);
-            int totalAttempts = sessionRepository.countTotalByUserAndCourse(userId, courseId);
             
-            double completionRate = totalAttempts > 0 ? (completedLabs * 100.0 / totalAttempts) : 0.0;
+            
+            double completionRate = dto.getTotalAttempts() > 0 
+                ? (dto.getCompletedLabs() * 100.0 / dto.getTotalAttempts()) 
+                : 0.0;
             dto.setCompletionRate(Math.round(completionRate * 100.0) / 100.0);
             
             var lastActivity = sessionRepository.findLastActivityByUserAndCourse(userId, courseId);
@@ -70,6 +82,7 @@ public class DashboardService {
             }
         }
         
+     
         List<DashboardDTO> sortedList = dashboardMap.values().stream()
             .sorted(Comparator.comparing(DashboardDTO::getTotalScore).reversed()
                     .thenComparing(DashboardDTO::getCompletedLabs).reversed()

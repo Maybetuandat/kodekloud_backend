@@ -9,16 +9,18 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface CourseUserRepository extends JpaRepository<CourseUser, Integer> {
 
-    @Query("SELECT CASE WHEN COUNT(cu) > 0 THEN TRUE ELSE FALSE END " +
+        @Query("SELECT CASE WHEN COUNT(cu) > 0 THEN TRUE ELSE FALSE END " +
             "FROM CourseUser cu " +
             "WHERE cu.user = :user AND cu.course = :course")
-    boolean existsByUserAndCourseId(@Param("user") User user, @Param("course")Course course);
-
-    Optional<CourseUser> findByUserAndCourse(User user, Course course);
+        boolean existsByUserAndCourseId(@Param("user") User user, @Param("course")Course course);
+        Optional<CourseUser> findByUserAndCourse(User user, Course course);
         Optional<CourseUser> findByCourseIdAndUserId(Integer courseId, Integer userId);
+        @Query("SELECT cu FROM CourseUser cu JOIN FETCH cu.user WHERE cu.course.id = :courseId")
+        List<CourseUser> findByCourseId(@Param("courseId") Integer courseId);
 }

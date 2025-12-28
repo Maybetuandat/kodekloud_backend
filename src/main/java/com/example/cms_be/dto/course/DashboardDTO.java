@@ -18,7 +18,7 @@ public class DashboardDTO {
     private Integer totalScore;   
     private Integer completedLabs;
     private Integer totalAttempts;
-    private Integer totalSubmissions; 
+    
     private Double completionRate;     
     private String lastActivityAt;
 }

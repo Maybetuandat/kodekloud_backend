@@ -17,10 +17,6 @@ public interface SubmissionRepository extends JpaRepository<Submission, Integer>
               "AND s.isCorrect = true")
        int countCorrectBySessionId(@Param("sessionId") Integer sessionId);
     
-       @Query("SELECT COUNT(s) FROM Submission s " +
-              "WHERE s.userLabSession.courseUser.user.id = :userId " +
-              "AND s.userLabSession.courseUser.course.id = :courseId")
-       int countTotalByUserAndCourse(@Param("userId") Integer userId, @Param("courseId") Integer courseId);
     
        @Query("SELECT COUNT(s) FROM Submission s " +
               "WHERE s.userLabSession.courseUser.user.id = :userId " +
