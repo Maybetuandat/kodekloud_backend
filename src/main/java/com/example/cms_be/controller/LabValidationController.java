@@ -3,7 +3,8 @@ package com.example.cms_be.controller;
 
 import com.example.cms_be.dto.CheckQuestionRequest;
 import com.example.cms_be.model.Submission;
-import com.example.cms_be.service.LabValidationService;
+import com.example.cms_be.service.SubmissionService;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -19,7 +20,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class LabValidationController {
 
-    private final LabValidationService labValidationService;
+    private final SubmissionService submissionService;
 
     @PostMapping("/{labSessionId}/check/{questionId}")
     public ResponseEntity<?> checkLabQuestion(
@@ -30,7 +31,7 @@ public class LabValidationController {
         try {
             Integer userAnswerId = (requestBody != null) ? requestBody.userAnswer() : null;
             
-            labValidationService.submitValidationRequest(labSessionId, questionId, userAnswerId);
+            submissionService.submitQuestion(labSessionId, questionId, userAnswerId);
 
             return ResponseEntity.ok(Map.of(
                     "success", true,
@@ -54,14 +55,10 @@ public class LabValidationController {
             @PathVariable Integer labSessionId,
             @PathVariable Integer questionId) {
         
-        boolean isPending = labValidationService.isPending(labSessionId, questionId);
-        Optional<Submission> latestSubmission = labValidationService.getLatestSubmission(labSessionId, questionId);
-
-        return ResponseEntity.ok(Map.of(
-                "isPending", isPending,
-                "hasSubmission", latestSubmission.isPresent(),
-                "isCorrect", latestSubmission.map(Submission::isCorrect).orElse(false),
-                "status", latestSubmission.map(Submission::getStatus).orElse("NOT_SUBMITTED")
-        ));
+          String status = submissionService.getQuestionSubmissionStatus(labSessionId, questionId);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "status", status
+            ));
     }
 }
