@@ -1,140 +1,146 @@
-// package com.example.cms_be.service;
+// cms-be/src/main/java/com/example/cms_be/service/LabValidationService.java
+package com.example.cms_be.service;
 
-// import com.example.cms_be.dto.connection.ExecuteCommandResult;
-// import com.example.cms_be.model.Answer;
-// import com.example.cms_be.model.Question;
-// import com.example.cms_be.model.Submission;
-// import com.example.cms_be.model.UserLabSession;
-// import com.example.cms_be.repository.QuestionRepository;
-// import com.example.cms_be.repository.UserLabSessionRepository;
-// import com.jcraft.jsch.ChannelExec;
-// import com.jcraft.jsch.JSch;
-// import com.jcraft.jsch.Session;
-// import io.kubernetes.client.openapi.ApiClient;
-// import io.kubernetes.client.openapi.ApiException;
-// import io.kubernetes.client.openapi.models.V1Pod;
-// import jakarta.persistence.EntityNotFoundException;
-// import lombok.extern.slf4j.Slf4j;
-// import org.springframework.beans.factory.annotation.Qualifier;
-// import org.springframework.stereotype.Service;
-// import org.springframework.transaction.annotation.Transactional;
+import com.example.cms_be.dto.ValidationRequest;
+import com.example.cms_be.dto.ValidationResponse;
+import com.example.cms_be.kafka.ValidationProducer;
+import com.example.cms_be.model.*;
+import com.example.cms_be.repository.SubmissionRepository;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-// import java.io.InputStream;
-// import java.util.List;
-// import java.util.Objects;
+import java.util.Optional;
 
-// @Service
-// @Slf4j
-// public class LabValidationService {
+@Service
+@Slf4j
+@RequiredArgsConstructor
+public class LabValidationService {
 
-//     private final UserLabSessionRepository userLabSessionRepository;
-//     private final QuestionRepository questionRepository;
-//     private final KubernetesDiscoveryService discoveryService;
-//     private final ApiClient apiClient;
+    private final SubmissionRepository submissionRepository;
+    private final LabSessionService labSessionService;
+    private final QuestionService questionService;
+    private final AnswerService answerService;
+    private final ValidationProducer validationProducer;
 
-//     private final String defaultUsername = "ubuntu";
-//     private final String defaultPassword = "1234";
+    @Transactional
+    public void submitValidationRequest(Integer labSessionId, Integer questionId, Integer userAnswerId) {
+        
+        Optional<Submission> pendingSubmission = submissionRepository
+                .findByLabSessionAndQuestionAndStatus(labSessionId, questionId, ValidationStatus.PENDING);
+        
+        if (pendingSubmission.isPresent()) {
+            throw new IllegalStateException("Câu hỏi đang được kiểm tra. Vui lòng đợi...");
+        }
 
-//     public LabValidationService(
-//             UserLabSessionRepository userLabSessionRepository,
-//             QuestionRepository questionRepository,
-//             KubernetesDiscoveryService discoveryService,
-//             @Qualifier("longTimeoutApiClient") ApiClient apiClient) {
-//         this.userLabSessionRepository = userLabSessionRepository;
-//         this.questionRepository = questionRepository;
-//         this.discoveryService = discoveryService;
-//         this.apiClient = apiClient;
-//         this.apiClient.setReadTimeout(0);
-//     }
+        UserLabSession labSession = labSessionService.findById(labSessionId)
+                .orElseThrow(() -> new EntityNotFoundException("Lab Session not found: " + labSessionId));
 
-//     @Transactional(readOnly = true)
-//     public boolean validateQuestion(Submission submission) throws ApiException {
-//         Question question = submission.getQuestion();
-//         String checkCommand = question.getCheckCommand();
-//         Answer userAnswer = submission.getUserAnswer();
+        Question question = questionService.findById(questionId)
+                .orElseThrow(() -> new EntityNotFoundException("Question not found: " + questionId));
 
-//         if (Objects.equals(question.getTypeQuestion(), "non-check") && userAnswer != null) {
-//             List<Answer> listAnswer = question.getAnswers();
-//             for(Answer answer : listAnswer) {
+        if (question.getTypeQuestion() == null) {
+            throw new IllegalStateException("Question type is not defined");
+        }
 
-//                 if(Objects.equals(answer.getId(), userAnswer.getId()) && answer.getIsRightAns()) {
-//                     return true;
-//                 }
-//             }
-//             return false;
-//         }
+        if (question.getTypeQuestion() == QuestionType.NON_CHECK) {
+            handleNonCheckQuestion(labSession, question, userAnswerId);
+        } else if (question.getTypeQuestion() == QuestionType.CHECK_OUTPUT) {
+            handleCheckOutputQuestion(labSession, question, userAnswerId);
+        } else {
+            throw new IllegalStateException("Unknown question type: " + question.getTypeQuestion());
+        }
+    }
 
-//         UserLabSession session = submission.getUserLabSession();
+    private void handleNonCheckQuestion(UserLabSession labSession, Question question, Integer userAnswerId) {
+        
+        if (userAnswerId == null) {
+            throw new IllegalArgumentException("User answer is required for non-check questions");
+        }
 
-//         String vmName = "vm-" + session.getId();
-//         String namespace = session.getLab().getNamespace();
+        Answer userAnswer = answerService.findById(userAnswerId)
+                .orElseThrow(() -> new EntityNotFoundException("Answer not found: " + userAnswerId));
 
-//         V1Pod pod;
-//         try {
-//             pod = discoveryService.waitForPodRunning(vmName, namespace, 10);
-//         } catch (InterruptedException e) {
-//             Thread.currentThread().interrupt();
-//             return false;
-//         }
-//         String podName = pod.getMetadata().getName();
+        boolean isCorrect = userAnswer.isCorrect();
 
-//         try {
-//             ExecuteCommandResult result = executeCommandViaTunnel(namespace, podName, checkCommand, 60);
-//             log.info("Check command '{}' resulted in exit code: {}", checkCommand, result.getExitCode());
-//             return result.getExitCode() == 0;
+        Submission submission = Submission.builder()
+                .userLabSession(labSession)
+                .question(question)
+                .userAnswer(userAnswer)
+                .status(isCorrect ? ValidationStatus.VALIDATED : ValidationStatus.FAILED)
+                .isCorrect(isCorrect)
+                .build();
 
-//         } catch (Exception e) {
-//             log.error("Error executing check command for session {}: {}", session.getId(), e.getMessage(), e);
-//             return false;
-//         }
-//     }
+        submissionRepository.save(submission);
+        
+        log.info("✅ NON_CHECK question validated: labSessionId={}, questionId={}, isCorrect={}", 
+            labSession.getId(), question.getId(), isCorrect);
+    }
 
-//     private ExecuteCommandResult executeCommandViaTunnel(String namespace, String podName, String command, int timeoutSecond) throws Exception {
-//         JSch jsch = new JSch();
-//         Session session = null;
-//         ChannelExec channel = null;
-//         StringBuilder outputBuffer = new StringBuilder();
-//         int exitCode = -1;
+    private void handleCheckOutputQuestion(UserLabSession labSession, Question question, Integer userAnswerId) {
+        
+        Submission submission = Submission.builder()
+                .userLabSession(labSession)
+                .question(question)
+                .status(ValidationStatus.PENDING)
+                .isCorrect(false)
+                .build();
 
-//         try {
-//             session = jsch.getSession(defaultUsername, "localhost", 2222);
-//             session.setPassword(defaultPassword);
-//             session.setConfig("StrictHostKeyChecking", "no");
+        submission = submissionRepository.save(submission);
+        log.info("💾 Saved PENDING submission: id={}, labSessionId={}, questionId={}", 
+            submission.getId(), labSession.getId(), question.getId());
 
-//             session.setSocketFactory(new SetupExecutionService.K8sTunnelSocketFactory(apiClient, namespace, podName));
+        ValidationRequest validationRequest = ValidationRequest.builder()
+                .labSessionId(labSession.getId())
+                .questionId(question.getId())
+                .userAnswerId(userAnswerId)
+                .vmName(labSession.getVmName())
+                .namespace(labSession.getLab().getNamespace())
+                .podName(labSession.getPodName())
+                .validationCommand(question.getCheckCommand())
+                .build();
 
-//             session.connect(15000);
+        validationProducer.sendValidationRequest(validationRequest);
+        log.info("📤 Sent validation request to Kafka: labSessionId={}, questionId={}", 
+            labSession.getId(), question.getId());
+    }
 
-//             channel = (ChannelExec) session.openChannel("exec");
-//             channel.setCommand(command);
+    @Transactional
+    public void processValidationResponse(ValidationResponse response) {
+        
+        Optional<Submission> pendingSubmission = submissionRepository
+                .findByLabSessionAndQuestionAndStatus(
+                    response.labSessionId(), 
+                    response.questionId(), 
+                    ValidationStatus.PENDING
+                );
 
-//             InputStream in = channel.getInputStream();
-//             channel.connect(10000);
+        if (pendingSubmission.isEmpty()) {
+            log.warn("⚠️ No PENDING submission found for labSessionId={}, questionId={}", 
+                response.labSessionId(), response.questionId());
+            return;
+        }
 
-//             byte[] tmp = new byte[1024];
-//             long startTime = System.currentTimeMillis();
+        Submission submission = pendingSubmission.get();
+        submission.setCorrect(response.isCorrect());
+        submission.setStatus(response.isCorrect() ? ValidationStatus.VALIDATED : ValidationStatus.FAILED);
+        
+        submissionRepository.save(submission);
+        
+        log.info("✅ Updated submission: id={}, labSessionId={}, questionId={}, isCorrect={}, status={}", 
+            submission.getId(), response.labSessionId(), response.questionId(), 
+            response.isCorrect(), submission.getStatus());
+    }
 
-//             while (true) {
-//                 while (in.available() > 0) {
-//                     int i = in.read(tmp, 0, 1024);
-//                     if (i < 0) break;
-//                     outputBuffer.append(new String(tmp, 0, i));
-//                 }
-//                 if (channel.isClosed()) {
-//                     if (in.available() > 0) continue;
-//                     exitCode = channel.getExitStatus();
-//                     break;
-//                 }
-//                 if (System.currentTimeMillis() - startTime > timeoutSecond * 1000L) {
-//                     throw new RuntimeException("Command timeout");
-//                 }
-//                 Thread.sleep(100);
-//             }
-//         } finally {
-//             if (channel != null) channel.disconnect();
-//             if (session != null) session.disconnect();
-//         }
+    public boolean isPending(Integer labSessionId, Integer questionId) {
+        return submissionRepository
+                .findByLabSessionAndQuestionAndStatus(labSessionId, questionId, ValidationStatus.PENDING)
+                .isPresent();
+    }
 
-//         return new ExecuteCommandResult(exitCode, outputBuffer.toString().trim(), "");
-//     }
-// }
+    public Optional<Submission> getLatestSubmission(Integer labSessionId, Integer questionId) {
+        return submissionRepository.findLatestByLabSessionAndQuestion(labSessionId, questionId);
+    }
+}
