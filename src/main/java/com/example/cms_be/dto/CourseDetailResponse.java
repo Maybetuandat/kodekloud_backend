@@ -1,12 +1,14 @@
 package com.example.cms_be.dto;
 
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import java.util.List;
 
 import com.example.cms_be.dto.user.UserDTO;
 
-@Data
+@Getter
+@Setter
 public class CourseDetailResponse {
     private Integer id;
     private String title;

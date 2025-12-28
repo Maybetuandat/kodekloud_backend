@@ -1,9 +1,11 @@
 package com.example.cms_be.dto;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 // DTO này sẽ chứa các thông tin cần thiết để hiển thị trên UI
-@Data
+@Getter
+@Setter
 public class BackingImageDTO {
     private String name;
     private String uuid;

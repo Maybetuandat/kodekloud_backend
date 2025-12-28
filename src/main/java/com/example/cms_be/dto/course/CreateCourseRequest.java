@@ -1,8 +1,10 @@
 package com.example.cms_be.dto.course;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 public class CreateCourseRequest {
 
     private String title;

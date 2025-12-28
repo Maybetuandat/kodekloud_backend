@@ -1,3 +1,3 @@
         git add .
-        git commit -m "update logic hash password fix question"
-        git push origin    feat/hash-password-fix-question
+        git commit -m "fix delete course user in role admin"
+        git push origin dashboard

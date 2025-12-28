@@ -10,12 +10,14 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "user_lab_sessions")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -48,21 +50,21 @@ public class UserLabSession {
     @Column(name = "status")
     private String status;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "lab_id", nullable = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "lab_id", nullable = false)
     private Lab lab;
 
 
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "course_user_id", nullable = true)
+    @JoinColumn(name = "course_user_id", nullable = false)
     private CourseUser courseUser;
 
 
 
-
-    @OneToMany(mappedBy = "userLabSession")
+    @JsonIgnore
+    @OneToMany(mappedBy = "userLabSession", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private Set<Submission> submissions; 
 
 

@@ -1,9 +1,14 @@
 package com.example.cms_be.dto;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.List;
 
-@Data
+@Getter
+@Setter
 public class JwtResponse {
     private String accessToken;
     private String refreshToken;

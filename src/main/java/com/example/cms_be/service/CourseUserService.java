@@ -9,6 +9,7 @@ import com.example.cms_be.repository.CourseRepository;
 import com.example.cms_be.repository.CourseUserRepository;
 import com.example.cms_be.repository.UserRepository;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -70,6 +71,7 @@ public class CourseUserService {
             throw new RuntimeException("Error creating list of enrollments: " + e.getMessage());
        }
     }
+    @Transactional
     public void removeUserFromCourse(Integer courseId, Integer userId) {
        try {
          var courseUser = courseUserRepository.findByCourseIdAndUserId(courseId, userId)
@@ -77,7 +79,8 @@ public class CourseUserService {
 
         courseUserRepository.delete(courseUser);
        } catch (Exception e) {
-              throw new RuntimeException("Error removing user from course: " + e.getMessage());
+            log.error("Lỗi nghiêm trọng khi xóa sinh viên khỏi khóa học: ", e);
+            throw new RuntimeException("Error removing user from course: " + (e.getMessage() != null ? e.getMessage() : "Null Pointer Exception"));
        }
     }
 }
