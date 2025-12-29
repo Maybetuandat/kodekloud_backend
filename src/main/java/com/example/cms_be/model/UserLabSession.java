@@ -50,6 +50,7 @@ public class UserLabSession {
     @Column(name = "status")
     private String status;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "lab_id", nullable = false)
     private Lab lab;

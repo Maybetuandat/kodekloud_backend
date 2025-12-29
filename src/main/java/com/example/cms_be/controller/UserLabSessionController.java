@@ -5,6 +5,8 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.*;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -12,7 +14,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.cms_be.dto.CreateLabSessionRequest;
@@ -39,6 +43,43 @@ public class UserLabSessionController {
     private String infrastructureWebSocketUrl;
 
     private final String COMPLETED_STATUS = "COMPLETED";
+
+
+
+    @GetMapping("/history")
+    public ResponseEntity<?> getLabHistory(
+            @RequestParam(name = "page", defaultValue = "1") int page,
+            @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String keyword,
+            @RequestHeader(value = "X-User-Id") Integer userId
+    ) {
+        try {
+            int pageNumber = page > 0 ? page - 1 : 0;
+            Pageable pageable = PageRequest.of(pageNumber, pageSize);
+
+            Page<UserLabSession> sessionPage = userLabSessionService.getUserLabSessionPagination(userId, keyword, pageable);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("data", sessionPage.getContent());
+            response.put("currentPage", sessionPage.getNumber() + 1);
+            response.put("totalItems", sessionPage.getTotalElements());
+            response.put("totalPages", sessionPage.getTotalPages());
+            response.put("hasNext", sessionPage.hasNext());
+            response.put("hasPrevious", sessionPage.hasPrevious());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Error fetching lab history: " + e.getMessage());
+        }
+    }
+
+
+
+
+
+
+
+
 
     @PostMapping()
     public ResponseEntity<?> createLabSession(@Valid @RequestBody CreateLabSessionRequest request) {

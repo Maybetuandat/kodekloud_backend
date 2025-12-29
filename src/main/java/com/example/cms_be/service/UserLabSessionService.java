@@ -5,6 +5,8 @@ import java.nio.file.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 
 import com.example.cms_be.model.CourseLab;
@@ -17,9 +19,7 @@ import com.example.cms_be.repository.CourseUserRepository;
 import com.example.cms_be.repository.LabRepository;
 import com.example.cms_be.repository.UserLabSessionRepository;
 import com.example.cms_be.repository.UserRepository;
-
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -35,6 +35,14 @@ public class UserLabSessionService {
     private final LabOrchestrationService orchestrationService;
     private final CourseLabRepository courseLabRepository;
     private final String COMPLETED_STATUS = "COMPLETED";
+
+
+
+    public Page<UserLabSession> getUserLabSessionPagination(Integer userId, String keyword, Pageable pageable) {
+        return userLabSessionRepository.findByUserIdAndKeyword(userId, keyword, pageable);
+    }
+
+
     public UserLabSession createAndStartSession(Integer labId, Integer userId) throws IOException {
         try {
             Lab lab = labRepository.findById(labId)
