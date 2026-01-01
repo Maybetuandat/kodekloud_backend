@@ -12,6 +12,8 @@ import com.example.cms_be.repository.UserLabSessionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -66,5 +68,9 @@ public class SubmissionService {
     public String getQuestionSubmissionStatus(Integer labSessionId, Integer questionId) {
         Optional<Submission> latestSubmission = submissionRepository.findByUserLabSessionIdAndQuestionId(labSessionId, questionId);
         return latestSubmission.map(Submission::getStatus).orElse(SubmissionStatus.NOT_SUBMISSION);
+    }
+
+    public List<Submission> findByUserLabSession(Integer id) {
+        return submissionRepository.findAllByUserLabSessionId(id);
     }
 }

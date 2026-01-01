@@ -5,6 +5,9 @@ import java.nio.file.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import com.example.cms_be.dto.LabSessionHistoryResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.example.cms_be.model.CourseLab;
@@ -135,5 +138,16 @@ public class UserLabSessionService {
             log.error("Error deleting session {}: {}", labSessionId, e.getMessage(), e);
             throw new RuntimeException("Lỗi khi xóa phiên lab: " + e.getMessage(), e);
         }
+    }
+
+    public Page<LabSessionHistoryResponse> getListLabHistory(Integer userId, Pageable pageable) {
+        return userLabSessionRepository.findHistoryByUserId(userId, pageable)
+                .map(session -> new LabSessionHistoryResponse(
+                        session.getId(),
+                        session.getLab().getTitle(),
+                        session.getStatus(),
+                        session.getSetupStartedAt(),
+                        session.getSetupCompletedAt()
+                ));
     }
 }

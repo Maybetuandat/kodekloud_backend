@@ -2,6 +2,8 @@
 package com.example.cms_be.repository;
 
 import com.example.cms_be.model.UserLabSession;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -56,4 +58,9 @@ public interface UserLabSessionRepository extends JpaRepository<UserLabSession, 
                 "WHERE uls.courseUser.user.id = :userId " +
                 "AND uls.courseUser.course.id = :courseId")
         LocalDateTime findLastActivityByUserAndCourse(@Param("userId") Integer userId, @Param("courseId") Integer courseId);
+        @Query("SELECT uls FROM UserLabSession uls " +
+                "JOIN uls.courseUser cu " +
+                "WHERE cu.user.id = :userId " +
+                "ORDER BY uls.createdAt DESC")
+        Page<UserLabSession> findHistoryByUserId(@Param("userId") Integer userId, Pageable pageable);
 }
