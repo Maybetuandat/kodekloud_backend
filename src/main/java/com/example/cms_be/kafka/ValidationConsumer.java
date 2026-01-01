@@ -21,7 +21,7 @@ public class ValidationConsumer {
         try {
             ValidationResponse response = objectMapper.readValue(message, ValidationResponse.class);
             log.info("📥 Received validation response: labSessionId={}, questionId={}, isCorrect={}",
-                    response.labSessionId(), response.questionId(), response.isCorrect());
+                    response.getLabSessionId(), response.getQuestionId(), response.isCorrect());
 
             submissionService.processValidationResponse(response);
 

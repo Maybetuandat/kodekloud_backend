@@ -1,5 +1,10 @@
 package com.example.cms_be.service;
 
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.example.cms_be.constant.QuestionType;
 import com.example.cms_be.constant.SubmissionStatus;
 import com.example.cms_be.dto.lab.ValidationRequest;
@@ -13,12 +18,9 @@ import com.example.cms_be.repository.AnswerRepository;
 import com.example.cms_be.repository.QuestionRepository;
 import com.example.cms_be.repository.SubmissionRepository;
 import com.example.cms_be.repository.UserLabSessionRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Optional;
 
 @Service
 @Slf4j
@@ -106,18 +108,18 @@ public class SubmissionService {
     @Transactional
     public void processValidationResponse(ValidationResponse response) {
         log.info("📥 Processing validation response: labSessionId={}, questionId={}, isCorrect={}",
-                response.labSessionId(), response.questionId(), response.isCorrect());
+                response.getLabSessionId(), response.getQuestionId(), response.isCorrect());
 
         Optional<Submission> submissionOpt = submissionRepository
                 .findByLabSessionAndQuestionAndStatus(
-                        response.labSessionId(),
-                        response.questionId(),
+                        response.getLabSessionId(),
+                        response.getQuestionId(),
                         SubmissionStatus.SUBMISSION_PENDING
                 );
 
         if (submissionOpt.isEmpty()) {
             log.warn("⚠️ No pending submission found for labSessionId={}, questionId={}",
-                    response.labSessionId(), response.questionId());
+                    response.getLabSessionId(), response.getQuestionId());
             return;
         }
 

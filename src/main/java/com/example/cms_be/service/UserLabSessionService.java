@@ -5,8 +5,8 @@ import java.nio.file.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.example.cms_be.model.CourseLab;
@@ -19,6 +19,7 @@ import com.example.cms_be.repository.CourseUserRepository;
 import com.example.cms_be.repository.LabRepository;
 import com.example.cms_be.repository.UserLabSessionRepository;
 import com.example.cms_be.repository.UserRepository;
+
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
