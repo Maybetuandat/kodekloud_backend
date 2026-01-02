@@ -53,10 +53,11 @@ public class UserService {
               throw new RuntimeException("Failed to create user", e);
        }
     }
-    public User getUserById(Integer id)
+    public UserDTO getUserById(Integer id)
     {
         try {
-            return userRepository.findById(id).orElse(null);
+            User user = userRepository.findById(id).orElse(null);
+            return user != null ? convertToDTO(user) : null;
         } catch (Exception e) {
             log.error("Error fetching user by ID {}: {}", id, e.getMessage());
             throw new RuntimeException("Failed to fetch user by ID", e);

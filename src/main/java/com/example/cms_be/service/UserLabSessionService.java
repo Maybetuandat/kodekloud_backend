@@ -147,8 +147,8 @@ public class UserLabSessionService {
         }
     }
 
-    public Page<LabSessionHistoryResponse> getListLabHistory(Integer userId, Pageable pageable) {
-        return userLabSessionRepository.findHistoryByUserId(userId, pageable)
+    public Page<LabSessionHistoryResponse> getListLabHistory(String keyword, Integer userId, Pageable pageable) {
+        return userLabSessionRepository.findHistoryByUserId(keyword,userId, pageable)
                 .map(session -> new LabSessionHistoryResponse(
                         session.getId(),
                         session.getLab().getTitle(),

@@ -1,18 +1,18 @@
 
 package com.example.cms_be.repository;
 
-import com.example.cms_be.model.UserLabSession;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 
-import org.springframework.data.domain.*;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
+import com.example.cms_be.model.UserLabSession;
 
 @Repository
 public interface UserLabSessionRepository extends JpaRepository<UserLabSession, Integer> {
@@ -59,12 +59,20 @@ public interface UserLabSessionRepository extends JpaRepository<UserLabSession, 
                 "WHERE uls.courseUser.user.id = :userId " +
                 "AND uls.courseUser.course.id = :courseId")
         LocalDateTime findLastActivityByUserAndCourse(@Param("userId") Integer userId, @Param("courseId") Integer courseId);
-        @Query("SELECT uls FROM UserLabSession uls " +
-                "JOIN uls.courseUser cu " +
-                "WHERE cu.user.id = :userId " +
-                "ORDER BY uls.createdAt DESC")
-        Page<UserLabSession> findHistoryByUserId(@Param("userId") Integer userId, Pageable pageable);
+        
 
+        @Query("SELECT uls FROM UserLabSession uls " +
+       "JOIN uls.courseUser cu " +
+       "JOIN uls.lab l " + 
+       "WHERE cu.user.id = :userId " +
+       "AND (:keyword IS NULL OR :keyword = '' OR " +
+       "    LOWER(l.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+       "    CAST(uls.createdAt AS string) LIKE CONCAT('%', :keyword, '%')) " +
+       "ORDER BY uls.createdAt DESC")
+        Page<UserLabSession> findHistoryByUserId(
+                @Param("keyword") String keyword,
+                @Param("userId") Integer userId,
+                Pageable pageable);
 
 
         @Query("SELECT uls FROM UserLabSession uls " +

@@ -13,11 +13,8 @@ import com.example.cms_be.service.SubmissionService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.*;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -56,33 +53,110 @@ public class UserLabSessionController {
 
 
 
-    // @GetMapping("/history")
-    // public ResponseEntity<?> getLabHistory(
-    //         @RequestParam(name = "page", defaultValue = "1") int page,
-    //         @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
-    //         @RequestParam(required = false) String keyword,
-    //         @RequestHeader(value = "X-User-Id") Integer userId
-    // ) {
-    //     try {
-    //         int pageNumber = page > 0 ? page - 1 : 0;
-    //         Pageable pageable = PageRequest.of(pageNumber, pageSize);
+    @GetMapping("/admin/history")
+    public ResponseEntity<?> getHistorySession(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(value = "userId") Integer userId, 
+            @RequestParam(value="keyword", required=false) String keyword
+    ) {
+        try {
 
-    //         Page<UserLabSession> sessionPage = userLabSessionService.getUserLabSessionPagination(userId, keyword, pageable);
+            Integer currentUserId = userId;
 
-    //         Map<String, Object> response = new HashMap<>();
-    //         response.put("data", sessionPage.getContent());
-    //         response.put("currentPage", sessionPage.getNumber() + 1);
-    //         response.put("totalItems", sessionPage.getTotalElements());
-    //         response.put("totalPages", sessionPage.getTotalPages());
-    //         response.put("hasNext", sessionPage.hasNext());
-    //         response.put("hasPrevious", sessionPage.hasPrevious());
+            int pageNumber = page > 0 ? page - 1 : 0;
+            Pageable pageable = PageRequest.of(pageNumber, pageSize);
 
-    //         return ResponseEntity.ok(response);
-    //     } catch (Exception e) {
-    //         return ResponseEntity.internalServerError().body("Error fetching lab history: " + e.getMessage());
-    //     }
-    // }
+            Page<LabSessionHistoryResponse> history = userLabSessionService.getListLabHistory(keyword,currentUserId, pageable);
 
+            Map<String, Object> response = new HashMap<>();
+            response.put("data", history.getContent());
+            response.put("currentPage", history.getNumber() + 1);
+            response.put("totalItems", history.getTotalElements());
+            response.put("totalPages", history.getTotalPages());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error fetching history: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Lỗi server"));
+        }
+    }
+
+
+
+
+    @GetMapping("/history")
+    public ResponseEntity<?> getListLabHistory(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(value="keyword", required=false) String keyword,
+            @RequestHeader(value = "X-User-Id") Integer userId
+    ) {
+        try {
+
+            Integer currentUserId = userId;
+
+            int pageNumber = page > 0 ? page - 1 : 0;
+            Pageable pageable = PageRequest.of(pageNumber, pageSize);
+
+            Page<LabSessionHistoryResponse> history = userLabSessionService.getListLabHistory(keyword,currentUserId, pageable);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("data", history.getContent());
+            response.put("currentPage", history.getNumber() + 1);
+            response.put("totalItems", history.getTotalElements());
+            response.put("totalPages", history.getTotalPages());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error fetching history: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Lỗi server"));
+        }
+    }
+
+    @GetMapping("/{id}/statistic")
+    public ResponseEntity<?>statisticLabSession(@PathVariable Integer id) {
+        try {
+            UserLabSession labSession = userLabSessionService.findById(id)
+                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy phiên Lab với ID: " + id));
+            List<Submission> submissions = submissionService.findByUserLabSession(id);
+            List<SubmissionDetailDTO> submissionDetails = submissions.stream().map(sub -> {
+                String answerContent = "N/A";
+
+                if (sub.getUserAnswer() != null) {
+                    answerContent = sub.getUserAnswer().getContent();
+                } else if (sub.getQuestion().getTypeQuestion() != null
+                        && sub.getQuestion().getTypeQuestion().equals("check")) {
+                    answerContent = "System Check (Auto)";
+                }
+
+                return SubmissionDetailDTO.builder()
+                        .questionId(sub.getQuestion().getId())
+                        .questionContent(sub.getQuestion().getQuestion())
+                        .userAnswerContent(answerContent)
+                        .isCorrect(sub.isCorrect())
+                        .submittedAt(sub.getCreatedAt())
+                        .build();
+            }).toList();
+            int totalCorrect = (int) submissions.stream().filter(Submission::isCorrect).count();
+            LabSessionStatisticResponse response = LabSessionStatisticResponse.builder()
+                    .sessionId(labSession.getId())
+                    .labTitle(labSession.getLab().getTitle())
+                    .status(labSession.getStatus())
+                    .totalQuestions(submissions.size())
+                    .correctAnswers(totalCorrect)
+                    .submissions(submissionDetails)
+                    .build();
+            return ResponseEntity.ok(response);
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error getting statistic for session {}: {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Lỗi server: " + e.getMessage()));
+        }
+    }
 
 
 
@@ -230,74 +304,5 @@ public class UserLabSessionController {
         }
     }
 
-    @GetMapping("/history")
-    public ResponseEntity<?> getListLabHistory(
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int pageSize,
-            @RequestHeader(value = "X-User-Id") Integer userId
-    ) {
-        try {
-
-            Integer currentUserId = userId;
-
-            int pageNumber = page > 0 ? page - 1 : 0;
-            Pageable pageable = PageRequest.of(pageNumber, pageSize);
-
-            Page<LabSessionHistoryResponse> history = userLabSessionService.getListLabHistory(currentUserId, pageable);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("data", history.getContent());
-            response.put("currentPage", history.getNumber() + 1);
-            response.put("totalItems", history.getTotalElements());
-            response.put("totalPages", history.getTotalPages());
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            log.error("Error fetching history: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Lỗi server"));
-        }
-    }
-
-    @GetMapping("/{id}/statistic")
-    public ResponseEntity<?>statisticLabSession(@PathVariable Integer id) {
-        try {
-            UserLabSession labSession = userLabSessionService.findById(id)
-                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy phiên Lab với ID: " + id));
-            List<Submission> submissions = submissionService.findByUserLabSession(id);
-            List<SubmissionDetailDTO> submissionDetails = submissions.stream().map(sub -> {
-                String answerContent = "N/A";
-
-                if (sub.getUserAnswer() != null) {
-                    answerContent = sub.getUserAnswer().getContent();
-                } else if (sub.getQuestion().getTypeQuestion() != null
-                        && sub.getQuestion().getTypeQuestion().equals("check")) {
-                    answerContent = "System Check (Auto)";
-                }
-
-                return SubmissionDetailDTO.builder()
-                        .questionId(sub.getQuestion().getId())
-                        .questionContent(sub.getQuestion().getQuestion())
-                        .userAnswerContent(answerContent)
-                        .isCorrect(sub.isCorrect())
-                        .submittedAt(sub.getCreatedAt())
-                        .build();
-            }).toList();
-            int totalCorrect = (int) submissions.stream().filter(Submission::isCorrect).count();
-            LabSessionStatisticResponse response = LabSessionStatisticResponse.builder()
-                    .sessionId(labSession.getId())
-                    .labTitle(labSession.getLab().getTitle())
-                    .status(labSession.getStatus())
-                    .totalQuestions(submissions.size())
-                    .correctAnswers(totalCorrect)
-                    .submissions(submissionDetails)
-                    .build();
-            return ResponseEntity.ok(response);
-        } catch (EntityNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            log.error("Error getting statistic for session {}: {}", id, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Lỗi server: " + e.getMessage()));
-        }
-    }
+   
 }

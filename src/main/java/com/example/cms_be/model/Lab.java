@@ -1,25 +1,18 @@
 package com.example.cms_be.model;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
-
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
-
 @Entity
 @Getter
 @Setter
