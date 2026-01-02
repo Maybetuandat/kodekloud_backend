@@ -56,32 +56,32 @@ public class UserLabSessionController {
 
 
 
-    @GetMapping("/history")
-    public ResponseEntity<?> getLabHistory(
-            @RequestParam(name = "page", defaultValue = "1") int page,
-            @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
-            @RequestParam(required = false) String keyword,
-            @RequestHeader(value = "X-User-Id") Integer userId
-    ) {
-        try {
-            int pageNumber = page > 0 ? page - 1 : 0;
-            Pageable pageable = PageRequest.of(pageNumber, pageSize);
+    // @GetMapping("/history")
+    // public ResponseEntity<?> getLabHistory(
+    //         @RequestParam(name = "page", defaultValue = "1") int page,
+    //         @RequestParam(name = "pageSize", defaultValue = "10") int pageSize,
+    //         @RequestParam(required = false) String keyword,
+    //         @RequestHeader(value = "X-User-Id") Integer userId
+    // ) {
+    //     try {
+    //         int pageNumber = page > 0 ? page - 1 : 0;
+    //         Pageable pageable = PageRequest.of(pageNumber, pageSize);
 
-            Page<UserLabSession> sessionPage = userLabSessionService.getUserLabSessionPagination(userId, keyword, pageable);
+    //         Page<UserLabSession> sessionPage = userLabSessionService.getUserLabSessionPagination(userId, keyword, pageable);
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("data", sessionPage.getContent());
-            response.put("currentPage", sessionPage.getNumber() + 1);
-            response.put("totalItems", sessionPage.getTotalElements());
-            response.put("totalPages", sessionPage.getTotalPages());
-            response.put("hasNext", sessionPage.hasNext());
-            response.put("hasPrevious", sessionPage.hasPrevious());
+    //         Map<String, Object> response = new HashMap<>();
+    //         response.put("data", sessionPage.getContent());
+    //         response.put("currentPage", sessionPage.getNumber() + 1);
+    //         response.put("totalItems", sessionPage.getTotalElements());
+    //         response.put("totalPages", sessionPage.getTotalPages());
+    //         response.put("hasNext", sessionPage.hasNext());
+    //         response.put("hasPrevious", sessionPage.hasPrevious());
 
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Error fetching lab history: " + e.getMessage());
-        }
-    }
+    //         return ResponseEntity.ok(response);
+    //     } catch (Exception e) {
+    //         return ResponseEntity.internalServerError().body("Error fetching lab history: " + e.getMessage());
+    //     }
+    // }
 
 
 
