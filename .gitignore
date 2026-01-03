@@ -20,7 +20,7 @@ logs/
 *.iml
 *.ipr
 .env
-
+config
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
