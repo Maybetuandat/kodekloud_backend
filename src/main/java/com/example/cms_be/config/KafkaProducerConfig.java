@@ -1,6 +1,7 @@
 package com.example.cms_be.config;
 
 
+import com.example.cms_be.dto.lab.LabSessionCleanupRequest;
 import com.example.cms_be.dto.lab.LabTestRequest;
 import com.example.cms_be.dto.lab.UserLabSessionRequest;
 import com.example.cms_be.dto.lab.ValidationRequest;
@@ -60,5 +61,14 @@ public class KafkaProducerConfig {
     @Bean
     public KafkaTemplate<String, ValidationRequest> validationRequestKafkaTemplate() {
         return new KafkaTemplate<>(validationRequestProducerFactory());
+    }
+     @Bean
+    public ProducerFactory<String, LabSessionCleanupRequest> cleanupRequestProducerFactory() {
+        return new DefaultKafkaProducerFactory<>(getCommonProducerProps());
+    }
+
+    @Bean
+    public KafkaTemplate<String, LabSessionCleanupRequest> cleanupRequestKafkaTemplate() {
+        return new KafkaTemplate<>(cleanupRequestProducerFactory());
     }
 }

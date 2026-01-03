@@ -6,6 +6,9 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import com.example.cms_be.dto.LabSessionHistoryResponse;
+import com.example.cms_be.dto.lab.LabSessionCleanupRequest;
+import com.example.cms_be.kafka.LabSessionCleanupProducer;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -37,6 +40,7 @@ public class UserLabSessionService {
     private final LabOrchestrationService orchestrationService;
     private final CourseLabRepository courseLabRepository;
     private final String COMPLETED_STATUS = "COMPLETED";
+     private final LabSessionCleanupProducer cleanupProducer;
 
 
 
@@ -90,14 +94,24 @@ public class UserLabSessionService {
         try {
             log.info("Submitting session {}...", labSessionId);
 
-        UserLabSession session = userLabSessionRepository.findById(labSessionId)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy UserLabSession với ID: " + labSessionId));
+            UserLabSession session = userLabSessionRepository.findById(labSessionId)
+                    .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy UserLabSession với ID: " + labSessionId));
+            String vmName = "vm-" + session.getId();
+            String namespace = session.getLab().getNamespace();
 
-        session.setStatus("COMPLETED");
-        session.setExpiresAt(LocalDateTime.now());
-        userLabSessionRepository.save(session);
-        log.info("Session {} status updated to COMPLETED.", labSessionId);
+            
+            session.setStatus(COMPLETED_STATUS);
+            session.setExpiresAt(LocalDateTime.now());
+            userLabSessionRepository.save(session);
+            log.info("Session {} status updated to COMPLETED.", labSessionId);
+            LabSessionCleanupRequest cleanupRequest = LabSessionCleanupRequest.builder()
+                    .labSessionId(labSessionId)
+                    .vmName(vmName)
+                    .namespace(namespace)
+                    .build();
 
+            cleanupProducer.sendCleanupRequest(cleanupRequest);
+            log.info("Sent cleanup request for session {} to infrastructure service.", labSessionId);
 
         } catch (Exception e) {
             throw new RuntimeException("Lỗi khi gửi phiên lab: " + e.getMessage(), e);
