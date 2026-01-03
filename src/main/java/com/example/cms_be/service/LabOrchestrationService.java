@@ -59,6 +59,10 @@ public class LabOrchestrationService {
                 labWithSetupSteps.getInstanceType().getStorageGb()
             );
             
+             Integer estimatedTimeMinutes = labWithSetupSteps.getEstimatedTime() != null
+                ? labWithSetupSteps.getEstimatedTime()
+                : 60;
+
             UserLabSessionRequest request = UserLabSessionRequest.builder()
                 .labSessionId(session.getId())
                 .vmName(vmName)
@@ -66,6 +70,7 @@ public class LabOrchestrationService {
                 .labId(labWithSetupSteps.getId())
                 .instanceType(instanceTypeDTO)
                 .setupStepsJson(setupStepsJson)
+                  .estimatedTimeMinutes(estimatedTimeMinutes)
                 .build();
             
             log.info("Sending user lab session request to Kafka for session {}", session.getId());

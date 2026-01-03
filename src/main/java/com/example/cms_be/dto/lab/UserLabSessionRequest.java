@@ -6,7 +6,6 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 
-import com.example.cms_be.dto.lab.InstanceTypeDTO;
 
 @Getter
 @Setter
@@ -20,4 +19,5 @@ public class UserLabSessionRequest {
     private Integer labId;
     private InstanceTypeDTO instanceType;
     private String setupStepsJson;
+     private Integer estimatedTimeMinutes;
 }
