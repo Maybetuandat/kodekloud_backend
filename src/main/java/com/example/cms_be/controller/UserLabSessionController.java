@@ -52,6 +52,7 @@ public class UserLabSessionController {
     private final String COMPLETED_STATUS = "COMPLETED";
 
 
+    // history for admin
 
     @GetMapping("/admin/history")
     public ResponseEntity<?> getHistorySession(
@@ -85,6 +86,8 @@ public class UserLabSessionController {
 
 
 
+
+    // history for user
 
     @GetMapping("/history")
     public ResponseEntity<?> getListLabHistory(
