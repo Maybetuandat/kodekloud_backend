@@ -1,18 +1,13 @@
 
 package com.example.cms_be.controller;
-
 import com.example.cms_be.dto.CheckQuestionRequest;
-import com.example.cms_be.model.Submission;
 import com.example.cms_be.service.SubmissionService;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.Map;
-import java.util.Optional;
 
 @RestController
 @Slf4j

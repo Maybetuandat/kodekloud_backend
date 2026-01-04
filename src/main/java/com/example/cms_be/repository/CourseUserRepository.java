@@ -21,6 +21,15 @@ public interface CourseUserRepository extends JpaRepository<CourseUser, Integer>
         boolean existsByUserAndCourseId(@Param("user") User user, @Param("course")Course course);
         Optional<CourseUser> findByUserAndCourse(User user, Course course);
         Optional<CourseUser> findByCourseIdAndUserId(Integer courseId, Integer userId);
-        @Query("SELECT cu FROM CourseUser cu JOIN FETCH cu.user WHERE cu.course.id = :courseId")
-        List<CourseUser> findByCourseId(@Param("courseId") Integer courseId);
+        
+        
+      @Query("SELECT cu FROM CourseUser cu " +
+            "JOIN FETCH cu.user u " +
+            "JOIN u.role r " + 
+            "WHERE cu.course.id = :courseId " +
+            "AND r.name = :roleName") 
+        List<CourseUser> findByCourseIdAndRoleName(
+            @Param("courseId") Integer courseId, 
+            @Param("roleName") String roleName
+        );
 }

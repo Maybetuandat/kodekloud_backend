@@ -21,10 +21,11 @@ public class DashboardService {
     private final CourseUserRepository courseUserRepository; 
     private final UserLabSessionRepository sessionRepository;
     private final SubmissionRepository submissionRepository;
+    private final String ROLE_STUDENT = "ROLE_STUDENT";
     
     public List<DashboardDTO> getDashboard(Integer courseId) {
         
-        List<CourseUser> enrolledUsers = courseUserRepository.findByCourseId(courseId);
+        List<CourseUser> enrolledUsers = courseUserRepository.findByCourseIdAndRoleName(courseId, ROLE_STUDENT);
         
         Map<Integer, DashboardDTO> dashboardMap = new HashMap<>();
         
