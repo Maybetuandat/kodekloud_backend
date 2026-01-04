@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.data.domain.*;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -211,6 +210,7 @@ public class UserLabSessionController {
             response.put("id", session.getId());
             response.put("status", session.getStatus());
             response.put("podName", session.getPodName());
+            response.put("expiresAt", session.getExpiresAt());
 
             return ResponseEntity.ok(response);
 
